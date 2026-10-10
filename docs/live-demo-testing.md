@@ -2,7 +2,7 @@
 
 This checklist follows the public-origin routing release and its optional guided demo.
 
-Open https://sehat-grid.vercel.app. Use `isolated-browser-demo-password` for each account. Use synthetic descriptions and references throughout.
+Open https://sehat-grid.vercel.app. Use `demo` for each account. The compact Demo access menu selects a role and hospital, copies credentials or fills the sign-in form. Use synthetic descriptions and references throughout.
 
 ## Preparation
 
