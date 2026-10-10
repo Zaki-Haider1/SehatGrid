@@ -275,5 +275,7 @@
     "City roads, context buildings and heights are illustrative, not surveyed geometry.",
     "No hosting project/account access or public HTTPS deployment/restart evidence has been supplied.",
     "PR review, final CI and merge remain separate from local acceptance."
-  ]
+  ],
+  "pull_request": "https://github.com/Zaki-Haider1/akon/pull/4",
+  "public_deployment": "pending_at_user_request_2026-10-10"
 }

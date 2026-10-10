@@ -1,6 +1,6 @@
 # Deployment handoff — scope v1
 
-Dev 3 owns the required public deployment; the hosting project/account and access still need to be supplied. These instructions describe the prepared artifacts; a live deployment must not be claimed before it is exercised.
+Public deployment is pending at the user's explicit request on October 10. Dev 3 prepared the deployment artifacts; resume when the user requests it and supplies hosting project/account access. A live deployment must not be claimed before it is exercised.
 
 ## Combined application (recommended handoff)
 

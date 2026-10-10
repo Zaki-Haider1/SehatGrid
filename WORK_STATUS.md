@@ -35,7 +35,7 @@ The final full backend validation used a **separate** `sehat-grid-dev3-checks` c
 
 Failed attempts were retained as evidence: desktop controls were covered by the detail panel; the detail illustration intercepted Close; phone details covered Rotate; and the catalog table scrolled the document. Each was fixed and its affected checks rerun. One export assertion incorrectly used the plan DTO's `coverage` field instead of the export DTO's `projected`/`additional`. Initial focused backend helper errors were corrected; an incomplete container fixture mount and an interrupted shared-container test run were superseded by the independent 122-test pass. A preview server locked the build directory; stopping that preview allowed the production rebuild. Raw reports/traces remain ignored because they can contain session credentials.
 
-Local V1 acceptance and V2 production-start/reset/demo handoff are verified. Public deployment remains **open**: no hosting project/account access or public URL was supplied. Final branch CI, PR review and merge must be assessed separately. Physical-device Safari acceptance is not claimed.
+Local V1 acceptance and V2 production-start/reset/demo handoff are verified. The change is pushed in [draft PR #4](https://github.com/Zaki-Haider1/akon/pull/4). Public deployment is **pending at the user's explicit request on October 10**; no public URL is claimed. Final branch CI, PR review and merge must be assessed separately. Physical-device Safari acceptance is not claimed.
 
 ## Earlier integration verification — 10 October 2026 (historical baseline)
 

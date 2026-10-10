@@ -89,7 +89,7 @@ Dev 3 owns `frontend/app/page.tsx` and `frontend/lib/api.ts` during parallel wor
 
 ### V2 — Final local delivery and required public deployment
 
-**Owner:** Dev 3 (Codex), with Dev 1 backend support. **Status:** LOCAL HANDOFF VERIFIED; PUBLIC DEPLOYMENT OPEN pending identified hosting project/account access.
+**Owner:** Dev 3 (Codex), with Dev 1 backend support. **Status:** LOCAL HANDOFF VERIFIED in [draft PR #4](https://github.com/Zaki-Haider1/akon/pull/4); PUBLIC DEPLOYMENT PENDING at the user's explicit October 10 request. Resume hosting only when requested and account/project access is available.
 
 - [x] Reconcile production start instructions with standalone output; verify documented `npm start` against the real isolated API and update README/deployment docs. Combined container cold start is additionally in final CI.
 - [x] Rehearse the operational demo after isolated reset; verify API restart persistence with local model assets and production frontend start. Desktop 57.121s / phone 52.375s; exact evidence and offline/cold-start limits are in WORK_STATUS.md.
