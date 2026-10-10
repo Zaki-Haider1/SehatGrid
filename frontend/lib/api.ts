@@ -1,107 +1,238 @@
-export type Service = { id: number; name: string; unit_cost: number };
+export const API = (
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  ""
+).replace(/\/$/, "");
+export type User = {
+  id: string;
+  name: string;
+  role: "operator" | "planner";
+  facility_ids: string[];
+};
 export type Capacity = {
-  service_id: number;
-  service_name: string;
-  total: number;
-  available: number;
-  reserved: number;
-  consumed: number;
+  id: string;
+  facility_id: string;
+  date: string;
+  quota: number;
+  held: number;
+  committed: number;
+  completed: number;
+  forfeited: number;
+  available: number | null;
+  status: string;
+  freshness: string;
+  updated_at: string;
+  version: number;
 };
 export type Facility = {
-  id: number;
+  id: string;
   name: string;
-  kind: string;
+  ownership: string;
+  address: string;
   zone: string;
   latitude: number;
   longitude: number;
+  participation: string;
+  version: number;
+  eligible_zones: string[];
+  service_reviewed: boolean;
+  subsidy_required: boolean;
   capacities: Capacity[];
+  directory_context?: {
+    name: string;
+    label: string;
+    profile: {
+      coordinate_source: string;
+      coordinate_note: string;
+      website?: string;
+      directory_sources: { title: string; url: string }[];
+    };
+  };
 };
 export type CareRequest = {
-  id: number;
+  id: string;
   reference: string;
-  service_name: string;
-  service_id: number;
+  source_facility_id: string;
   zone: string;
-  day: string;
-  priority: string;
+  original_text: string;
+  service_reviewed: boolean;
+  date_from: string;
+  date_to: string;
   status: string;
-  provider: string | null;
-  referral_id: number | null;
+  reasons: string[];
+  needs_funding: boolean;
 };
-export type Recommendation = {
-  facility_id: number;
-  name: string;
-  zone: string;
-  available: number;
-  local: boolean;
+export type Referral = {
+  id: string;
+  request_id: string;
+  facility_id: string;
+  status: string;
+  date: string;
+  subsidy: number;
+  patient_agreed: boolean;
+  partner_accepted: boolean;
+  funding_approved: boolean;
+  expires_at: string;
+  reason?: string;
 };
-export type Dashboard = {
-  facilities: number;
-  available: number;
-  active_referrals: number;
-  completed: number;
-  pending: number;
-  gaps: {
-    zone: string;
-    service: string;
-    pending: number;
-    available: number;
-    reason: string;
-  }[];
-  budget: { total: number; committed: number; remaining: number };
+export type Budget = {
+  month: string;
+  authorized: number;
+  version: number;
+  HELD: number;
+  COMMITTED: number;
+  SETTLED: number;
+  RELEASED: number;
+  remaining: number;
+};
+export type Offer = {
+  id: string;
+  kind: string;
+  facility_id: string;
+  date: string;
+  units: number;
+  cost: number;
+  status: string;
+  site?: string;
 };
 export type Plan = {
-  id: number;
-  day: string;
-  cost: number;
-  units: number;
+  id: string;
+  month: string;
   status: string;
-  allocations: {
-    facility_name: string;
-    service_name: string;
-    zone: string;
-    units: number;
-    unit_cost: number;
+  solver_status: string;
+  cost: number;
+  subsidy_cost: number;
+  baseline: number;
+  projected: number;
+  additional: number;
+  unresolved_remaining: number;
+  assignments: {
+    request_id: string;
+    facility_id: string;
+    date: string;
+    subsidy: number;
+    offer_id: string | null;
+  }[];
+  actions: {
+    id: string;
+    offer_id: string;
+    kind: string;
+    cost: number;
+    status: string;
+  }[];
+  assumptions: string[];
+  excluded: Record<string, number>;
+};
+export type Match = {
+  id: string;
+  status: string;
+  model_version: string;
+  candidates: {
+    id: string;
+    name: string;
+    score: number;
+    exact_alias: boolean;
   }[];
 };
-export type Config = {
-  today: string;
-  zones: string[];
-  demo_reset_enabled: boolean;
+export type Recommendation = {
+  facility_id: string;
+  name: string;
+  capacity_id: string;
+  date: string;
+  available: number;
+  subsidy: number;
+  capacity_version: number;
+  facility_version: number;
+  explanation: string;
 };
-
-export const API = (
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
-).replace(/\/$/, "");
-
+export type Summary = {
+  month: string;
+  unresolved: number;
+  registered: number;
+  confirmed: number;
+  arrived: number;
+  completed: number;
+  projected_additional: number;
+  post_activation_confirmed: number;
+  post_activation_completed: number;
+  zones: { zone: string; count: number; reasons: Record<string, number> }[];
+  budget: Budget | null;
+};
+export type State = {
+  user: User;
+  config: {
+    today: string;
+    service_date: string;
+    month: string;
+    scope_version: string;
+    dataset_version: string;
+    freshness_minutes: number;
+    hold_minutes: number;
+    cutoff: string;
+    model: string;
+    zones: { id: string; name: string; latitude: number; longitude: number }[];
+  };
+  facilities: Facility[];
+  services: { id: string; name: string }[];
+  requests: CareRequest[];
+  referrals: Referral[];
+  summary: Summary | null;
+  budgets: Budget[];
+  ledger: { id: string; amount: number; state: string; reference: string }[];
+  plans: Plan[];
+  offers: Offer[];
+  reviews: {
+    id: string;
+    input_text: string;
+    decision: string;
+    candidate_id: string;
+    actor: string;
+  }[];
+  audit: {
+    id: string;
+    action: string;
+    actor: string;
+    timestamp: string;
+    object_id: string;
+    reason?: string;
+  }[];
+  subsidy_rule: { amount: number; month: string; version: number } | null;
+};
 export async function api<T>(
   path: string,
+  token: string,
   method = "GET",
   body?: unknown,
+  key?: string,
 ): Promise<T> {
-  const response = await fetch(`${API}${path}`, {
+  const response = await fetch(`${API}/api/v1/${path}`, {
     method,
     cache: "no-store",
-    headers: body ? { "Content-Type": "application/json" } : {},
-    body: body ? JSON.stringify(body) : undefined,
-    signal: AbortSignal.timeout(20000),
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(method !== "GET"
+        ? { "Idempotency-Key": key || crypto.randomUUID() }
+        : {}),
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+    signal: AbortSignal.timeout(60000),
   });
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
-    const detail = data.detail;
     throw new Error(
-      typeof detail === "string"
-        ? detail
-        : Array.isArray(detail)
-          ? detail.map((d: { msg: string }) => d.msg).join(". ")
-          : "The server could not complete this action",
+      typeof data.detail === "string"
+        ? data.detail
+        : data.detail?.message || "The server could not complete this action",
     );
   }
   return response.json();
 }
-
 export function money(value: number) {
   return new Intl.NumberFormat("en-PK", { maximumFractionDigits: 0 }).format(
     value,
   );
+}
+export function human(value: string) {
+  return value.replaceAll("_", " ").toLowerCase();
 }

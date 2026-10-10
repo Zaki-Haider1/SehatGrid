@@ -1,0 +1,14 @@
+.git
+.venv
+**/node_modules
+**/.next
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+**/.env
+**/.env.local
+**/*.db
+**/*.db-*
+backend/models
+work
+outputs

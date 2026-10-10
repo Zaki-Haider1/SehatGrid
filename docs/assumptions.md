@@ -1,87 +1,19 @@
-# Scope decisions and assumptions
+# Operational policies and limits
 
-This file records the accepted target scope and the differences between it and
-the current scaffold. Target choices here coordinate later tasks; they do not
-claim backend implementation, operational validation, partnerships, or health
-outcomes.
-
-## Controller rulings for T00
-
-- The integration branch is `feat/backend-t00-t03`; T00 is the backend
-  coordination/extraction owner. The existing frontend extraction remains T14.
-- New client and target route prefix is `/api/v1`. Existing `/api` routes remain
-  a documented compatibility surface until the client migrates; current
-  endpoints do not thereby become v1 implementations.
-- Keep zone IDs `Central`, `East`, `South`, `West`, and `North` for compatibility
-  with existing scaffold records. In the target seed, these mean team-defined
-  synthetic Islamabad pilot areas with synthetic centroids, not official
-  administrative boundaries. Unknown-zone data remains visible in summaries
-  and excluded from eligible planning until reviewed.
-- Target service is `PRIMARY_CARE_OPD`: non-emergency general primary-care
-  outpatient care. The present broad catalog and Karachi seed remain legacy
-  scaffold data until the T01 seed change. Existing priority fields are not
-  clinical triage.
-- Demo defaults: `APP_TIMEZONE=Asia/Karachi`,
-  `CAPACITY_FRESHNESS_MINUTES=60`, `REFERRAL_HOLD_MINUTES=15`,
-  `CANCELLATION_CUTOFF_LOCAL=09:00`, `SERVICE_WINDOW_END_LOCAL=17:00`,
-  `LIMITED_CAPACITY_THRESHOLD=3`, `OPTIMIZER_TIME_LIMIT_SECONDS=5`, and
-  `AUTH_SESSION_MINUTES=480`. Freshness and hold expire at their respective
-  `>=` boundaries. Cancellation before 09:00 on the local service date releases
-  the unit; cancellation at/after that time forfeits it. Missing arrival by
-  17:00 local time records `NO_SHOW` and forfeits the unit only for a confirmed
-  attempt. Pending temporary holds expire at the hold timeout and release
-  capacity without becoming no-shows. Cutoff and service window apply to the
-  local service date.
-  These are synthetic demo configuration values, not validated clinical or
-  operational policies.
-- T01's seed clock is a declared reset clock and can be overridden for
-  reproducible runs. Current records use that clock; deliberately stale sample
-  records predate it by more than the freshness limit.
-- T07 selects the matching model and numeric threshold. Contracts expose model,
-  revision, and threshold/policy version; T00 makes no accuracy or quality
-  claim.
-- Unsupported or unreviewed service text keeps its original description and a
-  null reviewed canonical service ID until a reviewer selects one. `service_id`
-  remains the only service relation; migrated requests may retain a historical
-  service FK while review status prevents v1 from treating it as canonical.
-  `status` remains the only request-state column: legacy values are preserved
-  and mapped by v1, while target states are stored directly. Existing provider
-  participation stays `PENDING`, old service records remain `NEEDS_REVIEW`, and
-  old capacity reports migrate as `UNKNOWN`; T03 derives freshness from report
-  time and policy at read time.
-
-## Scope differences preserved for migration
-
-- Current scaffold data is Karachi-oriented, with six facilities, six broad
-  services, integer IDs, and legacy `pending/reserved/confirmed/completed`
-  records. Target seed and target DTOs are Islamabad-oriented, use the narrow
-  primary-care scope and opaque public string IDs; internal database primary
-  keys may remain integers. T01 adds public ID/code fields without requiring a
-  destructive primary-key migration. T00 does not rewrite seed, persistence,
-  or endpoint behavior.
-- The current `/api` recommendation path uses current capacity and same-zone
-  preference. The target eligibility policy additionally requires active
-  participation, reviewed supported service, explicit zone eligibility,
-  recorded suitability, acceptable date, fresh positive capacity, funding
-  readiness, and no duplicate active reservation.
-- The current optimizer uses a legacy global budget, unrestricted additive
-  capacity, and urgent-first objective. Target planning uses monthly integer-PKR
-  ledger entries and offered subsidy, bounded partner quota, and mobile actions;
-  objective order is maximize additional eligible units, minimize cost, then
-  stable action IDs. T00 leaves the current solver behavior intact.
-- Current approval immediately adds capacity and reprocesses pending demand.
-  Target approval commits/reserves resources; partner/mobile capacity is usable
-  only after operator activation.
-- The current schema has neither the target request/attempt state vocabularies
-  nor versioned immutable planning snapshots. T00 defines their handoff only;
-  additive schema work belongs to T01 and later cards.
-
-## Risks and limits
-
-Synthetic zone labels/centroids are demonstration geometry and do not establish
-service travel accessibility. Capacity reports and costs are simulated unless
-their provenance says otherwise. Similarity is not a calibrated probability;
-clinical suitability, patient consent, and provider acceptance require human
-records. A `FEASIBLE` solver result is not an optimality claim. Target routes,
-auth rules, idempotency, freshness enforcement, monthly ledgers, snapshots, and
-solver DTOs remain proposed until their owning tasks implement and verify them.
+- Scope: non-emergency general primary-care OPD; recorded external suitability is mandatory. No patient identifiers beyond synthetic references.
+- Time: UTC event timestamps; Asia/Karachi date/month display and accounting. Capacity is a daily network commitment, not an appointment time or total hospital throughput.
+- Freshness: 1,440 minutes by default. Missing, suspended or stale quota is unknown. A new update is explicit; unused units do not roll forward.
+- Temporary holds: 30 minutes by default, expired transactionally when the API next reads/writes the network. No background scheduler is needed for correctness at access time.
+- Cancellation: before 09:00 PKT on the service date releases confirmed quota; at/after this cutoff forfeits it. Temporary hold expiry always releases. No-show is only accepted after the service date and forfeits quota. Completion never releases quota.
+- Funding: integer PKR. HELD, COMMITTED and SETTLED each consume budget exactly once. RELEASED is retained history. A pool-to-referral transfer reduces the pool before creating the referral entry. Fixed resource costs settle once on activation. Funding-included units remain usable without another subsidy after unassigned earmarks are released.
+- Subsidy schedule: a versioned fixed primary-care contribution for the selected month. Seed value PKR 1,000 is synthetic. It is not a verified treatment tariff.
+- Plan expiry: after the latest selected service date, unused earmarks and pending commitments are released on the next API access. Explicit plan closure is available earlier. Pending actions can be rejected by their responsible operator, updating remaining cost, benefit and ledger commitments. Packages activate all-or-nothing.
+- Plans reserve base-capacity earmarks in held units; referral reservation transfers that earmark without a second capacity charge. Pending quota/mobile offers cannot be used before activation.
+- Overlap: a shared spare-capacity group/date can be purchased once; a mobile unit/date can occupy one site. Fixed offers are immutable once posted except their lifecycle; publish a fresh dated offer for changed terms.
+- Request identity: one active attempt per request; failed attempts do not duplicate demand. Patient-declined requests remain excluded from funding planning until the operator records reprocessing.
+- Geography: five team-defined catchments. Public directory names/campus points are context only. All partner agreements, capacity, funding and requests are synthetic. The mobile site is separate from the host's public campus.
+- Snapshots are immutable. Capacity, participation, request, offer, budget and ledger changes invalidate draft approvals. Conservative network-wide input hashing can require recomputation after an unrelated pilot update.
+- Matching: pretrained embeddings, exact aliases, fuzzy score and locality/type checks. Every merge/category decision is human reviewed; unsupported text is not automatically assigned. Original IDs and records remain.
+- Results: projected allocation, confirmation and completion are separate. The displayed current confirmation denominator includes pending cases and is not advertised as a mature-cohort completion rate.
+- Exports contain aggregate zone/resource allocations, source versions, assumptions, costs and solver status; they do not expose synthetic request identifiers.
+- Small-count suppression and real-data sharing are not enabled: this application only seeds synthetic requests. Real use requires a separate governance and onboarding phase.

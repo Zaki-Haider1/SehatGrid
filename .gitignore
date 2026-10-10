@@ -19,11 +19,9 @@ work/
 
 # Local source plan; share actionable work through todo.md.
 /plan.md
+
+# Preloaded model artifacts: use backend/scripts/preload_model.py
+backend/models/
+
+# T00-T03 planning and integration scratch artifacts.
 .superpowers/
-!.superpowers/
-.superpowers/*
-!.superpowers/sdd/
-.superpowers/sdd/*
-!.superpowers/sdd/backend-t00-t03/
-.superpowers/sdd/backend-t00-t03/*
-!.superpowers/sdd/backend-t00-t03/T00-report.md

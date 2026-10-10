@@ -50,6 +50,8 @@ class Facility(Base):
     kind: Mapped[str] = mapped_column(String(40))
     latitude: Mapped[float]
     longitude: Mapped[float]
+    source_key: Mapped[str | None] = mapped_column(String(80), nullable=True, unique=True, index=True)
+    profile: Mapped[dict] = mapped_column(JSON, default=dict)
     public_id: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
     ownership: Mapped[str | None] = mapped_column(String(20), nullable=True)
     zone_id: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)

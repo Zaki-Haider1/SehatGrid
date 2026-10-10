@@ -2,8 +2,8 @@ from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
-from app import seed_cli
-from app.seed_cli import parse_args
+from app import foundation_seed_cli as seed_cli
+from app.foundation_seed_cli import parse_args
 
 
 def test_seed_cli_accepts_declared_day_clock_and_explicit_disposable_reset():

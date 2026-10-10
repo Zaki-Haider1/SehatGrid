@@ -1,13 +1,13 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from app.main import today
+from tests.legacy_app import today
 
 
 def test_ci_container_build_uses_repository_root_context():
     workflow = Path(__file__).resolve().parents[2] / ".github" / "workflows" / "ci.yml"
     assert (
-        "      - name: Build deployment container\n"
+        "      - name: Build backend-only deployment container from repository root\n"
         "        working-directory: .\n"
         "        run: docker build -f backend/Dockerfile -t sehat-grid-api ."
     ) in workflow.read_text(encoding="utf-8")
@@ -247,7 +247,7 @@ def test_health_export_and_reset_disabled(client):
 
 def test_enabled_demo_reset_preserves_legacy_rows(client, monkeypatch):
     from sqlalchemy import func, select
-    from app.main import settings
+    from tests.legacy_app import settings
     from app.models import Budget, CareRequest, Facility, SeedMetadata
 
     api, factory = client
@@ -270,7 +270,7 @@ def test_enabled_demo_reset_preserves_legacy_rows(client, monkeypatch):
 
 def test_demo_reset_refuses_linked_activity_atomically(client, monkeypatch):
     from sqlalchemy import select
-    from app.main import settings
+    from tests.legacy_app import settings
     from app.models import Capacity, CareRequest, Facility, Referral, SeedMetadata, Zone
     from app.seed import load_seed_fixture, seed
 
@@ -319,7 +319,7 @@ def test_demo_reset_refuses_linked_activity_atomically(client, monkeypatch):
 
 def test_demo_reset_refuses_public_snapshot_references_atomically(client, monkeypatch):
     from sqlalchemy import select
-    from app.main import settings
+    from tests.legacy_app import settings
     from app.models import CareRequest, DemandSnapshot, Offer, SeedMetadata, Zone
     from app.seed import load_seed_fixture, seed
 
@@ -359,7 +359,7 @@ def test_demo_reset_refuses_public_snapshot_references_atomically(client, monkey
 def test_demo_reset_refuses_unowned_provider_children_atomically(client, monkeypatch):
     from datetime import timedelta
     from sqlalchemy import select
-    from app.main import settings
+    from tests.legacy_app import settings
     from app.models import (
         Capacity,
         Facility,

@@ -1,0 +1,459 @@
+[
+  {
+    "source_key": "shifa-h8",
+    "name": "Shifa International Hospital",
+    "zone": "South",
+    "latitude": 33.675477,
+    "longitude": 73.0664514,
+    "profile": {
+      "city": "Islamabad",
+      "sector": "H-8/4",
+      "ownership": "Private",
+      "address": "Pitras Bukhari Road, H-8/4, Islamabad",
+      "phone": "+92 51 8464646",
+      "website": "https://shifa.com.pk/",
+      "email": "info@shifa.com.pk",
+      "departments": [
+        "Emergency medicine",
+        "Radiology",
+        "Cardiology",
+        "Trauma care"
+      ],
+      "hours": null,
+      "emergency": "Hospital reports a 24-hour emergency department; ambulance helpline 1133.",
+      "checked_on": "2026-10-10",
+      "coordinate_source": "https://www.openstreetmap.org/relation/8103951",
+      "coordinate_method": "OSM representative campus/building point",
+      "coordinate_note": "Campus/building location; entrance and access have not been surveyed.",
+      "directory_sources": [
+        {
+          "title": "Hospital contact",
+          "url": "https://shifa.com.pk/contact-us"
+        },
+        {
+          "title": "Emergency department",
+          "url": "https://www.shifa.com.pk/specialities/emergency-medicine/islamabad"
+        },
+        {
+          "title": "Ambulance service",
+          "url": "https://shifa.com.pk/shifa-ambulance-service"
+        }
+      ],
+      "notes": ""
+    }
+  },
+  {
+    "source_key": "pims-g8",
+    "name": "Pakistan Institute of Medical Sciences (PIMS)",
+    "zone": "Central",
+    "latitude": 33.7022691,
+    "longitude": 73.0525291,
+    "profile": {
+      "city": "Islamabad",
+      "sector": "G-8/3",
+      "ownership": "Public",
+      "address": "Ibn-e-Sina Road, G-8/3, Islamabad",
+      "phone": "+92 51 9261170",
+      "website": "https://pims.gov.pk/",
+      "email": "info@pims.gov.pk",
+      "departments": [
+        "General medicine",
+        "Surgery",
+        "Radiology",
+        "Pathology",
+        "Dialysis",
+        "Psychiatry",
+        "Cardiology",
+        "Paediatrics",
+        "Obstetrics and gynaecology",
+        "Burn care"
+      ],
+      "hours": null,
+      "emergency": "Accident and emergency centres are listed by the hospital; hours were not confirmed.",
+      "checked_on": "2026-10-10",
+      "coordinate_source": "https://www.openstreetmap.org/way/22328601",
+      "coordinate_method": "OSM representative campus/building point",
+      "coordinate_note": "Campus/building location; entrance and access have not been surveyed.",
+      "directory_sources": [
+        {
+          "title": "Hospital contact",
+          "url": "https://pims.gov.pk/contactus.php"
+        },
+        {
+          "title": "Hospital components and specialties",
+          "url": "https://pims.gov.pk/about.php"
+        },
+        {
+          "title": "Clinical services",
+          "url": "https://pims.gov.pk/ISBhospital.php"
+        }
+      ],
+      "notes": ""
+    }
+  },
+  {
+    "source_key": "polyclinic-g6",
+    "name": "Federal Government Polyclinic",
+    "zone": "East",
+    "latitude": 33.7211006,
+    "longitude": 73.0828053,
+    "profile": {
+      "city": "Islamabad",
+      "sector": "G-6/2",
+      "ownership": "Public",
+      "address": "44 Luqman Hakeem Road, G-6/2, Islamabad",
+      "phone": "+92 51 9218300",
+      "website": "https://www.fgpc.gov.pk/",
+      "email": "info@fgpc.gov.pk",
+      "departments": [
+        "Emergency care",
+        "Outpatient medicine",
+        "Surgery",
+        "Imaging",
+        "Pathology",
+        "Maternity"
+      ],
+      "hours": "OPD Monday–Saturday: 08:00–13:00 and 14:00–19:00, as published on the contact page.",
+      "emergency": "Hospital publishes round-the-clock emergency services.",
+      "checked_on": "2026-10-10",
+      "coordinate_source": "https://www.openstreetmap.org/node/253018400",
+      "coordinate_method": "OSM mapped hospital point",
+      "coordinate_note": "Campus/building location; entrance and access have not been surveyed.",
+      "directory_sources": [
+        {
+          "title": "Hospital contact and hours",
+          "url": "https://www.fgpc.gov.pk/contact"
+        },
+        {
+          "title": "Hospital overview",
+          "url": "https://fgpc.gov.pk/aboutus"
+        }
+      ],
+      "notes": "OSM labels this location Poly Clinic Hospital. Its street label differs from the hospital's postal address; both refer to the G-6/2 campus."
+    }
+  },
+  {
+    "source_key": "kulsum-blue-area",
+    "name": "Kulsum International Hospital",
+    "zone": "North",
+    "latitude": 33.7180912,
+    "longitude": 73.0727516,
+    "profile": {
+      "city": "Islamabad",
+      "sector": "Blue Area",
+      "ownership": "Private",
+      "address": "Kulsum Plaza, 2020 Jinnah Avenue, Blue Area, Islamabad",
+      "phone": "+92 51 8446666",
+      "website": "https://kih.com.pk/",
+      "email": "contact@kih.com.pk",
+      "departments": [],
+      "hours": null,
+      "emergency": null,
+      "checked_on": "2026-10-10",
+      "coordinate_source": "https://www.openstreetmap.org/node/4954775564",
+      "coordinate_method": "OSM mapped hospital point",
+      "coordinate_note": "Campus/building location; entrance and access have not been surveyed.",
+      "directory_sources": [
+        {
+          "title": "Hospital website and contact",
+          "url": "https://kih.com.pk/"
+        },
+        {
+          "title": "Hospital location",
+          "url": "https://kih.com.pk/slide/kulsum-international-hospital/"
+        }
+      ],
+      "notes": "Opening hours and department list are omitted pending a clear, consistent primary source."
+    }
+  },
+  {
+    "source_key": "maroof-f10",
+    "name": "Maroof International Hospital",
+    "zone": "West",
+    "latitude": 33.6974652,
+    "longitude": 73.0118292,
+    "profile": {
+      "city": "Islamabad",
+      "sector": "F-10 Markaz",
+      "ownership": "Private",
+      "address": "F-10 Markaz, Islamabad",
+      "phone": "+92 51 111644911",
+      "website": "https://maroof.com.pk/",
+      "email": "info@maroof.com.pk",
+      "departments": [],
+      "hours": null,
+      "emergency": "Hospital contact page advertises emergency services at all hours.",
+      "checked_on": "2026-10-10",
+      "coordinate_source": "https://www.openstreetmap.org/way/556277383",
+      "coordinate_method": "OSM representative campus/building point",
+      "coordinate_note": "Campus/building location; entrance and access have not been surveyed.",
+      "directory_sources": [
+        {
+          "title": "Hospital contact",
+          "url": "https://maroof.com.pk/contact"
+        },
+        {
+          "title": "ICT hospital directory",
+          "url": "https://ictadministration.gov.pk/education-and-health/"
+        }
+      ],
+      "notes": "A department list has not been independently curated from the hospital's public pages."
+    }
+  },
+  {
+    "source_key": "ali-f8",
+    "name": "Ali Medical Centre",
+    "zone": "Central",
+    "latitude": 33.7104738,
+    "longitude": 73.0417644,
+    "profile": {
+      "city": "Islamabad",
+      "sector": "F-8 Markaz",
+      "ownership": "Private",
+      "address": "Kohistan Road, F-8 Markaz, Islamabad",
+      "phone": "+92 51 8090200",
+      "website": "https://alimedical.org/",
+      "email": "info@alimedical.org",
+      "departments": [
+        "Intensive care",
+        "Neonatal intensive care",
+        "Paediatric intensive care",
+        "Obstetrics and gynaecology"
+      ],
+      "hours": null,
+      "emergency": "Hospital describes 24-hour services on its website; confirm the relevant department by phone.",
+      "checked_on": "2026-10-10",
+      "coordinate_source": "https://www.openstreetmap.org/node/240218764",
+      "coordinate_method": "OSM mapped hospital point",
+      "coordinate_note": "Campus/building location; entrance and access have not been surveyed.",
+      "directory_sources": [
+        {
+          "title": "Hospital services and contact",
+          "url": "https://alimedical.org/"
+        },
+        {
+          "title": "ICT hospital directory",
+          "url": "https://ictadministration.gov.pk/education-and-health/"
+        }
+      ],
+      "notes": ""
+    }
+  },
+  {
+    "source_key": "capital-cda-g6",
+    "name": "Capital Hospital (CDA)",
+    "zone": "East",
+    "latitude": 33.7166093,
+    "longitude": 73.0799881,
+    "profile": {
+      "city": "Islamabad",
+      "sector": "G-6/2",
+      "ownership": "Public",
+      "address": "G-6/2, near Melody Market, Islamabad",
+      "phone": "+92 51 9221334",
+      "website": "https://www.cda.gov.pk/administrationWing",
+      "email": null,
+      "departments": [
+        "Outpatient care",
+        "Inpatient care",
+        "Surgery",
+        "Diagnostics",
+        "Emergency care",
+        "Rehabilitation"
+      ],
+      "hours": null,
+      "emergency": "CDA lists emergency and ambulance services; operating hours were not confirmed.",
+      "checked_on": "2026-10-10",
+      "coordinate_source": "https://www.openstreetmap.org/way/23635809",
+      "coordinate_method": "OSM representative campus/building point",
+      "coordinate_note": "Campus/building location; entrance and access have not been surveyed.",
+      "directory_sources": [
+        {
+          "title": "CDA hospital information",
+          "url": "https://www.cda.gov.pk/administrationWing"
+        },
+        {
+          "title": "Government procurement address",
+          "url": "https://epms.ppra.gov.pk/public/tenders/tender-details/TS0000009847E"
+        }
+      ],
+      "notes": "The ICT directory says G-6/3; CDA and a government tender specify G-6/2, consistent with the mapped campus. CDA's address takes precedence."
+    }
+  },
+  {
+    "source_key": "nori-g8",
+    "name": "NORI Atomic Energy Cancer Hospital",
+    "zone": "Central",
+    "latitude": 33.6986506,
+    "longitude": 73.0537462,
+    "profile": {
+      "city": "Islamabad",
+      "sector": "G-8/3",
+      "ownership": "Public",
+      "address": "Hanna Road, G-8/3, Islamabad",
+      "phone": "+92 51 9260611",
+      "website": "https://noriaech.gov.pk/",
+      "email": "nori@noriaech.gov.pk",
+      "departments": [],
+      "hours": "Contact page lists Monday–Saturday 08:00–17:45; Sunday closed, with a Friday prayer break.",
+      "emergency": null,
+      "checked_on": "2026-10-10",
+      "coordinate_source": "https://www.openstreetmap.org/node/12401427423",
+      "coordinate_method": "OSM mapped hospital point",
+      "coordinate_note": "Campus/building location; entrance and access have not been surveyed.",
+      "directory_sources": [
+        {
+          "title": "Hospital contact and hours",
+          "url": "https://noriaech.gov.pk/Contacts"
+        },
+        {
+          "title": "ICT hospital directory",
+          "url": "https://ictadministration.gov.pk/education-and-health/"
+        }
+      ],
+      "notes": "Specialist cancer hospital; no generic emergency or available treatment slots are inferred."
+    }
+  },
+  {
+    "source_key": "nescom-h11",
+    "name": "NESCOM Hospital",
+    "zone": "West",
+    "latitude": 33.6481791,
+    "longitude": 73.0170747,
+    "profile": {
+      "city": "Islamabad",
+      "sector": "H-11/4",
+      "ownership": "Public",
+      "address": "H-11, Faqir Aipee Road, Islamabad",
+      "phone": "+92 51 9017100",
+      "website": null,
+      "email": null,
+      "departments": [],
+      "hours": null,
+      "emergency": null,
+      "checked_on": "2026-10-10",
+      "coordinate_source": "https://www.openstreetmap.org/way/270104398",
+      "coordinate_method": "OSM representative campus/building point",
+      "coordinate_note": "Campus/building location; entrance and access have not been surveyed.",
+      "directory_sources": [
+        {
+          "title": "ICT hospital directory",
+          "url": "https://ictadministration.gov.pk/education-and-health/"
+        }
+      ],
+      "notes": "ICT confirms H-11 and the contact number; the map supplies the road/subsector. Services, eligibility and hours require confirmation."
+    }
+  },
+  {
+    "source_key": "qih-h13",
+    "name": "Quaid-e-Azam International Hospital",
+    "zone": "West",
+    "latitude": 33.6250868,
+    "longitude": 72.973156,
+    "profile": {
+      "city": "Islamabad",
+      "sector": "H-13 / Golra Morr",
+      "ownership": "Private",
+      "address": "Near Golra Morr, Peshawar Road, Islamabad",
+      "phone": "+92 51 8449100",
+      "website": "https://www.qih.com.pk/",
+      "email": "info@qih.com.pk",
+      "departments": [
+        "Medicine",
+        "Surgery",
+        "Paediatrics",
+        "Dialysis",
+        "Obstetrics and gynaecology",
+        "Psychiatry",
+        "Radiology",
+        "Laboratory"
+      ],
+      "hours": "Hospital's overview describes laboratory and imaging services at all hours.",
+      "emergency": null,
+      "checked_on": "2026-10-10",
+      "coordinate_source": "https://www.openstreetmap.org/way/235084098",
+      "coordinate_method": "OSM representative campus/building point",
+      "coordinate_note": "Campus/building location; entrance and access have not been surveyed.",
+      "directory_sources": [
+        {
+          "title": "Hospital contact",
+          "url": "https://www.qih.com.pk/contact"
+        },
+        {
+          "title": "Hospital services",
+          "url": "https://www.qih.com.pk/index.php?Itemid=27&id=3&option=com_content&view=article"
+        }
+      ],
+      "notes": "Western edge of the Islamabad study area, close to Rawalpindi; included by its hospital-published Islamabad address."
+    }
+  },
+  {
+    "source_key": "krl-g9",
+    "name": "KRL General Hospital",
+    "zone": "West",
+    "latitude": 33.6776437,
+    "longitude": 73.0318287,
+    "profile": {
+      "city": "Islamabad",
+      "sector": "G-9/1",
+      "ownership": "Public",
+      "address": "G-9/1, Service Road South, Islamabad",
+      "phone": "+92 51 9106270",
+      "website": null,
+      "email": null,
+      "departments": [],
+      "hours": null,
+      "emergency": null,
+      "checked_on": "2026-10-10",
+      "coordinate_source": "https://www.openstreetmap.org/node/4889677811",
+      "coordinate_method": "OSM mapped hospital point",
+      "coordinate_note": "Campus/building location; entrance and access have not been surveyed.",
+      "directory_sources": [
+        {
+          "title": "ICT hospital directory",
+          "url": "https://ictadministration.gov.pk/education-and-health/"
+        }
+      ],
+      "notes": "OSM records the name K R L General Hospital. Department details, opening hours and access eligibility are not confirmed by the selected government source."
+    }
+  },
+  {
+    "source_key": "federal-general-chak-shahzad",
+    "name": "Federal General Hospital",
+    "zone": "East",
+    "latitude": 33.6844167,
+    "longitude": 73.1381667,
+    "profile": {
+      "city": "Islamabad",
+      "sector": "Chak Shahzad",
+      "ownership": "Public",
+      "address": "Park Road, Chak Shahzad, Islamabad",
+      "phone": "+92 51 9255561",
+      "website": "https://www.fgh.gov.pk/",
+      "email": "info@fgh.gov.pk",
+      "departments": [
+        "Emergency care",
+        "General medicine",
+        "Radiology",
+        "Pathology"
+      ],
+      "hours": "OPD Monday–Thursday and Saturday 08:00–14:00; Friday 08:00–12:00, as published by the hospital.",
+      "emergency": "Hospital publishes 24-hour emergency and pathology services. Emergency phone: +92 51 9255515.",
+      "checked_on": "2026-10-10",
+      "coordinate_source": "https://www.fgh.gov.pk/contact.php",
+      "coordinate_method": "Coordinate published in the hospital's contact-page map",
+      "coordinate_note": "Campus/building location; entrance and access have not been surveyed.",
+      "directory_sources": [
+        {
+          "title": "Hospital contact, map and hours",
+          "url": "https://www.fgh.gov.pk/contact.php"
+        },
+        {
+          "title": "Hospital departments",
+          "url": "https://www.fgh.gov.pk/"
+        }
+      ],
+      "notes": "Pin uses the coordinate explicitly printed in the hospital's own map. Confirm the entrance locally; a matching OSM hospital object was not found."
+    }
+  }
+]
