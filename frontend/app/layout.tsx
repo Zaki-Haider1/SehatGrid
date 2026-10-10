@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import "maplibre-gl/dist/maplibre-gl.css";
+import "./city-theme.css";
+import "./city-refinements.css";
 export const metadata: Metadata = {
   title: "Sehat Grid · Care, connected",
   description:
-    "A synthetic Islamabad primary-care network for hospital operators and monthly resource planners.",
+    "Explore Islamabad’s hospital network, coordinate referrals and onboard services in one connected workspace.",
 };
 export default function RootLayout({
   children,

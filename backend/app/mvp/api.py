@@ -21,6 +21,7 @@ from .common import (
     require,
     planner,
     operator,
+    facility_admin,
     audit,
     stamp,
     local_today,
@@ -73,7 +74,7 @@ app = FastAPI(title="SEHAT GRID — scoped primary-care MVP", version="1.0.0", l
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[x.strip() for x in settings.cors_origins.split(",")],
-    allow_methods=["GET", "POST", "PUT", "PATCH"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["Authorization", "Content-Type", "Idempotency-Key"],
 )
 
@@ -94,7 +95,7 @@ def validate(cls, body):
 
 
 def own_requests(s, u):
-    if u["role"] == "planner":
+    if u["role"] in {"planner", "onboarder"}:
         return []
     incoming = {a["request_id"] for a in s["referrals"].values() if a["facility_id"] in u["facility_ids"]}
     return [
@@ -138,6 +139,8 @@ def view(s, u, month, day):
             p["actions"] = [
                 a for a in p["actions"] if s["offers"][a["offer_id"]]["facility_id"] in u["facility_ids"]
             ]
+    if u["role"] == "onboarder":
+        plans = []
     return {
         "user": public_user(u),
         "config": {
@@ -178,10 +181,23 @@ def mutate(s, u, path, method, body):
         require(d["version"] == current["version"], "STALE_INPUT", "Refresh referral ranking policy")
         before = deepcopy(current)
         current.update(criteria=d["criteria"], version=current["version"] + 1)
-        audit(s, u, "REFERRAL_RANKING_UPDATED", "REFERRAL-RANKING", before=before, after=deepcopy(current), reason=d["reason"])
+        audit(
+            s,
+            u,
+            "REFERRAL_RANKING_UPDATED",
+            "REFERRAL-RANKING",
+            before=before,
+            after=deepcopy(current),
+            reason=d["reason"],
+        )
         return {**current, "policy_version": f"referral-ranking-v{current['version']}"}
     if path == "facilities" and method == "POST":
-        require(u["role"] == "operator", "ROLE_FORBIDDEN", "Operators register providers", 403)
+        require(
+            u["role"] in {"operator", "onboarder"},
+            "ROLE_FORBIDDEN",
+            "Hospital setup permission required",
+            403,
+        )
         d = validate(schemas.FacilityInput, body)
         require(d["zone"] in s["zones"], "INVALID_ZONE", "Choose a pilot zone", 422)
         f = add(
@@ -199,6 +215,7 @@ def mutate(s, u, path, method, body):
                 "service_id": SERVICE,
                 "subsidy_required": False,
                 "aliases": [],
+                "catalog": [],
             },
         )
         f["canonical_id"] = f["id"]
@@ -208,7 +225,7 @@ def mutate(s, u, path, method, body):
     if parts[0] == "facilities" and len(parts) >= 2:
         f = get(s, "facilities", parts[1])
         if len(parts) == 2 and method == "PATCH":
-            operator(u, f["id"])
+            facility_admin(u, f["id"])
             d = validate(schemas.FacilityInput, body)
             require(d["version"] == f["version"], "STALE_INPUT", "Refresh the facility profile")
             require(d["zone"] in s["zones"], "INVALID_ZONE", "Choose a pilot zone", 422)
@@ -218,6 +235,36 @@ def mutate(s, u, path, method, body):
             audit(s, u, "FACILITY_EDITED", f["id"], before=before, after=deepcopy(f))
             return f
         require(len(parts) >= 3, "NOT_FOUND", "Unknown facility operation", 404)
+        if parts[2] == "catalog" and method in {"POST", "PATCH", "DELETE"}:
+            require(
+                u["role"] == "onboarder" and f["id"] in u["facility_ids"],
+                "ROLE_FORBIDDEN",
+                "An assigned hospital onboarder must manage the catalog",
+                403,
+            )
+            d = validate(schemas.CatalogInput, body)
+            require(d["version"] == f["version"], "STALE_INPUT", "Refresh the hospital catalog")
+            before = deepcopy(f.get("catalog", []))
+            items = f.setdefault("catalog", [])
+            values = {k: v for k, v in d.items() if k != "version"}
+            if method == "POST" and len(parts) == 3:
+                require(
+                    len(items) < 200, "CATALOG_LIMIT", "A hospital catalog supports up to 200 services", 422
+                )
+                seq = s["sequences"].get("catalog", 0) + 1
+                s["sequences"]["catalog"] = seq
+                items.append({"id": f"catalog-{seq:04d}", **values})
+            else:
+                require(len(parts) == 4, "NOT_FOUND", "Choose a catalog service", 404)
+                item = next((x for x in items if x["id"] == parts[3]), None)
+                require(item is not None, "NOT_FOUND", "Catalog service not found", 404)
+                if method == "DELETE":
+                    items.remove(item)
+                else:
+                    item.update(values)
+            f["version"] += 1
+            audit(s, u, "CATALOG_UPDATED", f["id"], before=before, after=deepcopy(items))
+            return f
         if parts[2] == "participation":
             planner(u)
             d = validate(schemas.Participation, body)
@@ -227,7 +274,7 @@ def mutate(s, u, path, method, body):
             audit(s, u, "PARTICIPATION", f["id"], after=d["status"], reason=d["reason"])
             return f
         if parts[2] == "services":
-            operator(u, f["id"])
+            facility_admin(u, f["id"])
             d = validate(schemas.ServiceInput, body)
             require(d["version"] == f["version"], "STALE_INPUT", "Refresh service settings")
             require(
@@ -243,7 +290,7 @@ def mutate(s, u, path, method, body):
             audit(s, u, "SERVICE_REVIEWED", f["id"], after=d)
             return f
         if parts[2] == "capacity" and len(parts) == 5:
-            operator(u, f["id"])
+            facility_admin(u, f["id"])
             require(parts[3] == SERVICE, "OUT_OF_SCOPE", "Only primary-care OPD is supported", 422)
             try:
                 date.fromisoformat(parts[4])
@@ -450,8 +497,14 @@ def allocation_export(snap, assignments):
         key = (r["zone"], a["facility_id"], a["date"], a["offer_id"], a["subsidy"])
         cohorts[key] = cohorts.get(key, 0) + 1
     return [
-        {"zone": k[0], "facility_id": k[1], "date": k[2], "offer_id": k[3],
-         "subsidy_per_unit": k[4], "units": v}
+        {
+            "zone": k[0],
+            "facility_id": k[1],
+            "date": k[2],
+            "offer_id": k[3],
+            "subsidy_per_unit": k[4],
+            "units": v,
+        }
         for k, v in cohorts.items()
     ]
 
@@ -484,14 +537,21 @@ def export_plan(s, p):
         "decision_source": p.get("decision_source", "SOLVER"),
         "version": p["version"],
         "original_solver_result": (
-            {**decision_export(snap, original), "status": original["status"],
-             "runtime_seconds": original["runtime_seconds"], "baseline": original["baseline"]}
-            if original else None
+            {
+                **decision_export(snap, original),
+                "status": original["status"],
+                "runtime_seconds": original["runtime_seconds"],
+                "baseline": original["baseline"],
+            }
+            if original
+            else None
         ),
         "revisions": [
-            {**{k: rev[k] for k in ("version", "actor", "timestamp", "reason")},
-             "before": decision_export(snap, rev["before"]),
-             "after": decision_export(snap, rev["after"])}
+            {
+                **{k: rev[k] for k in ("version", "actor", "timestamp", "reason")},
+                "before": decision_export(snap, rev["before"]),
+                "after": decision_export(snap, rev["after"]),
+            }
             for rev in p.get("revisions", [])
         ],
         "solver_parameters": p["solver_parameters"],
@@ -526,7 +586,7 @@ def export_plan(s, p):
     }
 
 
-@app.api_route("/api/v1/{path:path}", methods=["GET", "POST", "PUT", "PATCH"])
+@app.api_route("/api/v1/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
 async def api(path: str, request: Request, db: Session = Depends(get_db)):
     method = request.method
     try:

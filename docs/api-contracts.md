@@ -11,11 +11,13 @@ The Pydantic input contracts live in `backend/app/mvp/schemas.py`. All inputs fo
 | POST | `/auth/login` | `username`, `password`; seeded account JWT |
 | GET | `/auth/me` | Current actor and facility assignments |
 | GET | `/state?month=YYYY-MM&date=YYYY-MM-DD` | Role-scoped UI projection; backend totals only |
-| GET/POST | `/facilities` | Directory / operator registration, initially pending |
-| PATCH | `/facilities/{id}` | Assigned operator; full permitted profile and expected `version` |
+| GET/POST | `/facilities` | Directory / reception or onboarder registration, initially pending |
+| PATCH | `/facilities/{id}` | Assigned onboarder or legacy operator; full permitted profile and expected `version` |
 | POST | `/facilities/{id}/participation` | Planner; status, expected version, reason |
-| GET/POST | `/facilities/{id}/services` | Reviewed primary-care category, eligible zones, subsidy rule; own operator writes |
-| PUT | `/facilities/{id}/capacity/PRIMARY_CARE_OPD/{date}` | Own operator; `quota`, expected `version` (0 to create) |
+| GET/POST | `/facilities/{id}/services` | Reviewed primary-care category, eligible zones, subsidy rule; assigned onboarder or legacy operator writes |
+| PUT | `/facilities/{id}/capacity/PRIMARY_CARE_OPD/{date}` | Assigned onboarder or legacy operator; `quota`, expected `version` (0 to create) |
+| POST | `/facilities/{id}/catalog` | Assigned onboarder only; service/test fields and expected facility version |
+| PATCH/DELETE | `/facilities/{id}/catalog/{item_id}` | Assigned onboarder only; full service/test fields and expected facility version |
 | GET | `/services` | Single in-scope canonical service |
 | POST | `/matching/services`, `/matching/facilities` | Original `text`, optional locality/type evidence |
 | POST | `/matching/reviews` | `match_id`, ACCEPT/CORRECT/DECLINE, canonical candidate, reason, optional existing record ID; actor/scope checks |
@@ -46,6 +48,25 @@ The Pydantic input contracts live in `backend/app/mvp/schemas.py`. All inputs fo
 | POST | `/plans/{id}/cancel` | Planner; close unspent commitments, retain settled costs |
 | GET | `/plans/{id}/export?format=json` (or csv) | Planner; traceable aggregate summary without request identifiers |
 | GET | `/audit` | Planner network audit / operator own events |
+
+## Onboarding catalog
+
+`POST /facilities/P03/catalog` creates an entry; `PATCH` and `DELETE /facilities/P03/catalog/{item_id}` use the same input shape. Each operation requires the assigned `onboarder` JWT and an idempotency key. Reads are included in the facility's `catalog` within `/state`. The response is the updated facility with its incremented `version` and catalog; all mutations record `CATALOG_UPDATED` audit history.
+
+```json
+{
+  "name": "Complete blood count",
+  "category": "Laboratory",
+  "price": 900,
+  "daily_capacity": 30,
+  "active": true,
+  "version": 1
+}
+```
+
+Use the current facility version and omit the catalog item's `id` from the body. Categories are Consultation/Laboratory/Imaging/Other; name is 2–120 characters, integer PKR price is 0–10,000,000, and declared daily capacity is 0–10,000. A facility supports up to 200 entries. Stale versions return `STALE_INPUT`; wrong role/facility returns 403. Configured cross-origin hosts may preflight `DELETE` with Authorization/Content-Type/Idempotency-Key. Catalog services are informational and do not expand automated primary-care routing eligibility or quota.
+
+Onboarders receive no requests, referrals, plans, aggregate network summary, ledger, budget or subsidy rule in `/state`. Profile/service/quota routes retain legacy operator compatibility; catalog mutation remains onboarding-only.
 
 ## Proposal-first referral example
 

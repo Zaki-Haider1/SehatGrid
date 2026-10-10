@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import {
   api,
+  ApiError,
   API,
   human,
   money,
@@ -25,12 +26,17 @@ import {
   User,
   Facility,
   CareRequest,
+  Referral,
   Recommendation,
   Match,
   Plan,
+  RankingPolicy,
 } from "@/lib/api";
-import { PilotMap } from "@/components/pilot-map";
+import { GovernmentOverview } from "@/components/government-overview";
+import { HospitalCatalog } from "@/components/hospital-catalog";
+import { MonthlyOutcomes } from "@/components/monthly-outcomes";
 import { Dialog } from "@/components/dialog";
+import { PlanRevision } from "@/components/plan-revision";
 
 type Field = {
   name: string;
@@ -89,6 +95,7 @@ function Form({
                 {f.options ? (
                   <select
                     name={f.name}
+                    aria-label={f.label}
                     defaultValue={String(f.value ?? "")}
                     required={f.required !== false}
                   >
@@ -142,6 +149,8 @@ function Card({
   );
 }
 export default function Home() {
+  const [ranking, setRanking] = useState<RankingPolicy | null>(null);
+  const [revisionPlan, setRevisionPlan] = useState<Plan | null>(null);
   const [reasonAction, setReasonAction] = useState<{
     path: string;
     body: Record<string, unknown>;
@@ -180,12 +189,15 @@ export default function Home() {
     );
     setState(data);
     setPlan((p) => (p ? data.plans.find((x) => x.id === p.id) || p : null));
+    if (data.user.role === "planner") {
+      setRanking(await api<RankingPolicy>("referral-ranking", auth));
+    }
   }
   useEffect(() => {
     if (token)
       load().catch((e) => {
         setError(e.message);
-        if (e.message.includes("Sign in")) {
+        if (e instanceof ApiError && e.status === 401) {
           setToken("");
           sessionStorage.removeItem("sehat-token");
         }
@@ -204,6 +216,19 @@ export default function Home() {
       setNotice(message);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Action failed");
+      if (e instanceof ApiError && e.status === 401) {
+        logout();
+        setError("Your session expired. Sign in again.");
+      } else if (
+        e instanceof ApiError &&
+        ["STALE_INPUT", "CAPACITY_CONFLICT"].includes(e.code)
+      ) {
+        setOptions([]);
+        await load().catch(() => {});
+        setError(
+          `${e.message}. Current inputs have been refreshed; review and retry. For referrals, find providers again.`,
+        );
+      }
     } finally {
       setBusy(false);
     }
@@ -244,8 +269,18 @@ export default function Home() {
     setToken("");
     setState(null);
     setPlan(null);
+    setRevisionPlan(null);
     setMatch(null);
     setRequest(null);
+    setOptions([]);
+    setReasons([]);
+    setReviewId("");
+    setRanking(null);
+    setSelected(null);
+    setScreen("network");
+    setMonth("");
+    setDay("");
+    setNotice("");
     sessionStorage.removeItem("sehat-token");
   }
   if (!token || !state)
@@ -258,24 +293,39 @@ export default function Home() {
           </div>
           <span className="eyebrow">ISLAMABAD · PRIMARY-CARE PILOT</span>
           <h1>
-            Connect available care.
-            <br />
-            Make every resource count.
+            A clearer view of care.
+            <br />A better way to connect it.
           </h1>
           <p>
-            A shared workspace for hospital operators and network planners.
-            Coordinate reviewed referrals, see unresolved requests, and put a
-            monthly resource plan into action.
+            See Islamabad’s hospital network in 3D. Coordinate referrals,
+            onboard hospital services, and turn available resources into care.
           </p>
           <div className="login-pills">
-            <span>01 Hospital network</span>
-            <span>02 Referral coordination</span>
-            <span>03 Network intelligence</span>
-            <span>04 Monthly allocation</span>
+            <span>01 Government representative</span>
+            <span>02 Hospital reception</span>
+            <span>03 Hospital onboarding</span>
           </div>
           <small>
             Synthetic demonstration · no patient login · no real payments
           </small>
+          <div className="login-city" aria-hidden="true">
+            {Array.from({ length: 24 }, (_, i) => (
+              <i
+                key={i}
+                style={{
+                  left: `${(i % 6) * 15 + 4}%`,
+                  top: `${Math.floor(i / 6) * 19 + 6}%`,
+                  height: `${22 + ((i * 13) % 50)}px`,
+                  background:
+                    i === 8 || i === 15
+                      ? "#7c9ef4"
+                      : i === 11 || i === 18
+                        ? "#e9959a"
+                        : "#e4e9ef",
+                }}
+              />
+            ))}
+          </div>
         </div>
         <div className="login-card">
           <ShieldCheck size={32} />
@@ -287,7 +337,17 @@ export default function Home() {
             </div>
           )}
           {token ? (
-            <p>Loading your workspace…</p>
+            <>
+              <p>Loading your workspace…</p>
+              {error && (
+                <div className="action-buttons">
+                  <button disabled={busy} onClick={() => run(() => load())}>
+                    Retry workspace
+                  </button>
+                  <button onClick={logout}>Sign out</button>
+                </div>
+              )}
+            </>
           ) : (
             <Form
               busy={busy}
@@ -299,10 +359,14 @@ export default function Home() {
                   label: "Account",
                   value: "planner",
                   options: [
-                    { value: "planner", label: "Network planner" },
+                    { value: "planner", label: "Government representative" },
                     ...Array.from({ length: 8 }, (_, i) => ({
                       value: `operator-p0${i + 1}`,
-                      label: `P0${i + 1} hospital operator`,
+                      label: `P0${i + 1} hospital receptionist`,
+                    })),
+                    ...Array.from({ length: 8 }, (_, i) => ({
+                      value: `onboarder-p0${i + 1}`,
+                      label: `P0${i + 1} hospital onboarder`,
                     })),
                   ],
                 },
@@ -315,6 +379,7 @@ export default function Home() {
       </main>
     );
   const planner = state.user.role === "planner",
+    onboarder = state.user.role === "onboarder",
     own = state.facilities.filter((f) =>
       state.user.facility_ids.includes(f.id),
     ),
@@ -337,29 +402,45 @@ export default function Home() {
             `PKR ${money(state.summary.budget?.remaining || 0)}`,
           ],
         ]
-      : [
-          ["Assigned providers", own.length],
-          [
-            "Incoming referrals",
-            state.referrals.filter(
-              (a) =>
-                state.user.facility_ids.includes(a.facility_id) &&
-                ["AWAITING_CONFIRMATIONS", "CONFIRMED", "ARRIVED"].includes(
-                  a.status,
-                ),
-            ).length,
-          ],
-          [
-            "Outgoing requests",
-            state.requests.filter((r) =>
-              state.user.facility_ids.includes(r.source_facility_id),
-            ).length,
-          ],
-          [
-            "Fresh quota remaining",
-            own.reduce((n, f) => n + (f.capacities[0]?.available || 0), 0),
-          ],
-        ];
+      : onboarder
+        ? [
+            ["Assigned hospitals", own.length],
+            [
+              "Catalog services",
+              own.reduce((n, f) => n + (f.catalog?.length || 0), 0),
+            ],
+            [
+              "Reviewed primary-care services",
+              own.filter((f) => f.service_reviewed).length,
+            ],
+            [
+              "Declared daily quota",
+              own.reduce((n, f) => n + (f.capacities[0]?.quota || 0), 0),
+            ],
+          ]
+        : [
+            ["Assigned providers", own.length],
+            [
+              "Incoming referrals",
+              state.referrals.filter(
+                (a) =>
+                  state.user.facility_ids.includes(a.facility_id) &&
+                  ["AWAITING_CONFIRMATIONS", "CONFIRMED", "ARRIVED"].includes(
+                    a.status,
+                  ),
+              ).length,
+            ],
+            [
+              "Outgoing requests",
+              state.requests.filter((r) =>
+                state.user.facility_ids.includes(r.source_facility_id),
+              ).length,
+            ],
+            [
+              "Fresh quota remaining",
+              own.reduce((n, f) => n + (f.capacities[0]?.available || 0), 0),
+            ],
+          ];
   async function recommend(r: CareRequest) {
     setRequest(r);
     setOptions([]);
@@ -405,7 +486,28 @@ export default function Home() {
     { name: "longitude", label: "Longitude", value: f?.longitude || 73.05 },
   ];
   return (
-    <div className="app">
+    <div
+      className={`app ${planner && screen === "network" ? "planner-city" : ""} ${onboarder ? "onboarding-app" : planner ? "government-app" : "reception-app"}`}
+    >
+      {revisionPlan && (
+        <Dialog
+          title={`Revise draft ${revisionPlan.id}`}
+          close={() => setRevisionPlan(null)}
+        >
+          <PlanRevision
+            plan={revisionPlan}
+            token={token}
+            onSaved={async (p) => {
+              setPlan(p);
+              setRevisionPlan(null);
+              await load();
+              setNotice(
+                "Human draft revision saved. Totals reflect the validated selections.",
+              );
+            }}
+          />
+        </Dialog>
+      )}
       {reasonAction && (
         <Dialog
           title="Record the operational reason"
@@ -458,7 +560,9 @@ export default function Home() {
         </div>
         <div className="account">
           <span>{state.user.name}</span>
-          <Badge value={state.user.role} />
+          <span className="role-label">
+            {planner ? "Government" : onboarder ? "Onboarding" : "Reception"}
+          </span>
           <button
             className="icon-button"
             onClick={logout}
@@ -480,28 +584,47 @@ export default function Home() {
       <div className="workspace">
         <aside className="sidebar">
           <span className="nav-label">WORKSPACE</span>
-          {[
-            {
-              id: "network",
-              name: planner ? "Network overview" : "Facility dashboard",
-              icon: Network,
-            },
-            {
-              id: "referrals",
-              name: planner ? "Funding approvals" : "Referral coordination",
-              icon: ClipboardList,
-            },
-            {
-              id: "intelligence",
-              name: planner ? "Unresolved demand" : "Matching & review",
-              icon: MapPin,
-            },
-            {
-              id: "planning",
-              name: planner ? "Monthly planner" : "Offers & activation",
-              icon: Wallet,
-            },
-          ].map((item) => (
+          {(onboarder
+            ? [
+                { id: "network", name: "Hospital setup", icon: Building2 },
+                {
+                  id: "catalog",
+                  name: "Services & prices",
+                  icon: ClipboardList,
+                },
+              ]
+            : [
+                {
+                  id: "network",
+                  name: planner ? "Network overview" : "Facility dashboard",
+                  icon: Network,
+                },
+                {
+                  id: "referrals",
+                  name: planner ? "Funding approvals" : "Referral coordination",
+                  icon: ClipboardList,
+                },
+                {
+                  id: "intelligence",
+                  name: planner ? "Unresolved demand" : "Matching & review",
+                  icon: MapPin,
+                },
+                {
+                  id: "planning",
+                  name: planner ? "Monthly planner" : "Offers & activation",
+                  icon: Wallet,
+                },
+                ...(planner
+                  ? [
+                      {
+                        id: "outcomes",
+                        name: "Monthly outcomes",
+                        icon: Activity,
+                      },
+                    ]
+                  : []),
+              ]
+          ).map((item) => (
             <button
               key={item.id}
               className={screen === item.id ? "active" : ""}
@@ -534,26 +657,42 @@ export default function Home() {
           <div className="page-heading">
             <div>
               <span className="eyebrow">
-                {planner ? "NETWORK PLANNER" : "HOSPITAL OPERATOR"}
+                {planner
+                  ? "GOVERNMENT REPRESENTATIVE"
+                  : onboarder
+                    ? "HOSPITAL ONBOARDING"
+                    : "HOSPITAL RECEPTION"}
               </span>
               <h1>
                 {screen === "network"
-                  ? "Care, connected."
-                  : screen === "referrals"
-                    ? planner
-                      ? "Funding approvals"
-                      : "Referral coordination"
-                    : screen === "intelligence"
-                      ? planner
-                        ? "Recorded unmet network demand"
-                        : "Review before routing"
-                      : planner
-                        ? "Make resources go further."
-                        : "Offer resources. Activate care."}
+                  ? planner
+                    ? "Islamabad, connected."
+                    : onboarder
+                      ? "Build your hospital profile."
+                      : "Welcome to reception."
+                  : screen === "outcomes"
+                    ? "From plans to patients."
+                    : screen === "catalog"
+                      ? "Every service, clearly listed."
+                      : screen === "referrals"
+                        ? planner
+                          ? "Funding approvals"
+                          : "Referral coordination"
+                        : screen === "intelligence"
+                          ? planner
+                            ? "Recorded unmet network demand"
+                            : "Review before routing"
+                          : planner
+                            ? "Make resources go further."
+                            : "Offer resources. Activate care."}
               </h1>
               <p>
                 {screen === "network"
-                  ? "A current view of your participating primary-care network."
+                  ? planner
+                    ? "Explore your hospital network."
+                    : onboarder
+                      ? "Keep your hospital details, service eligibility and daily capacity up to date."
+                      : "Manage incoming patients and help every request find the right provider."
                   : screen === "planning"
                     ? "Monthly resources linked to dated, eligible unresolved requests."
                     : "Every decision is attributable, reviewed and recorded."}
@@ -610,17 +749,163 @@ export default function Home() {
               </div>
             ))}
           </div>
-          {screen === "network" && (
+          {planner && screen === "network" && (
+            <GovernmentOverview
+              state={state}
+              selected={selected}
+              onSelect={setSelected}
+              navigate={setScreen}
+              previousMonth={() => {
+                const [year, m] = planningMonth.split("-").map(Number);
+                const previous = new Date(Date.UTC(year, m - 2, 1))
+                  .toISOString()
+                  .slice(0, 7);
+                setMonth(previous);
+                setScreen("outcomes");
+              }}
+            />
+          )}
+          {planner && screen === "outcomes" && (
+            <MonthlyOutcomes state={state} navigate={setScreen} />
+          )}
+          {!planner && !onboarder && screen === "network" && (
+            <div className="reception-home">
+              <Card
+                title="Your reception desk"
+                aside={<Badge value="ACTIVE" />}
+              >
+                <div className="reception-welcome">
+                  <div className="reception-building">
+                    <Building2 size={42} />
+                  </div>
+                  <div>
+                    <span className="eyebrow">ASSIGNED HOSPITAL</span>
+                    <h2>{own[0]?.directory_context?.name || own[0]?.name}</h2>
+                    <p>{own[0]?.address}</p>
+                    <button
+                      className="primary"
+                      onClick={() => setScreen("referrals")}
+                    >
+                      Open referral coordination
+                      <ArrowRight size={15} />
+                    </button>
+                  </div>
+                </div>
+              </Card>
+              <div className="two-col">
+                <Card title="Incoming patients">
+                  {state.referrals.filter(
+                    (a) =>
+                      state.user.facility_ids.includes(a.facility_id) &&
+                      [
+                        "AWAITING_CONFIRMATIONS",
+                        "CONFIRMED",
+                        "ARRIVED",
+                      ].includes(a.status),
+                  ).length ? (
+                    state.referrals
+                      .filter(
+                        (a) =>
+                          state.user.facility_ids.includes(a.facility_id) &&
+                          [
+                            "AWAITING_CONFIRMATIONS",
+                            "CONFIRMED",
+                            "ARRIVED",
+                          ].includes(a.status),
+                      )
+                      .slice(0, 6)
+                      .map((a) => (
+                        <button
+                          className="reception-referral"
+                          key={a.id}
+                          onClick={() => setScreen("referrals")}
+                        >
+                          <div>
+                            <strong>
+                              {state.requests.find((r) => r.id === a.request_id)
+                                ?.reference || a.request_id}
+                            </strong>
+                            <span>{a.date} · Primary-care OPD</span>
+                          </div>
+                          <Badge value={a.status} />
+                        </button>
+                      ))
+                  ) : (
+                    <div className="empty">
+                      <ClipboardList size={28} />
+                      <p>No incoming referrals yet.</p>
+                      <button onClick={() => setScreen("referrals")}>
+                        View referral workspace
+                      </button>
+                    </div>
+                  )}
+                </Card>
+                <Card title="Hospital availability">
+                  {own.map((f) => (
+                    <div key={f.id}>
+                      <h3>{f.directory_context?.name || f.name}</h3>
+                      <div className="detail-metrics">
+                        <div>
+                          <strong>{f.capacities[0]?.available ?? "—"}</strong>
+                          <span>Available slots</span>
+                        </div>
+                        <div>
+                          <strong>{f.capacities[0]?.quota ?? "—"}</strong>
+                          <span>Declared daily quota</span>
+                        </div>
+                      </div>
+                      <p className="subtle">
+                        {serviceDate} ·{" "}
+                        {human(f.capacities[0]?.status || "UNKNOWN")}
+                      </p>
+                    </div>
+                  ))}
+                  <p className="subtle">
+                    Hospital onboarding manages service prices and declared
+                    capacity.
+                  </p>
+                  <button onClick={() => setScreen("intelligence")}>
+                    Match a care request
+                    <ArrowRight size={14} />
+                  </button>
+                </Card>
+              </div>
+            </div>
+          )}
+          {onboarder &&
+            screen === "catalog" &&
+            own.map((f) => (
+              <HospitalCatalog
+                key={f.id}
+                facility={f}
+                busy={busy}
+                save={async (path, body, method) => {
+                  let failed = false;
+                  await run(async () => {
+                    try {
+                      await mutate(path, body, method);
+                    } catch (e) {
+                      failed = true;
+                      throw e;
+                    }
+                  });
+                  if (failed) throw new Error("Catalog update failed");
+                }}
+              />
+            ))}
+          {(screen === "providers" || (screen === "network" && onboarder)) && (
             <>
               <div className="network-layout">
                 <Card
                   title="Participating providers"
                   aside={
-                    <span className="count">{state.facilities.length}</span>
+                    <span className="count">
+                      {onboarder ? own.length : state.facilities.length}
+                    </span>
                   }
                 >
                   <div className="provider-list">
-                    {state.facilities.map((f) => (
+                    {(onboarder ? own : state.facilities).map((f) => (
                       <button
                         key={f.id}
                         className={
@@ -648,11 +933,60 @@ export default function Home() {
                     ))}
                   </div>
                 </Card>
-                <PilotMap
-                  state={state}
-                  selected={selected}
-                  onSelect={setSelected}
-                />
+                <Card
+                  title={
+                    onboarder ? "Onboarding checklist" : "Provider management"
+                  }
+                >
+                  <div className="onboarding-checklist">
+                    <p>
+                      <Check size={17} />
+                      Hospital identity and campus location
+                    </p>
+                    <p>
+                      {own.every((f) => f.service_reviewed) ? (
+                        <Check size={17} />
+                      ) : (
+                        <Plus size={17} />
+                      )}
+                      Primary-care service and eligible areas
+                    </p>
+                    <p>
+                      {own.every(
+                        (f) => f.capacities[0]?.freshness === "CURRENT",
+                      ) ? (
+                        <Check size={17} />
+                      ) : (
+                        <RefreshCw size={17} />
+                      )}
+                      Declared network capacity for each date
+                    </p>
+                    <p>
+                      {own.some((f) => f.catalog?.length) ? (
+                        <Check size={17} />
+                      ) : (
+                        <Plus size={17} />
+                      )}
+                      {own.some((f) => f.catalog?.length)
+                        ? "Service and test prices added"
+                        : "Add service and test prices"}
+                    </p>
+                  </div>
+                  {onboarder && (
+                    <button
+                      className="primary"
+                      onClick={() => setScreen("catalog")}
+                    >
+                      Manage services & prices
+                      <ArrowRight size={15} />
+                    </button>
+                  )}
+                  {planner && (
+                    <button onClick={() => setScreen("network")}>
+                      Back to 3D network
+                    </button>
+                  )}
+                </Card>
               </div>
               {facility && (
                 <Card
@@ -779,7 +1113,7 @@ export default function Home() {
                   </div>
                 </Card>
               )}
-              {!planner && (
+              {onboarder && (
                 <div className="two-col">
                   <Card title="Register a demonstration provider">
                     <Form
@@ -799,7 +1133,7 @@ export default function Home() {
                   </Card>
                   <Card title="Own provider settings">
                     {own.map((f) => (
-                      <details key={f.id}>
+                      <details key={f.id} open>
                         <summary>{f.name}</summary>
                         <Form
                           fields={profileFields(f)}
@@ -862,6 +1196,60 @@ export default function Home() {
           )}
           {screen === "referrals" && (
             <>
+              {planner && ranking && (
+                <Card title="Referral ranking policy">
+                  <p>
+                    {ranking.policy_version}. Eligibility checks always apply.
+                    Equal scores use provider ID and date.
+                  </p>
+                  <Form
+                    key={ranking.version}
+                    busy={busy}
+                    submit="Save referral ranking"
+                    fields={[
+                      {
+                        name: "criteria",
+                        label: "Preferred order",
+                        value: ranking.criteria.join(","),
+                        options: [
+                          ["same_zone", "subsidy", "available"],
+                          ["same_zone", "available", "subsidy"],
+                          ["subsidy", "same_zone", "available"],
+                          ["subsidy", "available", "same_zone"],
+                          ["available", "same_zone", "subsidy"],
+                          ["available", "subsidy", "same_zone"],
+                        ].map((order) => ({
+                          value: order.join(","),
+                          label: order
+                            .map(
+                              (c) =>
+                                ({
+                                  same_zone: "Same zone",
+                                  subsidy: "Lower subsidy",
+                                  available: "More quota",
+                                })[c],
+                            )
+                            .join(" → "),
+                        })),
+                      },
+                      { name: "reason", label: "Reason for ranking change" },
+                    ]}
+                    onSubmit={(d) =>
+                      run(() =>
+                        mutate(
+                          "referral-ranking",
+                          {
+                            criteria: String(d.criteria).split(","),
+                            version: ranking.version,
+                            reason: d.reason,
+                          },
+                          "PUT",
+                        ),
+                      )
+                    }
+                  />
+                </Card>
+              )}
               {!planner && (
                 <div className="two-col">
                   <Card title="Register a synthetic request">
@@ -1008,6 +1396,7 @@ export default function Home() {
                       <div key={o.capacity_id} className="recommendation">
                         <strong>{o.name}</strong>
                         <p>{o.explanation}</p>
+                        <small>Ranking: {o.ranking_policy_version}</small>
                         <span>
                           {o.date} · {o.available} units · Subsidy PKR{" "}
                           {money(o.subsidy)}
@@ -1017,17 +1406,17 @@ export default function Home() {
                           disabled={busy}
                           onClick={() =>
                             run(async () => {
-                              await mutate("referrals", {
+                              await mutate("referrals/proposals", {
                                 request_id: request!.id,
                                 capacity_id: o.capacity_id,
                                 capacity_version: o.capacity_version,
                                 facility_version: o.facility_version,
                               });
                               setOptions([]);
-                            }, "Temporary hold created. Partner acceptance and patient agreement are pending.")
+                            }, "Proposal saved. Review it below before reserving; no quota or funding has been held.")
                           }
                         >
-                          Approve & reserve
+                          Save referral proposal
                         </button>
                       </div>
                     ))}
@@ -1133,6 +1522,13 @@ export default function Home() {
                       const receive = state.user.facility_ids.includes(
                         a.facility_id,
                       );
+                      const send = state.requests.some(
+                        (r) =>
+                          r.id === a.request_id &&
+                          state.user.facility_ids.includes(
+                            r.source_facility_id,
+                          ),
+                      );
                       return (
                         <div className="referral" key={a.id}>
                           <div>
@@ -1143,6 +1539,32 @@ export default function Home() {
                               {a.request_id} · {a.date} · Subsidy PKR{" "}
                               {money(a.subsidy)}
                             </p>
+                            {!planner && (
+                              <div className="referral-context">
+                                <strong>
+                                  {state.requests.find(
+                                    (r) => r.id === a.request_id,
+                                  )?.reference || a.request_id}
+                                </strong>
+                                <span>
+                                  {state.requests.find(
+                                    (r) => r.id === a.request_id,
+                                  )?.original_text ||
+                                    "Reviewed primary-care OPD"}
+                                </span>
+                                <span>
+                                  {
+                                    state.requests.find(
+                                      (r) => r.id === a.request_id,
+                                    )?.zone
+                                  }{" "}
+                                  ·{" "}
+                                  {receive
+                                    ? "Incoming patient"
+                                    : "Outgoing referral"}
+                                </span>
+                              </div>
+                            )}
                             <Badge value={a.status} />
                             <small>
                               Partner{" "}
@@ -1154,7 +1576,7 @@ export default function Home() {
                             {a.status === "AWAITING_CONFIRMATIONS" && (
                               <small>
                                 Response deadline{" "}
-                                {new Date(a.expires_at).toLocaleString(
+                                {new Date(a.expires_at!).toLocaleString(
                                   "en-PK",
                                   { timeZone: "Asia/Karachi" },
                                 )}{" "}
@@ -1162,8 +1584,53 @@ export default function Home() {
                               </small>
                             )}
                             {a.reason && <small>{a.reason}</small>}
+                            {a.status === "PROPOSED" && (
+                              <small>
+                                Proposal only; no quota or funds held. If the
+                                inputs change, the proposal expires and the
+                                request reopens so you can select a fresh
+                                destination.
+                              </small>
+                            )}
                           </div>
                           <div className="action-buttons">
+                            {!planner && send && a.status === "PROPOSED" && (
+                              <>
+                                <button
+                                  className="primary"
+                                  disabled={busy}
+                                  onClick={() =>
+                                    run(async () => {
+                                      const result = (await mutate(
+                                        `referrals/${a.id}/reserve`,
+                                      )) as Referral;
+                                      if (result.status === "EXPIRED") {
+                                        setOptions([]);
+                                        await load();
+                                        throw new Error(
+                                          "This proposal expired because its inputs changed. The request is open again; find providers and choose a fresh destination.",
+                                        );
+                                      }
+                                    }, "Temporary hold created. Partner acceptance and patient agreement are pending.")
+                                  }
+                                >
+                                  Approve & reserve proposal
+                                </button>
+                                <button
+                                  disabled={busy}
+                                  onClick={() =>
+                                    run(() =>
+                                      mutate(`referrals/${a.id}/cancel`, {
+                                        reason:
+                                          "Sender cancelled the proposed destination",
+                                      }),
+                                    )
+                                  }
+                                >
+                                  Cancel proposal
+                                </button>
+                              </>
+                            )}
                             {a.status === "AWAITING_CONFIRMATIONS" &&
                               (planner ? (
                                 <button
@@ -1605,7 +2072,11 @@ export default function Home() {
                       <strong>PKR {money(plan.cost)}</strong>
                     </div>
                     <div>
-                      <span>Solver result</span>
+                      <span>
+                        {plan.decision_source === "HUMAN_REVISION"
+                          ? "Original solver result"
+                          : "Solver result"}
+                      </span>
                       <strong>{human(plan.solver_status)}</strong>
                     </div>
                   </div>
@@ -1616,6 +2087,24 @@ export default function Home() {
                     subsidy assignments · subsidy total PKR{" "}
                     {money(plan.subsidy_cost)}.
                   </p>
+                  {plan.decision_source === "HUMAN_REVISION" && (
+                    <div className="notice">
+                      Human revision · version {plan.version}. Original solver:{" "}
+                      {plan.original_solver_result?.coverage} units / PKR{" "}
+                      {money(plan.original_solver_result?.cost || 0)}. Current
+                      selections are a human decision.
+                    </div>
+                  )}
+                  {planner && !!plan.revisions?.length && (
+                    <details>
+                      <summary>Draft revision history</summary>
+                      {plan.revisions.map((r) => (
+                        <p key={r.version}>
+                          Version {r.version} · {r.actor} · {r.reason}
+                        </p>
+                      ))}
+                    </details>
+                  )}
                   <div className="plan-actions">
                     {plan.actions.map((a) => (
                       <div key={a.id}>
@@ -1678,18 +2167,29 @@ export default function Home() {
                   {planner && (
                     <div className="action-buttons">
                       {plan.status === "DRAFT" && (
-                        <button
-                          className="primary"
-                          disabled={busy}
-                          onClick={() =>
-                            run(
-                              () => mutate(`plans/${plan.id}/approve`),
-                              "Plan approved. Funds and offers reserved; partner/mobile actions await their operators.",
-                            )
-                          }
-                        >
-                          Approve plan
-                        </button>
+                        <>
+                          <button
+                            disabled={busy}
+                            onClick={() => setRevisionPlan(plan)}
+                          >
+                            Revise draft with reason
+                          </button>
+                          <button
+                            className="primary"
+                            disabled={busy}
+                            onClick={() =>
+                              run(
+                                () =>
+                                  mutate(`plans/${plan.id}/approve`, {
+                                    version: plan.version,
+                                  }),
+                                "Plan approved. Funds and offers reserved; partner/mobile actions await their operators.",
+                              )
+                            }
+                          >
+                            Approve plan
+                          </button>
+                        </>
                       )}
                       {["DRAFT", "APPROVED", "ACTIVE"].includes(
                         plan.status,

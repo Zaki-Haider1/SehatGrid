@@ -41,6 +41,15 @@ class CapacityInput(Input):
     version: int = Field(ge=0)
 
 
+class CatalogInput(Input):
+    name: str = Field(min_length=2, max_length=120)
+    category: Literal["Consultation", "Laboratory", "Imaging", "Other"]
+    price: int = Field(ge=0, le=10000000)
+    daily_capacity: int = Field(ge=0, le=10000)
+    active: bool = True
+    version: int = Field(ge=1)
+
+
 class MatchInput(Input):
     text: str = Field(min_length=2, max_length=300)
     zone: str | None = None

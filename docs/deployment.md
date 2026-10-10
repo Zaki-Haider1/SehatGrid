@@ -1,6 +1,6 @@
 # Deployment handoff — scope v1
 
-Public deployment remains with the deployment teammate. These instructions describe the prepared artifacts; a live deployment must not be claimed before it is exercised.
+Public deployment is pending at the user's explicit request on October 10. Dev 3 prepared the deployment artifacts; resume when the user requests it and supplies hosting project/account access. A live deployment must not be claimed before it is exercised.
 
 ## Combined application (recommended handoff)
 
@@ -25,7 +25,15 @@ For Vercel, use root `frontend`, Node 22+, `npm ci`, and `npm run build`. Set `N
 
 Copy `.env.example` to a local root `.env`, populate its three required values, then run `docker compose up --build`. PostgreSQL has a named volume; the app is exposed only on local port 3000. Do not commit `.env` or upload SQLite files.
 
-The CI cold-start test runs the combined container with `--network none`, then checks the UI and API over container loopback. This proves startup does not depend on external model downloads, data scraping or map tiles. The browser's default coordinate map also has no external map dependency.
+The CI cold-start test runs the combined container with `--network none`, then checks the UI and API over container loopback. This proves startup does not depend on external model downloads, data scraping or map tiles. The browser’s default 3D city also has no external map dependency.
+
+## Local production frontend
+
+With a prepared API on 127.0.0.1:8000, run `npm ci`, `npm run build`, then `npm start` from `frontend/`. `npm start` copies `.next/static` (and `public` if present) into `.next/standalone`, then starts the generated server. No `next start` command is used. The root Dockerfile already copies those assets into its standalone layout and invokes `server.js` directly.
+
+Use `PORT` and `HOSTNAME` for the frontend listener. `API_PROXY_TARGET` is a private build-time override for the proxy destination; the acceptance harness uses port 18000 to isolate its database. Rebuild without that override for the standard container/internal API on 8000. For a split public frontend use `NEXT_PUBLIC_API_BASE_URL` as described above.
+
+Follow [browser acceptance](browser-acceptance.md) for the reproducible local production/demo check. A successful local test does not establish a public HTTPS deployment. Public handoff still requires a hosting project, configured secrets/PostgreSQL, migration, deliberate seed, and a recorded live restart/persistence check.
 
 ## Boundaries
 
