@@ -318,15 +318,15 @@ export function GovernmentOverview({
         {layer === "capacity" ? (
           <>
             <span>
-              <i style={{ background: "#7397f6" }} />
+              <i style={{ background: "#61b893" }} />
               Available
             </span>
             <span>
-              <i style={{ background: "#e7bd83" }} />
+              <i style={{ background: "#eca94c" }} />
               Limited
             </span>
             <span>
-              <i style={{ background: "#e68c92" }} />
+              <i style={{ background: "#df737b" }} />
               Exhausted
             </span>
             <span>
@@ -337,7 +337,7 @@ export function GovernmentOverview({
         ) : (
           <>
             <span>
-              <i style={{ background: "#e68c92" }} />
+              <i style={{ background: "#df737b" }} />
               {layer === "demand"
                 ? "Unresolved demand in area"
                 : "Subsidy required"}

@@ -37,7 +37,7 @@ button {
   background: white;
   color: var(--ink);
   padding: 9px 12px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   transition: background 0.15s;
 }
@@ -97,7 +97,7 @@ p {
 }
 small {
   display: block;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.6;
   color: var(--muted);
 }
@@ -130,7 +130,7 @@ svg {
 }
 .eyebrow {
   display: block;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 1.7px;
   color: var(--green);
   font-weight: 700;
@@ -146,7 +146,7 @@ header {
   border-bottom: 1px solid var(--line);
 }
 .header-scope {
-  font-size: 12px;
+  font-size: 14px;
   color: #687a70;
 }
 .header-scope span {
@@ -158,7 +158,7 @@ header {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 12px;
+  font-size: 14px;
 }
 .icon-button {
   border: 0;
@@ -171,7 +171,7 @@ header {
   gap: 14px;
   padding: 9px 30px;
   background: #eaf1e7;
-  font-size: 10px;
+  font-size: 12px;
   color: #56725e;
 }
 .demo-banner > span:first-child {
@@ -200,7 +200,7 @@ header {
 .nav-label {
   display: block;
   color: #a0aaa2;
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 1.8px;
   margin: 0 12px 19px;
 }
@@ -212,7 +212,7 @@ header {
   margin: 4px 0;
   padding: 13px 12px;
   gap: 12px;
-  font-size: 12px;
+  font-size: 14px;
   color: #6b7d70;
 }
 .sidebar > button.active {
@@ -226,11 +226,11 @@ header {
 }
 .sidebar-note strong {
   display: block;
-  font-size: 12px;
+  font-size: 14px;
   margin-top: 10px;
 }
 .sidebar-note p {
-  font-size: 11px;
+  font-size: 13px;
 }
 .main {
   flex: 1;
@@ -245,7 +245,7 @@ header {
   margin-bottom: 23px;
 }
 .page-heading p {
-  font-size: 12px;
+  font-size: 14px;
   margin: 8px 0 0;
 }
 .date-controls {
@@ -254,12 +254,12 @@ header {
   gap: 8px;
 }
 .date-controls label {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--muted);
 }
 .date-controls input {
   margin-top: 6px;
-  font-size: 11px;
+  font-size: 13px;
   padding: 9px 6px;
   width: 135px;
 }
@@ -276,7 +276,7 @@ header {
   border-radius: 10px;
 }
 .stats span {
-  font-size: 11px;
+  font-size: 13px;
   color: #7b8a80;
 }
 .stats strong {
@@ -287,7 +287,7 @@ header {
   margin: 10px 0 7px;
 }
 .stats small {
-  font-size: 9px;
+  font-size: 12px;
 }
 .card {
   border: 1px solid var(--line);
@@ -305,14 +305,14 @@ header {
   margin-bottom: 18px;
 }
 .card p {
-  font-size: 12px;
+  font-size: 14px;
 }
 .card-title h2 {
-  font-size: 15px;
+  font-size: 17px;
 }
 .count {
   background: #eef3eb;
-  font-size: 11px;
+  font-size: 13px;
   padding: 4px 7px;
   border-radius: 5px;
 }
@@ -360,20 +360,20 @@ header {
 }
 .provider strong {
   display: block;
-  font-size: 11px;
+  font-size: 13px;
 }
 .provider span:not(.badge) {
   display: block;
-  font-size: 10px;
+  font-size: 12px;
   color: #76877b;
   margin-top: 5px;
 }
 .provider small {
-  font-size: 9px;
+  font-size: 12px;
   margin-top: 3px;
 }
 .provider .badge {
-  font-size: 8px;
+  font-size: 12px;
   padding: 4px;
 }
 .badge {
@@ -381,7 +381,7 @@ header {
   align-items: center;
   background: #edf0ee;
   color: #79837e;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1.2;
   border-radius: 4px;
@@ -442,11 +442,11 @@ header {
 }
 .map-caption strong {
   display: block;
-  font-size: 12px;
+  font-size: 14px;
 }
 .map-caption span {
   display: block;
-  font-size: 9px;
+  font-size: 12px;
   color: #829085;
   margin-top: 5px;
 }
@@ -454,7 +454,7 @@ header {
   position: absolute;
   left: 18px;
   bottom: 61px;
-  font-size: 10px;
+  font-size: 12px;
   box-shadow: 0 2px 8px #27372a08;
 }
 .map-legend {
@@ -465,7 +465,7 @@ header {
   display: flex;
   flex-wrap: wrap;
   gap: 13px;
-  font-size: 9px;
+  font-size: 12px;
   background: #ffffffed;
   padding: 10px 12px;
   border-radius: 6px;
@@ -498,7 +498,7 @@ header {
   border-radius: 50%;
   background: #9caea5;
   color: white;
-  font-size: 10px;
+  font-size: 12px;
   border: 3px solid white;
   box-shadow: 0 3px 12px #324c4026;
   padding: 0;
@@ -517,7 +517,7 @@ header {
   outline-offset: 3px;
 }
 .zone-label {
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 0.5px;
   color: #526d60;
   white-space: nowrap;
@@ -532,7 +532,7 @@ header {
   bottom: 105px;
   background: white;
   padding: 10px;
-  font-size: 10px;
+  font-size: 12px;
   max-width: 240px;
 }
 .profile-grid,
@@ -548,10 +548,10 @@ header {
   border-left: 2px solid #bbcdba;
   padding-left: 13px;
   margin-top: 20px;
-  font-size: 11px;
+  font-size: 13px;
 }
 .provenance p {
-  font-size: 11px;
+  font-size: 13px;
 }
 .fields {
   display: grid;
@@ -561,7 +561,7 @@ header {
 }
 .fields label {
   display: block;
-  font-size: 11px;
+  font-size: 13px;
   color: #698071;
   min-width: 0;
 }
@@ -584,7 +584,7 @@ header {
 }
 .standalone-label {
   display: block;
-  font-size: 11px;
+  font-size: 13px;
   margin: 16px 0;
 }
 .standalone-label input {
@@ -611,7 +611,7 @@ header {
 }
 .recommendation > span {
   display: block;
-  font-size: 11px;
+  font-size: 13px;
   margin: 10px 0;
 }
 .table-scroll {
@@ -622,14 +622,14 @@ header {
 table {
   border-collapse: collapse;
   width: 100%;
-  font-size: 11px;
+  font-size: 13px;
   white-space: nowrap;
 }
 th {
   text-align: left;
   color: #88998b;
   font-weight: 500;
-  font-size: 10px;
+  font-size: 12px;
   padding: 12px;
   background: #f6f8f2;
 }
@@ -643,7 +643,7 @@ td small {
   white-space: normal;
 }
 td button {
-  font-size: 10px;
+  font-size: 12px;
   margin-right: 5px;
 }
 .referral {
@@ -657,7 +657,7 @@ td button {
   min-width: 220px;
 }
 .referral strong {
-  font-size: 12px;
+  font-size: 14px;
 }
 .referral small {
   margin-top: 8px;
@@ -669,7 +669,7 @@ td button {
   flex-wrap: wrap;
 }
 .action-buttons > button {
-  font-size: 10px;
+  font-size: 12px;
 }
 .zone-row {
   display: flex;
@@ -679,7 +679,7 @@ td button {
   border-bottom: 1px solid var(--line);
 }
 .zone-row strong {
-  font-size: 12px;
+  font-size: 14px;
 }
 .zone-row b {
   font-size: 22px;
@@ -701,7 +701,7 @@ td button {
 }
 .funnel span {
   display: block;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.5;
   color: #7e8c80;
 }
@@ -716,7 +716,7 @@ td button {
   padding: 15px 0;
   align-items: center;
   border-bottom: 1px solid var(--line);
-  font-size: 12px;
+  font-size: 14px;
 }
 .ledger-totals,
 .plan-metrics {
@@ -733,7 +733,7 @@ td button {
 }
 .ledger-totals span,
 .plan-metrics span {
-  font-size: 10px;
+  font-size: 12px;
   color: #7a8b7c;
 }
 .ledger-totals strong,
@@ -753,7 +753,7 @@ td button {
   border-bottom: 1px solid var(--line);
 }
 .plan-actions strong {
-  font-size: 12px;
+  font-size: 14px;
 }
 .plan-tabs {
   display: flex;
@@ -771,7 +771,7 @@ details {
 }
 summary {
   cursor: pointer;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   margin-bottom: 15px;
 }
@@ -782,12 +782,12 @@ summary {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
-  font-size: 10px;
+  font-size: 12px;
   padding: 10px;
   border-bottom: 1px solid var(--line);
 }
 footer {
-  font-size: 9px;
+  font-size: 12px;
   color: #a0ada2;
   padding: 22px 0 8px;
 }
@@ -796,7 +796,7 @@ footer {
   padding: 13px 16px;
   border-radius: 7px;
   margin-bottom: 20px;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.6;
 }
 .error {
@@ -815,7 +815,7 @@ footer {
   background: #f7f8f4;
   border-radius: 6px;
   color: #88948a;
-  font-size: 12px;
+  font-size: 14px;
 }
 .login {
   min-height: 100vh;
@@ -838,7 +838,7 @@ footer {
 .login-intro p {
   max-width: 500px;
   margin: 25px 0;
-  font-size: 14px;
+  font-size: 16px;
 }
 .login-pills {
   display: grid;
@@ -847,7 +847,7 @@ footer {
   margin: 30px 0;
 }
 .login-pills span {
-  font-size: 11px;
+  font-size: 13px;
   color: #6a806c;
 }
 .login-card {
@@ -875,10 +875,10 @@ footer {
   margin: 4px 0 20px;
 }
 .login-card p {
-  font-size: 12px;
+  font-size: 14px;
 }
 .login-card > small {
-  font-size: 10px;
+  font-size: 12px;
   text-align: center;
 }
 @media (min-width: 1600px) {
@@ -917,7 +917,7 @@ footer {
     display: none;
   }
   .account {
-    font-size: 10px;
+    font-size: 12px;
   }
   .login {
     gap: 40px;
@@ -978,7 +978,7 @@ footer {
     gap: 10px;
   }
   .brand {
-    font-size: 13px;
+    font-size: 15px;
     gap: 6px;
   }
   .brand svg {
@@ -992,7 +992,7 @@ footer {
   }
   .demo-banner {
     padding: 9px 16px;
-    font-size: 9px;
+    font-size: 12px;
   }
   .demo-banner > span:last-child {
     max-width: 190px;
@@ -1009,7 +1009,7 @@ footer {
     border-bottom: 1px solid var(--line);
   }
   .sidebar > button {
-    font-size: 9px;
+    font-size: 12px;
     flex: 1;
     flex-direction: column;
     gap: 6px;
@@ -1062,16 +1062,16 @@ footer {
   }
   .fields input,
   .fields select {
-    font-size: 12px;
+    font-size: 14px;
   }
   .map-caption {
     max-width: 235px;
   }
   .map-caption span {
-    font-size: 8px;
+    font-size: 12px;
   }
   .map-legend {
-    font-size: 8px;
+    font-size: 12px;
     gap: 8px;
   }
   .history {

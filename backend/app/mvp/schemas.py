@@ -65,6 +65,9 @@ class ReviewInput(Input):
 
 
 class RequestInput(Input):
+    required_tests: list[str] = Field(default_factory=list, max_length=20)
+    whatsapp_phone: str = Field(default="", pattern=r"^(\+[1-9]\d{7,14})?$")
+    whatsapp_consent: bool = False
     reference: str = Field(min_length=3, max_length=80, pattern=r"^[A-Za-z0-9_-]+$")
     source_facility_id: str
     zone: str
@@ -78,6 +81,15 @@ class RequestInput(Input):
 
     @model_validator(mode="after")
     def dates(self):
+        self.required_tests = list(
+            {" ".join(t.casefold().split()): " ".join(t.split()) for t in self.required_tests}.values()
+        )
+        if any(not t or len(t) > 120 for t in self.required_tests):
+            raise ValueError("Each required test needs a name of 1–120 characters")
+        if self.whatsapp_consent and not self.whatsapp_phone:
+            raise ValueError("A WhatsApp number is required when consent is recorded")
+        if self.whatsapp_phone and not self.whatsapp_consent:
+            raise ValueError("Record patient consent before storing a WhatsApp number")
         if self.date_to < self.date_from or (self.date_to - self.date_from).days > 31:
             raise ValueError("Choose an ordered service date range of at most 31 days")
         return self
@@ -164,3 +176,9 @@ class SubsidyInput(MonthInput):
 
 class Empty(Input):
     pass
+
+
+class RoutingPointsInput(Input):
+    points: int = Field(ge=0, le=100)
+    version: int = Field(ge=1)
+    reason: str = Field(min_length=3, max_length=500)

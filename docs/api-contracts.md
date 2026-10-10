@@ -278,3 +278,11 @@ A new proposal can then be created if the request is still eligible.
 All three mutations require an idempotency key. Repeating the same key and request returns the original response. A proposal does not authorize partner/patient/funding confirmation; those existing transitions remain available only after reservation.
 
 A patient agreement, partner acceptance or funding authorization can arrive first. Only the final required approval converts held quota and funds to commitments. A receiving arrival precedes completion. All active financial state changes use the same aggregate database transaction.
+
+## Public-origin routing and message-preview extension
+
+`POST requests` additionally accepts `required_tests: string[]` (up to 20), `whatsapp_phone` (optional E.164 international number), and `whatsapp_consent: boolean`. Consent is required to store a phone number. Required tests match normalized catalog names. The authenticated source must be an assigned, active public hospital. Private-source attempts return `PUBLIC_SENDER_REQUIRED` (403); a private hospital is still a valid receiving destination. Self-referrals are excluded. Older operator-p01 sending examples above are historical; fresh-seed outgoing requests now use public operator-p08.
+
+`PUT facilities/{id}/routing-points` is planner-only and takes `{points: 0..100, version: facilityVersion, reason: string}`. Recommendations include `routing_score` and `routing_points`, sorted by the continuous capacity/preference score before existing tie-break criteria. A hospital profile cannot change its registered ownership.
+
+`GET state` includes facility `routing_points` and `routing_metrics` (referral count, completed count, closed-referral completion rate), plus authorized reception `notifications`. Notification fields include id, request_id, referral_id, event, masked recipient, message, created_at and status `PREVIEW_ONLY`. Confirmation and cancellation persist previews transactionally, deduplicated by referral/event. There is no live transport or delivery receipt. See [routing and patient updates](routing-and-patient-updates.md) for all invariants.

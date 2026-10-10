@@ -25,6 +25,12 @@ export type Capacity = {
   version: number;
 };
 export type Facility = {
+  routing_points?: number;
+  routing_metrics?: {
+    referrals: number;
+    completed: number;
+    completion_rate: number | null;
+  };
   id: string;
   name: string;
   ownership: string;
@@ -174,6 +180,8 @@ export type Match = {
   }[];
 };
 export type Recommendation = {
+  routing_score: number;
+  routing_points: number;
   ranking_policy_version: string;
   facility_id: string;
   name: string;
@@ -213,6 +221,14 @@ export type Summary = {
   budget: Budget | null;
 };
 export type State = {
+  notifications?: {
+    id: string;
+    request_id: string;
+    recipient: string;
+    status: string;
+    message: string;
+    created_at: string;
+  }[];
   user: User;
   config: {
     today: string;

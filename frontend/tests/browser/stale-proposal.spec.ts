@@ -24,7 +24,7 @@ test("changed capacity expires a proposal and reception shows recovery instead o
     { cwd: repo, stdio: "pipe", timeout: 60000 },
   );
   await page.goto("/");
-  await page.getByLabel("Username", { exact: true }).fill("operator-p01");
+  await page.getByLabel("Username", { exact: true }).fill("operator-p08");
   await page
     .getByLabel("Password", { exact: true })
     .fill("isolated-browser-demo-password");
@@ -79,7 +79,7 @@ test("changed capacity expires a proposal and reception shows recovery instead o
   await expect(
     row.getByRole("button", { name: "Find providers", exact: true }),
   ).toBeVisible();
-  const state = await page.evaluate(async () => {
+  const state = await other.evaluate(async () => {
     const r = await fetch("/api/v1/state", {
       headers: {
         Authorization: `Bearer ${sessionStorage.getItem("sehat-token")}`,

@@ -23,9 +23,9 @@ export function hospitalColor(state: State, id: string, layer: MapLayer) {
   return (
     (
       {
-        AVAILABLE: "#7397f6",
-        LIMITED: "#e7bd83",
-        EXHAUSTED: "#e68c92",
+        AVAILABLE: "#61b893",
+        LIMITED: "#eca94c",
+        EXHAUSTED: "#df737b",
       } as Record<string, string>
     )[f.capacities[0]?.status] || "#b9c1ce"
   );

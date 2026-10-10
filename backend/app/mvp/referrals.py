@@ -19,6 +19,8 @@ from .common import (
     budget_view,
 )
 from ..config import get_settings
+from .routing import sender, catalog_available, routing_score
+from .notifications import queue_update
 
 STALE_PROPOSAL_REASON = "Proposal inputs changed; refresh recommendations"
 
@@ -64,6 +66,11 @@ def entitlement(s, rid, fid, day):
 
 
 def recommendations(s, r, allow_attempt=None):
+    source = s["facilities"].get(r["source_facility_id"])
+    if not source or source["ownership"] != "Public":
+        return {"candidates": [], "reasons": ["PUBLIC_SENDER_REQUIRED"]}
+    if source["participation"] != "ACTIVE":
+        return {"candidates": [], "reasons": ["SOURCE_INACTIVE"]}
     ranking_policy = s["ranking_policy"]
     if not r["suitable"]:
         return {"candidates": [], "reasons": ["OUT_OF_SCOPE"]}
@@ -78,6 +85,11 @@ def recommendations(s, r, allow_attempt=None):
     eligible = False
     for c in s["capacities"].values():
         f = s["facilities"][c["facility_id"]]
+        if f["id"] == r["source_facility_id"]:
+            continue
+        if not catalog_available(s, r, f, c["date"], allow_attempt):
+            reasons.add("REQUIRED_TEST_UNAVAILABLE")
+            continue
         if not compatible(r, f, c["date"]):
             continue
         eligible = True
@@ -122,6 +134,8 @@ def recommendations(s, r, allow_attempt=None):
         options.append(
             {
                 "facility_id": f["id"],
+                "routing_score": routing_score(s, f, c),
+                "routing_points": f.get("routing_points", 50),
                 "name": f["name"],
                 "capacity_id": c["id"],
                 "date": c["date"],
@@ -144,8 +158,11 @@ def recommendations(s, r, allow_attempt=None):
         "available": lambda x: -x["available"],
     }
     options.sort(
-        key=lambda x: tuple(criterion_keys[name](x) for name in ranking_policy["criteria"])
-        + (x["facility_id"], x["date"])
+        key=lambda x: (
+            (-x["routing_score"],)
+            + tuple(criterion_keys[name](x) for name in ranking_policy["criteria"])
+            + (x["facility_id"], x["date"])
+        )
     )
     if not eligible:
         reasons.add("NO_ELIGIBLE_PARTNER")
@@ -186,9 +203,9 @@ def release(s, a, status, reason, actor):
             reservation_state = "RELEASED"
         else:
             c["committed"] -= 1
-            cutoff = datetime.fromisoformat(a["date"] + "T" + get_settings().cancellation_cutoff_local).replace(
-                tzinfo=ZoneInfo("Asia/Karachi")
-            )
+            cutoff = datetime.fromisoformat(
+                a["date"] + "T" + get_settings().cancellation_cutoff_local
+            ).replace(tzinfo=ZoneInfo("Asia/Karachi"))
             forfeited = status == "NO_SHOW" or now() >= cutoff
             if forfeited:
                 c["forfeited"] += 1
@@ -198,6 +215,8 @@ def release(s, a, status, reason, actor):
         c["version"] += 1
         ledger_state(s, a.get("ledger_id"), "RELEASED")
     a.update(status=status, reason=reason, updated_at=stamp(), version=a["version"] + 1)
+    if was in {"CONFIRMED", "ARRIVED"}:
+        queue_update(s, a, "CANCELLED")
     if reservation_state is not None:
         s["reservations"][a["id"]]["state"] = reservation_state
     if a.get("plan_id"):
@@ -251,19 +270,23 @@ def expire(s, include_proposals=True):
 
 def propose(s, u, data):
     r = get(s, "requests", data["request_id"])
-    operator(u, r["source_facility_id"])
+    sender(s, u, r["source_facility_id"])
     require(
         not r.get("blocked_reasons"),
         "PATIENT_DECLINED",
         "Record a new agreement through reprocessing before retrying",
     )
     require(
-        not active_attempt(s, r["id"]), "CAPACITY_CONFLICT", "This request already has an active referral attempt"
+        not active_attempt(s, r["id"]),
+        "CAPACITY_CONFLICT",
+        "This request already has an active referral attempt",
     )
     option = next(
         (x for x in recommendations(s, r)["candidates"] if x["capacity_id"] == data["capacity_id"]), None
     )
-    require(option, "CAPACITY_CONFLICT", "The selected resource is no longer eligible; refresh recommendations")
+    require(
+        option, "CAPACITY_CONFLICT", "The selected resource is no longer eligible; refresh recommendations"
+    )
     require(
         option["capacity_version"] == data["capacity_version"],
         "STALE_INPUT",
@@ -308,7 +331,7 @@ def propose(s, u, data):
 
 def reserve(s, u, data, attempt=None):
     r = get(s, "requests", data["request_id"])
-    operator(u, r["source_facility_id"])
+    sender(s, u, r["source_facility_id"])
     require(
         not r.get("blocked_reasons"),
         "PATIENT_DECLINED",
@@ -412,7 +435,7 @@ def reserve(s, u, data, attempt=None):
 def reserve_proposal(s, u, aid):
     a = get(s, "referrals", aid)
     r = get(s, "requests", a["request_id"])
-    operator(u, r["source_facility_id"])
+    sender(s, u, r["source_facility_id"])
     if a["status"] == "EXPIRED" and a.get("reason") == STALE_PROPOSAL_REASON:
         return a
     require(a["status"] == "PROPOSED", "INVALID_TRANSITION", "Referral is not proposed")
@@ -436,7 +459,7 @@ def confirm_if_ready(s, a):
     f = get(s, "facilities", a["facility_id"])
     r = get(s, "requests", a["request_id"])
     require(
-        fresh(c) and compatible(r, f, c["date"]),
+        fresh(c) and compatible(r, f, c["date"]) and catalog_available(s, r, f, c["date"], a["id"]),
         "STALE_INPUT",
         "Refresh capacity and confirm current partner eligibility first",
     )
@@ -447,6 +470,7 @@ def confirm_if_ready(s, a):
     ledger_state(s, a["ledger_id"], "COMMITTED")
     a["status"] = "CONFIRMED"
     a["confirmed_at"] = stamp()
+    queue_update(s, a, "CONFIRMED")
     s["reservations"][a["id"]]["state"] = "COMMITTED"
 
 

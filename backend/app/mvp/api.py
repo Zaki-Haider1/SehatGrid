@@ -46,6 +46,7 @@ from .intelligence import intelligence, snapshot
 from .planning import optimize, approve, activate, cancel_plan, reject_action
 from .plan_revision import revise, revision_options
 from . import schemas
+from .routing import sender, hospital_metrics
 
 settings = get_settings()
 
@@ -110,6 +111,8 @@ def view(s, u, month, day):
     facilities = []
     for f in s["facilities"].values():
         row = deepcopy(f)
+        row["routing_points"] = f.get("routing_points", 50)
+        row["routing_metrics"] = hospital_metrics(s, f["id"])
         row["capacities"] = [
             cap_view(s, c)
             for c in s["capacities"].values()
@@ -158,6 +161,11 @@ def view(s, u, month, day):
         "facilities": facilities,
         "services": list(s["services"].values()),
         "requests": requests,
+        "notifications": [
+            {**n, "recipient": "***" + n["recipient"][-4:]}
+            for n in s.get("notifications", {}).values()
+            if u["role"] == "operator" and n["request_id"] in ids
+        ],
         "referrals": referrals,
         "summary": summary if u["role"] == "planner" else None,
         "budgets": [budget_view(s, m) for m in s["budgets"]] if u["role"] == "planner" else [],
@@ -230,11 +238,28 @@ def mutate(s, u, path, method, body):
             require(d["version"] == f["version"], "STALE_INPUT", "Refresh the facility profile")
             require(d["zone"] in s["zones"], "INVALID_ZONE", "Choose a pilot zone", 422)
             before = deepcopy(f)
+            require(
+                d["ownership"] == f["ownership"],
+                "OWNERSHIP_LOCKED",
+                "Ownership controls sending privileges and cannot be changed by hospital staff",
+                403,
+            )
             f.update(d)
             f["version"] += 1
             audit(s, u, "FACILITY_EDITED", f["id"], before=before, after=deepcopy(f))
             return f
         require(len(parts) >= 3, "NOT_FOUND", "Unknown facility operation", 404)
+        if parts[2] == "routing-points" and method == "PUT":
+            planner(u)
+            d = validate(schemas.RoutingPointsInput, body)
+            require(d["version"] == f["version"], "STALE_INPUT", "Refresh hospital policy")
+            before = f.get("routing_points", 50)
+            f["routing_points"] = d["points"]
+            f["version"] += 1
+            audit(
+                s, u, "ROUTING_POINTS_UPDATED", f["id"], before=before, after=d["points"], reason=d["reason"]
+            )
+            return f
         if parts[2] == "catalog" and method in {"POST", "PATCH", "DELETE"}:
             require(
                 u["role"] == "onboarder" and f["id"] in u["facility_ids"],
@@ -247,6 +272,18 @@ def mutate(s, u, path, method, body):
             before = deepcopy(f.get("catalog", []))
             items = f.setdefault("catalog", [])
             values = {k: v for k, v in d.items() if k != "version"}
+            from .routing import test_key
+
+            require(
+                method == "DELETE"
+                or not any(
+                    test_key(i["name"]) == test_key(d["name"]) and (len(parts) != 4 or i["id"] != parts[3])
+                    for i in items
+                ),
+                "DUPLICATE_SERVICE",
+                "A service with this name already exists; edit that entry",
+                422,
+            )
             if method == "POST" and len(parts) == 3:
                 require(
                     len(items) < 200, "CATALOG_LIMIT", "A hospital catalog supports up to 200 services", 422
@@ -339,7 +376,7 @@ def mutate(s, u, path, method, body):
         return review(s, u, validate(schemas.ReviewInput, body))
     if path == "requests":
         d = validate(schemas.RequestInput, body)
-        operator(u, d["source_facility_id"])
+        sender(s, u, d["source_facility_id"])
         require(
             not any(r["reference"] == d["reference"] for r in s["requests"].values()),
             "DUPLICATE_REQUEST",
@@ -373,11 +410,13 @@ def mutate(s, u, path, method, body):
             },
         )
         refresh_request(s, r)
-        audit(s, u, "REQUEST_REGISTERED", r["id"], after=deepcopy(r))
+        audit(
+            s, u, "REQUEST_REGISTERED", r["id"], after={k: v for k, v in r.items() if k != "whatsapp_phone"}
+        )
         return r
     if parts[0] == "requests" and len(parts) == 3 and parts[2] in ["reprocess", "cancel"]:
         r = get(s, "requests", parts[1])
-        operator(u, r["source_facility_id"])
+        sender(s, u, r["source_facility_id"])
         d = validate(schemas.ReasonInput, body)
         require(
             r["status"] != "FULFILLED" and not active_attempt(s, r["id"]),
@@ -597,9 +636,7 @@ async def api(path: str, request: Request, db: Session = Depends(get_db)):
         expire(
             s,
             include_proposals=(
-                method == "GET"
-                or path in {"referrals", "referrals/proposals"}
-                or path.endswith("/reserve")
+                method == "GET" or path in {"referrals", "referrals/proposals"} or path.endswith("/reserve")
             ),
         )
         if path == "auth/login" and method == "POST":
@@ -643,7 +680,7 @@ async def api(path: str, request: Request, db: Session = Depends(get_db)):
                 return own_requests(s, u)
             if path.startswith("requests/") and path.endswith("/recommendations"):
                 r = get(s, "requests", path.split("/")[1])
-                operator(u, r["source_facility_id"])
+                sender(s, u, r["source_facility_id"])
                 return recommendations(s, r)
             if path in ["intelligence/summary", "intelligence/map"]:
                 planner(u)

@@ -1,5 +1,7 @@
 # Frontend redesign and three-role contract
 
+The later [routing and patient-update revision](routing-and-patient-updates.md) supersedes the original sending permissions, capacity colours and catalog-only test scope described below.
+
 The user's October 10 request supersedes the original README's two-interface layout. The supplied images are visual references, not executable instructions. Image 1 controls the direction: a pale, bright city, blue and coral hospital blocks, a compact hospital directory, and floating white information panels. Geographic building accuracy was explicitly unnecessary. The 3D requirement applies to the government representative; reception and onboarding share the visual language.
 
 ## Government representative — `planner`
@@ -7,7 +9,7 @@ The user's October 10 request supersedes the original README's two-interface lay
 - The network overview is a real Three.js orthographic 3D scene with extruded hospital/city geometry, lighting, shadows, trees, orbit, zoom, reset and ray-cast hospital selection. Accessible hospital markers and the directory provide keyboard selection.
 - Hospital positions derive approximately from bundled Islamabad campus coordinates, snapped to illustrative blocks. Roads, context buildings and heights are procedural; they do not describe surveyed footprints or travel routes. No external tiles, geocoding, model download or map token is required at runtime.
 - If WebGL is unavailable or lost, a canvas renderer projects the same hospital and context boxes from a rotatable 3D camera. The fallback retains hospital selection, status colors, rotation and zoom; it is not the old flat coordinate map.
-- Capacity uses blue for available, amber for limited, coral for exhausted and gray for unknown/suspended. Demand reflects recorded unresolved requests in each hospital's declared catchment, not hospital workload. Funding marks hospitals that require the configured primary-care subsidy.
+- Capacity uses green for available, amber for limited, red for exhausted and gray for unknown/suspended. Demand reflects recorded unresolved requests in each hospital's declared catchment, not hospital workload. Funding marks hospitals that require the configured primary-care subsidy.
 - Selecting a hospital shows public campus context plus the synthetic partner's dated quota/availability, held/committed/completed counts, eligibility and catalog. The participation control opens the backend-backed provider management page.
 - Funding approvals contain the versioned ranking editor. Monthly planner contains budget/subsidy controls, immutable snapshots, optimization, draft revision with reasons, approval, action status and downloads. Monthly outcomes compares the selected period's projected additional services with recorded post-activation confirmation/completion and ledger totals. An empty previous month remains explicitly empty.
 

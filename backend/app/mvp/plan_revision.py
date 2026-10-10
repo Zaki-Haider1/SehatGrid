@@ -6,6 +6,7 @@ from copy import deepcopy
 from .common import audit, budget_view, get, planner, require, stamp
 from .intelligence import fingerprint
 from .planning import assignment_choices, eligible_resources, solve
+from .routing import test_groups
 
 
 DECISION_FIELDS = (
@@ -87,6 +88,8 @@ def validate_selection(snap, selections, budget):
         }
         for oid in offer_ids
     ]
+    for values, remaining in test_groups(snap, [(1, a) for a in assignments]):
+        require(sum(values) <= remaining, "TEST_CAPACITY_CONFLICT", "Required test daily capacity exceeded")
     subsidy = sum(a["subsidy"] for a in assignments)
     cost = sum(a["cost"] for a in actions) + subsidy
     require(cost <= budget, "BUDGET_EXCEEDED", "Selection exceeds remaining monthly funds")
