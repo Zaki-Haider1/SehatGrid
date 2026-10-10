@@ -307,6 +307,7 @@ Keep request status separate from individual referral attempts so a rejected des
 | Transition | Requirements and effects |
 |---|---|
 | Proposed → Awaiting confirmations | Sending approval; atomic capacity hold; provisional funding hold if needed |
+| Proposed → Expired/cancelled | Stale or ineligible proposal inputs, or sender cancellation; retain attempt history, reopen the request and create no resource effect |
 | Awaiting confirmations → Confirmed | Partner acceptance + patient agreement + applicable funding authorization; convert holds to commitments |
 | Awaiting confirmations → Rejected/expired/cancelled | Record reason; release temporary capacity and funding holds |
 | Confirmed → Arrived | Receiving operator records arrival |
@@ -718,7 +719,8 @@ The following routes are a proposed contract, not evidence of implemented endpoi
 | `POST` | `/api/v1/matching/reviews` | Persist review decision |
 | `GET/POST` | `/api/v1/requests` | List/register scoped requests |
 | `GET` | `/api/v1/requests/{id}/recommendations` | Return feasible ranked options and exclusion reasons |
-| `POST` | `/api/v1/referrals` | Sending approval and temporary holds |
+| `POST` | `/api/v1/referrals` | Persist a sender's `PROPOSED` attempt without holding resources |
+| `POST` | `/api/v1/referrals/{id}/reserve` | Revalidate and advance a proposal to `AWAITING_CONFIRMATIONS` with atomic capacity/funding holds |
 | `POST` | `/api/v1/referrals/{id}/partner-response` | Accept/reject receiving request |
 | `POST` | `/api/v1/referrals/{id}/patient-agreement` | Record agreement/decline |
 | `POST` | `/api/v1/referrals/{id}/funding-approval` | Authorize subsidy within role limits |

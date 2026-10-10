@@ -36,7 +36,6 @@ from .referrals import (
     active_attempt,
     expire,
     recommendations,
-    reserve,
     reserve_proposal,
     propose,
     transition,
@@ -344,7 +343,7 @@ def mutate(s, u, path, method, body):
         audit(s, u, "REQUEST_" + parts[2].upper(), r["id"], reason=d["reason"])
         return r
     if path == "referrals":
-        return reserve(s, u, validate(schemas.ReserveInput, body))
+        return propose(s, u, validate(schemas.ReferralProposalInput, body))
     if path == "referrals/proposals":
         return propose(s, u, validate(schemas.ReferralProposalInput, body))
     if parts[0] == "referrals" and len(parts) == 3:
@@ -507,7 +506,14 @@ async def api(path: str, request: Request, db: Session = Depends(get_db)):
     except (ValueError, TypeError):
         raise HTTPException(422, {"code": "INVALID_INPUT", "message": "Send a valid JSON body"})
     with transaction(db) as s:
-        expire(s)
+        expire(
+            s,
+            include_proposals=(
+                method == "GET"
+                or path in {"referrals", "referrals/proposals"}
+                or path.endswith("/reserve")
+            ),
+        )
         if path == "auth/login" and method == "POST":
             d = validate(schemas.Login, body)
             u = s["users"].get(d["username"])
