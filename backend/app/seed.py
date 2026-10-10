@@ -6,7 +6,6 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from .models import (
-    AllocationPlan,
     AuditEvent,
     BudgetLedgerEntry,
     Capacity,
@@ -44,6 +43,25 @@ def load_seed_fixture():
     return json.loads(SEED_FIXTURE_PATH.read_text(encoding="utf-8"))
 
 
+def _owned_public_ids(fixture):
+    request_count = sum(cohort["count"] for cohort in fixture["cohorts"])
+    review_ids = [
+        "MATCH-DEMO-REVIEW-PRIMARY-CARE-OUTPATIENT",
+        "MATCH-DEMO-REVIEW-PRIMARY-CARE",
+        "MATCH-DEMO-REVIEW-UNSUPPORTED",
+        "MATCH-DEMO-EXAMPLE-CANDIDATE",
+        "MATCH-DEMO-EXAMPLE-UNSUPPORTED",
+    ]
+    return {
+        "facilities": [provider["public_id"] for provider in fixture["providers"]]
+        + [fixture["unknown_source"]["public_id"]],
+        "requests": [f"REQ-DEMO-{index:03}" for index in range(1, request_count + 1)]
+        + [f"REQ-EXC-{item['key']}" for item in fixture["exclusions"]],
+        "match_reviews": review_ids,
+        "offers": [f"OFFER-DEMO-{name.upper()}" for name in fixture["offers"]],
+    }
+
+
 def reset_seed(session: Session, day, clock, fixture=None):
     """Remove only this fixture's demo rows; preserve legacy and unrelated records."""
     fixture = fixture or load_seed_fixture()
@@ -52,13 +70,12 @@ def reset_seed(session: Session, day, clock, fixture=None):
         return False
 
     provider_ids = [provider["public_id"] for provider in fixture["providers"]]
-    fixture_facility_ids = provider_ids + [fixture["unknown_source"]["public_id"]]
+    owned_public_ids = metadata.metadata_json.get("owned_public_ids") or _owned_public_ids(fixture)
+    fixture_facility_ids = owned_public_ids["facilities"]
     facility_ids = select(Facility.id).where(Facility.public_id.in_(fixture_facility_ids))
-    request_ids = select(CareRequest.id).where(
-        (CareRequest.public_id.like("REQ-DEMO-%")) | (CareRequest.public_id.like("REQ-EXC-%"))
-    )
+    request_ids = select(CareRequest.id).where(CareRequest.public_id.in_(owned_public_ids["requests"]))
     capacity_ids = select(Capacity.id).where(Capacity.facility_id.in_(facility_ids))
-    offer_ids = select(Offer.id).where(Offer.public_id.like("OFFER-DEMO-%"))
+    offer_ids = select(Offer.id).where(Offer.public_id.in_(owned_public_ids["offers"]))
     budget_id = metadata.metadata_json.get("monthly_budget_id")
     service_id = session.scalar(select(Service.id).where(Service.code == fixture["service"]["code"]))
     subsidy_id = session.scalar(select(SubsidyRule.id).where(SubsidyRule.public_id == "SUBSIDY-DEMO-001"))
@@ -99,14 +116,8 @@ def reset_seed(session: Session, day, clock, fixture=None):
             "user-facility, or audit activity references the demo fixture."
         )
 
-    session.execute(delete(PlanAction).where(PlanAction.public_id.like("ACTION-DEMO-%")))
-    session.execute(delete(AllocationPlan).where(AllocationPlan.public_id.like("PLAN-DEMO-%")))
-    session.execute(delete(CapacityReservation).where(CapacityReservation.public_id.like("RES-DEMO-%")))
-    session.execute(delete(ReferralAttempt).where(ReferralAttempt.public_id.like("ATTEMPT-DEMO-%")))
-    session.execute(delete(MatchReview).where(MatchReview.public_id.like("MATCH-DEMO-%")))
-    session.execute(delete(CareRequest).where(
-        (CareRequest.public_id.like("REQ-DEMO-%")) | (CareRequest.public_id.like("REQ-EXC-%"))
-    ))
+    session.execute(delete(MatchReview).where(MatchReview.public_id.in_(owned_public_ids["match_reviews"])))
+    session.execute(delete(CareRequest).where(CareRequest.public_id.in_(owned_public_ids["requests"])))
     capacity_ids = select(Capacity.id).where(
         Capacity.origin_type == "synthetic", Capacity.facility_id.in_(facility_ids)
     )
@@ -117,10 +128,10 @@ def reset_seed(session: Session, day, clock, fixture=None):
     session.execute(delete(FacilityParticipationEvent).where(
         FacilityParticipationEvent.facility_id.in_(select(Facility.id).where(Facility.public_id.in_(provider_ids)))
     ))
-    demo_offers = select(Offer.id).where(Offer.public_id.like("OFFER-DEMO-%"))
+    demo_offers = select(Offer.id).where(Offer.public_id.in_(owned_public_ids["offers"]))
     session.execute(delete(MobileUnitOffer).where(MobileUnitOffer.offer_id.in_(demo_offers)))
     session.execute(delete(PartnerQuotaOffer).where(PartnerQuotaOffer.offer_id.in_(demo_offers)))
-    session.execute(delete(Offer).where(Offer.public_id.like("OFFER-DEMO-%")))
+    session.execute(delete(Offer).where(Offer.public_id.in_(owned_public_ids["offers"])))
     session.execute(delete(SubsidyRule).where(SubsidyRule.public_id == "SUBSIDY-DEMO-001"))
     if budget_id is not None:
         session.execute(delete(MonthlyBudget).where(MonthlyBudget.id == budget_id))
@@ -131,7 +142,7 @@ def reset_seed(session: Session, day, clock, fixture=None):
     return True
 
 
-def _review_rows(fixture):
+def _review_rows(fixture, clock):
     canonical_code = fixture["service"]["code"]
     review_ids = {
         "AFFORDABILITY": "MATCH-DEMO-REVIEW-PRIMARY-CARE-OUTPATIENT",
@@ -148,7 +159,7 @@ def _review_rows(fixture):
             model_id="manual-seed-review", model_revision=fixture["seed_version"],
             policy_version="manual-review", candidates=[], decision="ACCEPTED",
             selected_canonical_id=canonical_code, reviewer_actor_id="USR-PLANNER-01",
-            reviewed_at=None, origin_type="synthetic",
+            reviewed_at=clock, origin_type="synthetic",
         )
         for public_id, original in (
             ("MATCH-DEMO-REVIEW-PRIMARY-CARE-OUTPATIENT", "primary care outpatient"),
@@ -260,7 +271,7 @@ def seed(session: Session, day, *, clock=None, reset=False):
             origin_type="synthetic", retrieved_at=report_time, review_status="SYNTHETIC",
         ))
 
-    review_records, review_ids = _review_rows(fixture)
+    review_records, review_ids = _review_rows(fixture, clock)
     session.add_all(review_records)
     session.flush()
 
@@ -348,6 +359,7 @@ def seed(session: Session, day, *, clock=None, reset=False):
             "unresolved_cohorts": {row["name"]: row["count"] for row in fixture["cohorts"]},
             "budget_pkr": fixture["monthly_budget_pkr"], "monthly_budget_id": budget.id,
             "fixture_path": str(SEED_FIXTURE_PATH.name),
+            "owned_public_ids": _owned_public_ids(fixture),
         },
     ))
     session.commit()

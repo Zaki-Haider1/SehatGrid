@@ -95,6 +95,8 @@ def test_default_seed_is_narrow_and_repeatable(empty_session):
     assert all(reviews[request.service_review_id].decision == "ACCEPTED" for request in requests)
     assert all(reviews[request.service_review_id].selected_canonical_id == "PRIMARY_CARE_OPD" for request in requests)
     assert {reviews[request.service_review_id].model_id for request in requests} == {"manual-seed-review"}
+    assert {reviews[request.service_review_id].reviewed_at.replace(tzinfo=timezone.utc)
+            for request in requests} == {DEMO_CLOCK}
 
     counts = {
         table: session.scalar(select(func.count()).select_from(table))
@@ -251,7 +253,7 @@ def test_explicit_reset_seeds_demo_even_when_database_has_only_unrelated_rows(em
 
 
 def test_candidate_mobile_offers_can_overlap_without_activation_semantics(empty_session):
-    from app.models import MobileUnitOffer, Offer, Service
+    from app.models import CareRequest, MatchReview, MobileUnitOffer, Offer, Service
 
     session = empty_session
     day = date(2026, 10, 10)
@@ -267,7 +269,22 @@ def test_candidate_mobile_offers_can_overlap_without_activation_semantics(empty_
     session.flush()
     session.add(MobileUnitOffer(offer_id=second_offer.id, mobile_unit_id="MOBILE-DEMO-01",
                                 site_zone_id="West", service_date=day))
+    service_review = MatchReview(
+        public_id="MATCH-DEMO-ALT-CANDIDATE", match_kind="SERVICE",
+        original_input="alternate candidate", model_id="test-candidate", model_revision="test-v1",
+        policy_version="test-only", candidates=[], decision="NEEDS_REVIEW", origin_type="synthetic",
+    )
+    prefixed_request = CareRequest(
+        public_id="REQ-DEMO-ALT-CANDIDATE", reference="SG-ALT-CANDIDATE",
+        service_id=service.id, zone="West", zone_id="West", day=day,
+        priority="routine", status="pending", origin_type="synthetic",
+    )
+    session.add_all([service_review, prefixed_request])
     session.commit()
     assert session.scalar(select(func.count()).select_from(MobileUnitOffer).where(
         MobileUnitOffer.mobile_unit_id == "MOBILE-DEMO-01", MobileUnitOffer.service_date == day,
     )) == 2
+    seed(session, day, clock=DEMO_CLOCK, reset=True)
+    assert session.get(Offer, second_offer.id) is not None
+    assert session.get(MatchReview, service_review.id) is not None
+    assert session.get(CareRequest, prefixed_request.id) is not None

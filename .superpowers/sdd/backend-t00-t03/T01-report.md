@@ -131,3 +131,43 @@ Result: **62 passed** and **All checks passed!** Existing Starlette and Alembic 
 ### Round 1 files and limits
 
 Added `data/seed/primary-care-demo-v1.json`, `backend/tests/test_seed_cli.py`, and updates to `backend/app/seed.py`, `backend/app/seed_cli.py`, `backend/app/main.py`, `backend/app/models.py`, migration/seed/workflow tests, `backend/Dockerfile`, `docker-compose.yml`, `backend/railway.toml`, and `docs/deployment.md`. The seed CLI requires the explicit pair `--reset --disposable-demo` for destructive demo reset and accepts an injected day and timezone-aware clock. Reset now rebuilds only fixture-owned rows, preserves unrelated records, and refuses linked application activity before any delete. The primary migration downgrade still has deferred placeholders and was not run as an acceptance gate.
+
+## Review round 2
+
+The second review raised three remaining Important findings. Reset used broad public-ID prefixes and could delete prefixed records added after the seed; accepted manual reviews carried no review timestamp; CI ran the root-copying Dockerfile with a backend-only build context.
+
+### RED evidence
+
+Before the fixes, the focused regressions failed in all three places:
+
+```powershell
+.venv/Scripts/python -m pytest backend/tests/test_seed.py::test_default_seed_is_narrow_and_repeatable backend/tests/test_seed.py::test_candidate_mobile_offers_can_overlap_without_activation_semantics backend/tests/test_workflows.py::test_ci_container_build_uses_repository_root_context -q
+```
+
+Result: **3 failed**. The accepted-review assertion found `reviewed_at=None`; the reset removed `OFFER-DEMO-MOBILE-ALT`; and the CI assertion found the old `docker build -t sehat-grid-api .` invocation.
+
+### Fixes and focused verification
+
+Reset now records exact fixture-owned facility/request/review/offer IDs in seed metadata and uses those IDs for deletes and activity checks. It no longer deletes arbitrary prefixed plans, actions, reservations, or attempts that this seed does not create. The prefixed candidate offer, request, and match review are all asserted to survive a reset. Accepted manual reviews use the injected seed clock for `reviewed_at`, and tests normalize SQLite's naive datetime representation when comparing it. CI's build step overrides the backend default working directory to the repository root and supplies `-f backend/Dockerfile`.
+
+Focused verification:
+
+```powershell
+.venv/Scripts/python -m pytest backend/tests/test_seed.py::test_default_seed_is_narrow_and_repeatable backend/tests/test_seed.py::test_candidate_mobile_offers_can_overlap_without_activation_semantics backend/tests/test_workflows.py::test_ci_container_build_uses_repository_root_context backend/tests/test_workflows.py::test_demo_reset_refuses_linked_activity_atomically -q
+```
+
+Result: **4 passed**. The exact CI-equivalent image build also passed from the repository root:
+
+```powershell
+docker build -f backend/Dockerfile -t akon-t01-seed-smoke-round2 .
+```
+
+### Final gates
+
+```powershell
+$env:TEST_DATABASE_URL='<isolated PostgreSQL test URL>'
+.venv/Scripts/python -m pytest -q backend/tests
+.venv/Scripts/ruff.exe check backend
+```
+
+Result: **63 passed** across SQLite and PostgreSQL, including the fresh/upgrade Alembic checks and `command.check`; **All checks passed!** Ruff passed. Existing Starlette/Alembic deprecation notices and unnamed legacy-check SQLite batch warnings remain. The schema downgrade remains deferred as requested.

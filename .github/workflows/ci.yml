@@ -34,7 +34,8 @@ jobs:
       - run: alembic check
       - run: pytest -q
       - name: Build deployment container
-        run: docker build -t sehat-grid-api .
+        working-directory: .
+        run: docker build -f backend/Dockerfile -t sehat-grid-api .
       - name: Boot deployment container against PostgreSQL
         run: |
           docker run -d --name sehat-grid-api --network host -e DATABASE_URL -e SEED_ON_START=true sehat-grid-api

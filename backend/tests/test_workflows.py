@@ -1,6 +1,16 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
+from pathlib import Path
 from app.main import today
+
+
+def test_ci_container_build_uses_repository_root_context():
+    workflow = Path(__file__).resolve().parents[2] / ".github" / "workflows" / "ci.yml"
+    assert (
+        "      - name: Build deployment container\n"
+        "        working-directory: .\n"
+        "        run: docker build -f backend/Dockerfile -t sehat-grid-api ."
+    ) in workflow.read_text(encoding="utf-8")
 
 
 def new_request(api, service_id=1, zone="Central", priority="routine"):
