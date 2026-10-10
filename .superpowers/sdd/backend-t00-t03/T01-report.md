@@ -171,3 +171,44 @@ $env:TEST_DATABASE_URL='<isolated PostgreSQL test URL>'
 ```
 
 Result: **63 passed** across SQLite and PostgreSQL, including the fresh/upgrade Alembic checks and `command.check`; **All checks passed!** Ruff passed. Existing Starlette/Alembic deprecation notices and unnamed legacy-check SQLite batch warnings remain. The schema downgrade remains deferred as requested.
+
+## Review round 3
+
+The third review found that reset still selected some demo facilities, service links, participation events, capacities, and zones by broad ownership assumptions. Reset now records exact internal primary keys for every row the fixture creates, including capacity rows by date, and deletes only those manifested IDs. If metadata from an older seed lacks a complete manifest, reset returns a controlled conflict without guessing. Before deleting any owned parent, reset checks for non-owned facility/service/capacity dependencies, user scopes, referrals/reservations/attempts, budgets/ledger entries, offers, audit references, zone scopes, and plan/snapshot references; a conflict leaves metadata and fixture rows untouched.
+
+### RED evidence
+
+The first focused run after the safety guards returned the expected HTTP 409 but exposed two test setup/assertion problems: the provider-child test compared `Zone.id` with `zone_id`, and the linked-history test expected one specific conflict phrase even though the new generic dependency guard correctly returned a controlled conflict. The test setup also needed pre-existing shared fixture zones so legacy workflow rows did not accidentally depend on zones owned by this demo seed. These were corrected without weakening the reset guards. The first Ruff pass found one unused `or_` import introduced during implementation; it was removed.
+
+Initial Round 3 focused command:
+
+```powershell
+.venv/Scripts/python -m pytest backend/tests/test_seed.py backend/tests/test_workflows.py -k "reset or seed" -q
+```
+
+Result: **5 passed, 2 failed**. One test asserted the wrong Zone key, while the other asserted a specific refusal phrase; both had HTTP 409 as intended. A follow-up run was still blocked because legacy test facilities referenced zones the seed had just created. The tests now pre-create shared fixture zones and verify the persisted values after reset.
+
+### GREEN evidence
+
+Focused reset and seed regressions:
+
+```powershell
+$env:TEST_DATABASE_URL='<isolated PostgreSQL test URL>'
+.venv/Scripts/python -m pytest backend/tests/test_seed.py backend/tests/test_workflows.py -k "reset or seed" -q
+```
+
+Result: **23 passed, 35 deselected** across SQLite and PostgreSQL. Coverage includes exact manifest ownership, repeated seed/reset, refusal when persisted metadata lacks the manifest, unrelated same-label zone survival, candidate rows sharing public-ID prefixes, linked legacy activity, and atomic HTTP 409 when non-owned provider capacity on another date, facility-service, participation event, zone, and user scope depend on seeded parents.
+
+Final suite and lint after the reset changes:
+
+```powershell
+$env:TEST_DATABASE_URL='<isolated PostgreSQL test URL>'
+.venv/Scripts/python -m pytest -q backend/tests
+.venv/Scripts/ruff.exe check backend
+```
+
+Result: **67 passed** across SQLite and PostgreSQL; fresh and populated Alembic upgrades preserve legacy IDs/history and `alembic.command.check` reports no model/schema drift. Ruff: **All checks passed!** `git diff --check` passed. Existing Starlette/Alembic deprecation notices and SQLite warnings about unnamed legacy check constraints during batch recreation remain.
+
+### Round 3 files and limits
+
+Updated `backend/app/seed.py`, `backend/tests/test_seed.py`, and `backend/tests/test_workflows.py`. Reset intentionally refuses older seed metadata without exact membership rather than attempting an unsafe best-effort cleanup. Downgrade placeholders remain deferred and were not run, as directed.

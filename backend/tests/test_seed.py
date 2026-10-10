@@ -1,6 +1,7 @@
 from datetime import date, datetime, timezone
 
 from sqlalchemy import func, select
+import pytest
 
 from app import models
 from app.seed import load_seed_fixture, seed
@@ -58,6 +59,22 @@ def test_default_seed_is_narrow_and_repeatable(empty_session):
     assert session.scalar(select(MonthlyBudget.total_pkr)) == 25_000
     assert session.scalar(select(func.count()).select_from(SeedMetadata)) == 1
     assert session.scalar(select(SeedMetadata.seed_clock)).replace(tzinfo=timezone.utc) == DEMO_CLOCK
+    ownership = session.scalar(select(SeedMetadata.metadata_json))["owned_row_ids"]
+    assert set(ownership) == {
+        "zones", "facilities", "services", "facility_services", "participation_events",
+        "capacities", "care_requests", "match_reviews", "offers", "partner_quota_offers",
+        "mobile_unit_offers", "subsidy_rules", "monthly_budgets",
+    }
+    for table, model_name in {
+        "zones": "Zone", "facilities": "Facility", "services": "Service",
+        "facility_services": "FacilityService", "participation_events": "FacilityParticipationEvent",
+        "capacities": "Capacity", "care_requests": "CareRequest", "match_reviews": "MatchReview",
+        "offers": "Offer", "partner_quota_offers": "PartnerQuotaOffer",
+        "mobile_unit_offers": "MobileUnitOffer", "subsidy_rules": "SubsidyRule",
+        "monthly_budgets": "MonthlyBudget",
+    }.items():
+        model = entity(model_name)
+        assert set(ownership[table]) == set(session.scalars(select(model.id)).all())
     assert session.scalar(select(func.count()).select_from(AuditEvent)) == 0
     assert session.scalar(select(func.count()).select_from(AllocationPlan)) == 0
     assert session.scalar(select(func.count()).select_from(Budget)) == 0
@@ -198,7 +215,20 @@ def test_explicit_seed_reset_rebuilds_only_seed_owned_demo_rows(empty_session):
     MonthlyBudget = entity("MonthlyBudget")
     Service = entity("Service")
     CapacityReservation = entity("CapacityReservation")
+    shared_service = Service(
+        name="Primary care outpatient", display_name="Primary care outpatient",
+        code="PRIMARY_CARE_OPD", aliases="primary care outpatient general consultation opd",
+        unit_cost=1_000, origin_type="legacy", origin_label="shared catalog",
+    )
+    session.add(shared_service)
+    session.flush()
     seed(session, date(2026, 10, 10), clock=DEMO_CLOCK)
+    same_label_zone = entity("Zone")(
+        zone_id="Extra Synthetic Zone", display_name="Independent synthetic zone",
+        latitude=33.7, longitude=73.0, origin_type="synthetic", origin_label="SEHAT GRID demo",
+    )
+    session.add(same_label_zone)
+    session.flush()
     unrelated_facility = Facility(
         name="Unrelated Facility", zone="Legacy", kind="Clinic", latitude=1, longitude=1,
         public_id="FAC-UNRELATED", ownership=None, participation_status="PENDING", origin_type="legacy",
@@ -233,11 +263,33 @@ def test_explicit_seed_reset_rebuilds_only_seed_owned_demo_rows(empty_session):
     assert session.get(MonthlyBudget, unrelated_budget.id) is not None
     assert session.get(MonthlyBudget, unrelated_budget.id).committed_pkr == 5_000
     assert session.get(Facility, unrelated_facility.id) is not None
+    assert session.get(entity("Zone"), same_label_zone.id) is not None
     assert session.get(CareRequest, unrelated_request.id) is not None
     assert session.scalar(select(func.count()).select_from(entity("Referral")).where(
         entity("Referral").request_id == unrelated_request.id,
     )) == 1
     assert session.scalar(select(func.count()).select_from(CapacityReservation)) == 0
+
+
+def test_reset_refuses_older_seed_metadata_without_exact_row_ownership(empty_session):
+    from app.models import SeedMetadata
+    from app.seed import DemoResetConflict
+
+    session = empty_session
+    seed(session, date(2026, 10, 10), clock=DEMO_CLOCK)
+    metadata = session.scalar(select(SeedMetadata))
+    metadata.metadata_json = {
+        key: value for key, value in metadata.metadata_json.items() if key != "owned_row_ids"
+    }
+    session.commit()
+    session.expire_all()
+    metadata = session.scalar(select(SeedMetadata))
+    assert "owned_row_ids" not in metadata.metadata_json
+    with pytest.raises(DemoResetConflict, match="ownership manifest"):
+        seed(session, date(2026, 10, 11), clock=DEMO_CLOCK, reset=True)
+    assert session.scalar(select(func.count()).select_from(entity("Facility"))) == 9
+    assert session.scalar(select(func.count()).select_from(entity("CareRequest"))) == 24
+    assert session.get(SeedMetadata, metadata.id) is not None
 
 
 def test_explicit_reset_seeds_demo_even_when_database_has_only_unrelated_rows(empty_session):
@@ -257,8 +309,18 @@ def test_candidate_mobile_offers_can_overlap_without_activation_semantics(empty_
 
     session = empty_session
     day = date(2026, 10, 10)
+    service = Service(
+        name="Primary care outpatient", display_name="Primary care outpatient",
+        code="PRIMARY_CARE_OPD", aliases="primary care outpatient general consultation opd",
+        unit_cost=1_000, origin_type="synthetic", origin_label="pre-existing shared service",
+        review_status="SYNTHETIC",
+    )
+    session.add(service)
+    session.flush()
+    for zone in load_seed_fixture()["zones"]:
+        session.add(entity("Zone")(**zone, origin_type="synthetic", origin_label="shared catalog"))
+    session.flush()
     seed(session, day, clock=DEMO_CLOCK)
-    service = session.scalar(select(Service).where(Service.code == "PRIMARY_CARE_OPD"))
     second_offer = Offer(
         public_id="OFFER-DEMO-MOBILE-ALT", offer_type="MOBILE_UNIT", service_id=service.id,
         start_date=day, end_date=day, units=5, eligible_zone_ids=["West"], cost_pkr=10_000,

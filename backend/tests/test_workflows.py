@@ -271,12 +271,16 @@ def test_enabled_demo_reset_preserves_legacy_rows(client, monkeypatch):
 def test_demo_reset_refuses_linked_activity_atomically(client, monkeypatch):
     from sqlalchemy import select
     from app.main import settings
-    from app.models import Capacity, CareRequest, Facility, Referral, SeedMetadata
-    from app.seed import seed
+    from app.models import Capacity, CareRequest, Facility, Referral, SeedMetadata, Zone
+    from app.seed import load_seed_fixture, seed
 
     api, factory = client
     monkeypatch.setattr(settings, "enable_demo_reset", True)
     with factory() as session:
+        for row in load_seed_fixture()["zones"]:
+            if session.scalar(select(Zone.id).where(Zone.zone_id == row["zone_id"])) is None:
+                session.add(Zone(**row, origin_type="synthetic", origin_label="shared existing"))
+        session.flush()
         seed(session, today(), reset=True)
         request = session.scalar(select(CareRequest).where(CareRequest.public_id == "REQ-DEMO-001"))
         capacity = session.scalar(select(Capacity).where(Capacity.origin_type == "synthetic"))
@@ -303,13 +307,97 @@ def test_demo_reset_refuses_linked_activity_atomically(client, monkeypatch):
 
     response = api.post("/api/demo/reset?confirm=RESET_SYNTHETIC_DATA")
     assert response.status_code == 409, response.text
-    assert "persisted" in response.json()["detail"]
+    assert "Reset was refused" in response.json()["detail"]
     with factory() as session:
         assert session.get(Referral, activity_id) is not None
         assert session.get(CareRequest, demo_request_id) is not None
         assert session.get(CareRequest, unrelated_request_id) is not None
         assert session.get(Capacity, demo_capacity_id) is not None
         assert demo_facility_ids <= set(session.scalars(select(Facility.id)).all())
+        assert session.scalar(select(SeedMetadata.id)) is not None
+
+
+def test_demo_reset_refuses_unowned_provider_children_atomically(client, monkeypatch):
+    from datetime import timedelta
+    from sqlalchemy import select
+    from app.main import settings
+    from app.models import (
+        Capacity,
+        Facility,
+        FacilityParticipationEvent,
+        FacilityService,
+        SeedMetadata,
+        Service,
+        User,
+        UserFacility,
+        Zone,
+    )
+    from app.seed import load_seed_fixture, seed
+
+    api, factory = client
+    monkeypatch.setattr(settings, "enable_demo_reset", True)
+    with factory() as session:
+        for row in load_seed_fixture()["zones"]:
+            if session.scalar(select(Zone.id).where(Zone.zone_id == row["zone_id"])) is None:
+                session.add(Zone(**row, origin_type="synthetic", origin_label="shared existing"))
+        session.flush()
+        seed(session, today(), reset=True)
+        facility = session.scalar(select(Facility).where(Facility.public_id == "FAC-P01"))
+        primary_service = session.scalar(select(Service).where(Service.code == "PRIMARY_CARE_OPD"))
+        extra_service = Service(
+            name="Unrelated Demo Facility Service", aliases="other", unit_cost=1_500,
+            code="UNRELATED-DEMO-SERVICE", display_name="Unrelated Demo Facility Service",
+            origin_type="legacy", origin_label="unrelated",
+        )
+        extra_capacity = Capacity(
+            facility_id=facility.id, service_id=primary_service.id,
+            day=today() + timedelta(days=7), total=1, reserved=0, consumed=0,
+            origin_type="legacy",
+        )
+        extra_event = FacilityParticipationEvent(
+            facility_id=facility.id, status="SUSPENDED", version=2,
+            reason="Independent operator action",
+            origin_type="legacy",
+        )
+        extra_zone = Zone(
+            zone_id="Synthetic Extra", display_name="Unrelated synthetic zone",
+            latitude=33.7, longitude=73.0, origin_type="synthetic", origin_label="SEHAT GRID demo",
+        )
+        scoped_user = User(
+            public_id="USR-EXTRA-SCOPE", username="extra-scope", role="OPERATOR", active=True,
+        )
+        session.add_all([extra_service, extra_capacity, extra_event, extra_zone, scoped_user])
+        session.flush()
+        extra_facility_service = FacilityService(
+            facility_id=facility.id, service_id=extra_service.id, active=True,
+            eligible_zone_ids=["Central"], suitability_restrictions=[],
+            review_id="UNRELATED-SERVICE-REVIEW", version=1,
+        )
+        user_scope = UserFacility(user_id=scoped_user.id, facility_id=facility.id)
+        session.add_all([extra_facility_service, user_scope])
+        session.commit()
+        ids = {
+            "facility": facility.id,
+            "service": extra_service.id,
+            "capacity": extra_capacity.id,
+            "event": extra_event.id,
+            "zone": extra_zone.id,
+            "user_scope": user_scope.id,
+        }
+
+    response = api.post("/api/demo/reset?confirm=RESET_SYNTHETIC_DATA")
+    assert response.status_code == 409, response.text
+    assert "non-owned" in response.json()["detail"].lower()
+    with factory() as session:
+        assert session.get(Facility, ids["facility"]) is not None
+        assert session.get(Service, ids["service"]) is not None
+        assert session.get(Capacity, ids["capacity"]) is not None
+        assert session.get(FacilityParticipationEvent, ids["event"]) is not None
+        assert session.get(Zone, ids["zone"]) is not None
+        assert session.get(UserFacility, ids["user_scope"]) is not None
+        assert session.scalar(select(FacilityService.id).where(
+            FacilityService.facility_id == ids["facility"], FacilityService.service_id == ids["service"],
+        )) is not None
         assert session.scalar(select(SeedMetadata.id)) is not None
 
 
