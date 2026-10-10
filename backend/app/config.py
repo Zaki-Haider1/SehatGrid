@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     demo_mode: bool = True
     jwt_secret: str = ""
     demo_password: str = ""
+    ai_api_key: str = ""
+    ai_model: str = "qwen/qwen3.8-27b"
     capacity_freshness_minutes: int = 1440
     referral_hold_minutes: int = 30
     cancellation_cutoff_local: str = "09:00"

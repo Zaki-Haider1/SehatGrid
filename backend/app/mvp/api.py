@@ -625,6 +625,25 @@ def export_plan(s, p):
     }
 
 
+@app.post("/api/v1/ai/planning-advice")
+def planning_advice(body: dict, request: Request, db: Session = Depends(get_db)):
+    from .planning import solve
+    from .ai_advisor import advise
+    question = str(body.get("question", "Where should we allocate resources next?"))
+    require(len(question) <= 1500, "INVALID_INPUT", "Keep the question under 1,500 characters", 422)
+    with transaction(db) as s:
+        u = authenticate(s, request.headers.get("Authorization", ""))
+        planner(u)
+        month = validate(schemas.MonthInput, {"month": body.get("month", s["service_date"][:7])})["month"]
+        expire(s)
+        snap = deepcopy(snapshot(s, u, month))
+    remaining = max(0, int((snap["summary"].get("budget") or {}).get("remaining", 0)))
+    allocation = solve(snap, remaining)
+    # Send aggregate evidence only, never patient records or contact details.
+    evidence = {"month": month, "remaining_budget_pkr": remaining, "eligible_requests": len(snap["requests"]), "excluded": snap["excluded"], "solver_status": allocation["status"], "projected_coverage": allocation["coverage"], "cost_pkr": allocation["cost"], "selected_offers": [{k: v for k, v in snap["inputs"]["offers"][offer_id].items() if k in {"id", "kind", "facility_id", "date", "cost", "quantity", "zone"}} for offer_id in allocation["offer_ids"]], "subsidized_requests": sum(1 for a in allocation["assignments"] if a.get("subsidy", 0) > 0)}
+    return {"model": settings.ai_model, "snapshot_id": snap["id"], "input_hash": snap["input_hash"], "evidence": evidence, "allocation": allocation, "advice": advise(settings, evidence, question), "preview_only": True}
+
+
 @app.api_route("/api/v1/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
 async def api(path: str, request: Request, db: Session = Depends(get_db)):
     method = request.method

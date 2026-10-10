@@ -40,6 +40,8 @@ import { MonthlyOutcomes } from "@/components/monthly-outcomes";
 import { Dialog } from "@/components/dialog";
 import { PlanRevision } from "@/components/plan-revision";
 import { GuidedDemo } from "@/components/guided-demo";
+import { DemoCredentials, DEMO_PASSWORD } from "@/components/demo-credentials";
+import { AIPlanner } from "@/components/ai-planner";
 import {
   AllocationDecisionTrace,
   MatchDecisionTrace,
@@ -161,6 +163,7 @@ function Card({
   );
 }
 export default function Home() {
+  const [demoAccount, setDemoAccount] = useState("");
   const [ranking, setRanking] = useState<RankingPolicy | null>(null);
   const [revisionPlan, setRevisionPlan] = useState<Plan | null>(null);
   const [reasonAction, setReasonAction] = useState<{
@@ -323,6 +326,7 @@ export default function Home() {
           <small>
             Synthetic demonstration · no patient login · no real payments
           </small>
+          <a className="login-guide-link" href="/guide">First visit? How SEHAT GRID works →</a>
           <div className="login-city" aria-hidden="true">
             {Array.from({ length: 24 }, (_, i) => (
               <i
@@ -365,6 +369,7 @@ export default function Home() {
             </>
           ) : (
             <Form
+              key={demoAccount || "manual-login"}
               busy={busy}
               onSubmit={login}
               submit="Sign in"
@@ -372,11 +377,13 @@ export default function Home() {
                 {
                   name: "username",
                   label: "Username",
+                  value: demoAccount,
                   autoComplete: "username",
                 },
                 {
                   name: "password",
                   label: "Password",
+                  value: demoAccount ? DEMO_PASSWORD : "",
                   type: "password",
                   autoComplete: "current-password",
                 },
@@ -384,6 +391,7 @@ export default function Home() {
             />
           )}
           <small>Use the password configured for this deployment.</small>
+          <DemoCredentials choose={setDemoAccount} />
         </div>
       </main>
     );
@@ -581,6 +589,7 @@ export default function Home() {
         <div className="header-scope">
           Islamabad <span> / </span> Primary-care pilot
         </div>
+        <a className="workspace-guide-link" href="/guide" target="_blank" rel="noreferrer">How it works ↗</a>
         <div className="account">
           <span>
             {own[0] &&
@@ -1536,8 +1545,8 @@ export default function Home() {
                         },
                       ]}
                       onSubmit={({ required_tests_text, ...d }) =>
-                        run(() =>
-                          mutate("requests", {
+                        run(async () => {
+                          const created = await mutate("requests", {
                             ...d,
                             required_tests: String(required_tests_text || "")
                               .split(",")
@@ -1545,8 +1554,11 @@ export default function Home() {
                               .filter(Boolean),
                             original_text: description,
                             review_id: reviewId || null,
-                          }),
-                        )
+                          }) as CareRequest;
+                          setRequest(created);
+                          const result = await api<RecommendationResult>(`requests/${created.id}/recommendations`, token);
+                          setOptions(result.candidates); setReasons(result.reasons); setRecommendationResult(result);
+                        }, "Request registered. Eligible destinations have been suggested automatically.")
                       }
                     />
                   </Card>
@@ -2141,6 +2153,7 @@ export default function Home() {
                       </details>
                     </Card>
                     <Card title="Compute an allocation">
+                      <AIPlanner token={token} month={planningMonth} revision={JSON.stringify([state.requests.map(r => [r.id, r.status]), state.plans.map(p => [p.id, p.status]), state.summary?.budget?.remaining])} />
                       <span className="eyebrow">
                         SUBSIDY + PARTNER QUOTA + MOBILE CLINIC
                       </span>
