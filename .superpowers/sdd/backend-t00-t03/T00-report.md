@@ -62,6 +62,16 @@ from the repository root. This was a fixture consistency check, not a solver
 execution or application test. The legacy test suite and Ruff were not rerun
 because these follow-up changes only alter JSON fixtures and docs.
 
+## Second review follow-up
+
+The login actor contract now returns `facility_ids: string[]` for all assigned
+facilities, supports multiple operator assignments, and does not require an
+active facility selection. A focused JSON identity check parsed all six
+fixtures and verified the login actor's role/ID fields, string-list type, and
+absence of the singular `facility_id` field. Result: **PASS**. No application
+tests or Ruff were rerun; this round changes only the login DTO documentation
+and fixture.
+
 ## Limits
 
 The contracts are target specifications, not implemented endpoints or

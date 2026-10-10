@@ -65,8 +65,10 @@ All DTOs below describe target v1; JSON examples are in `data/contracts/`.
 **Authentication** `POST /auth/login` accepts `{ "username": string,
 "password": string }` and returns `{ "access_token": string,
 "token_type": "bearer", "expires_at": UTC timestamp, "actor": { "actor_id":
-string, "role": "OPERATOR" | "PLANNER", "facility_id": string | null } }`.
-Password material is never returned.
+string, "role": "OPERATOR" | "PLANNER", "facility_ids": string[] } }`.
+`facility_ids` lists every facility assigned to the actor and may contain more
+than one ID; it may be empty for a planner. There is no required active-facility
+selection in the login response. Password material is never returned.
 
 **Facility directory** responses include `facility_id: string`,
 `display_name: string`, `ownership: "PUBLIC" | "PRIVATE"`, `zone_id: string`,

@@ -9,7 +9,7 @@
         "access_token": "example-token-not-valid",
         "token_type": "bearer",
         "expires_at": "2026-10-10T17:00:00Z",
-        "actor": {"actor_id": "USR-OPERATOR-P03", "role": "OPERATOR", "facility_id": "FAC-P03"}
+        "actor": {"actor_id": "USR-OPERATOR-P03", "role": "OPERATOR", "facility_ids": ["FAC-P03", "FAC-P08"]}
       }
     },
     "facilities_list": {
