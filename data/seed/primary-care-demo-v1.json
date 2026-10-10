@@ -1,0 +1,53 @@
+{
+  "seed_key": "islamabad-primary-care-v1",
+  "seed_version": "1",
+  "declared_timezone": "Asia/Karachi",
+  "service": {
+    "code": "PRIMARY_CARE_OPD",
+    "name": "Primary care outpatient",
+    "aliases": "primary care outpatient general consultation opd",
+    "unit_cost_pkr": 1000
+  },
+  "zones": [
+    {"zone_id": "Central", "display_name": "Islamabad Central", "latitude": 33.704, "longitude": 73.055},
+    {"zone_id": "East", "display_name": "Islamabad East", "latitude": 33.711, "longitude": 73.081},
+    {"zone_id": "South", "display_name": "Islamabad South", "latitude": 33.665, "longitude": 73.085},
+    {"zone_id": "West", "display_name": "Islamabad West", "latitude": 33.716, "longitude": 72.990},
+    {"zone_id": "North", "display_name": "Islamabad North", "latitude": 33.779, "longitude": 73.062}
+  ],
+  "providers": [
+    {"public_id": "FAC-P01", "name": "Central Public Health Centre", "zone_id": "Central", "ownership": "PUBLIC", "latitude": 33.704, "longitude": 73.055, "eligible_zone_ids": ["Central"], "quota": 8},
+    {"public_id": "FAC-P02", "name": "East Family Clinic", "zone_id": "East", "ownership": "PRIVATE", "latitude": 33.699, "longitude": 73.063, "eligible_zone_ids": ["East"], "quota": 8},
+    {"public_id": "FAC-P03", "name": "Central Public Dispensary", "zone_id": "Central", "ownership": "PUBLIC", "latitude": 33.711, "longitude": 73.081, "eligible_zone_ids": ["Central"], "quota": 8},
+    {"public_id": "FAC-P04", "name": "East Community Clinic", "zone_id": "East", "ownership": "PRIVATE", "latitude": 33.718, "longitude": 73.089, "eligible_zone_ids": ["East"], "quota": 8},
+    {"public_id": "FAC-P05", "name": "North Public Clinic", "zone_id": "North", "ownership": "PUBLIC", "latitude": 33.665, "longitude": 73.085, "eligible_zone_ids": ["North"], "quota": 8},
+    {"public_id": "FAC-P06", "name": "East Family Practice", "zone_id": "East", "ownership": "PRIVATE", "latitude": 33.658, "longitude": 73.078, "eligible_zone_ids": ["East"], "quota": 8},
+    {"public_id": "FAC-P07", "name": "West Public Health Centre", "zone_id": "West", "ownership": "PUBLIC", "latitude": 33.716, "longitude": 72.990, "eligible_zone_ids": ["West"], "quota": 0},
+    {"public_id": "FAC-P08", "name": "North Community Clinic", "zone_id": "North", "ownership": "PRIVATE", "latitude": 33.779, "longitude": 73.062, "eligible_zone_ids": ["North"], "quota": 8, "report_age_minutes": 61}
+  ],
+  "unknown_source": {
+    "public_id": "FAC-EXC-01",
+    "name": "Unreviewed External Clinic",
+    "zone_id": "Unknown",
+    "ownership": "PRIVATE",
+    "latitude": 33.740,
+    "longitude": 73.100
+  },
+  "cohorts": [
+    {"name": "AFFORDABILITY", "count": 8, "zone_id": "Central", "source_provider_id": "FAC-P03", "reason": "AFFORDABILITY_GAP", "funding_required": true, "funding_eligible": true},
+    {"name": "QUOTA", "count": 7, "zone_id": "West", "source_provider_id": "FAC-P07", "reason": "NO_PARTNER_CAPACITY", "funding_required": false, "funding_eligible": false},
+    {"name": "MOBILE", "count": 5, "zone_id": "South", "source_provider_id": "FAC-EXC-01", "reason": "NO_MOBILE_SITE_CAPACITY", "funding_required": false, "funding_eligible": false}
+  ],
+  "exclusions": [
+    {"key": "UNKNOWN", "reference": "SG-EXC-UNKNOWN", "zone_id": "Unknown", "reason": "Unknown zone; review required", "service_review": "ACCEPTED"},
+    {"key": "SERVICE", "reference": "SG-EXC-SERVICE", "zone_id": "Central", "reason": "Unsupported service text", "service_review": "NO_SUPPORTED_MATCH"},
+    {"key": "SCOPE", "reference": "SG-EXC-SCOPE", "zone_id": "East", "reason": "Outside demo service scope", "service_review": "ACCEPTED"},
+    {"key": "FUNDING", "reference": "SG-EXC-FUNDING", "zone_id": "South", "reason": "Funding not eligible", "service_review": "ACCEPTED"}
+  ],
+  "offers": {
+    "subsidy": {"units": 8, "cost_pkr": 8000, "amount_per_unit_pkr": 1000, "eligible_zone_ids": ["Central"]},
+    "quota": {"units": 7, "cost_pkr": 7000, "facility_id": "FAC-P07", "spare_capacity_group_id": "SPARE-GROUP-DEMO-01", "eligible_zone_ids": ["West"], "funding_included": true},
+    "mobile": {"units": 5, "cost_pkr": 10000, "mobile_unit_id": "MOBILE-DEMO-01", "site_zone_id": "South", "eligible_zone_ids": ["South"], "funding_included": true}
+  },
+  "monthly_budget_pkr": 25000
+}

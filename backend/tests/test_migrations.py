@@ -59,9 +59,21 @@ def run_migration(url, target, monkeypatch):
     get_settings.cache_clear()
 
 
+def check_migration(url, monkeypatch):
+    from app.config import get_settings
+
+    monkeypatch.setenv("DATABASE_URL", url)
+    get_settings.cache_clear()
+    cfg = Config(str(Path(__file__).parents[1] / "alembic.ini"))
+    cfg.set_main_option("script_location", str(Path(__file__).parents[1] / "migrations"))
+    command.check(cfg)
+    get_settings.cache_clear()
+
+
 def test_alembic_fresh_and_upgrade_preserves_legacy_rows(migration_urls, monkeypatch):
     fresh_url, upgrade_url = migration_urls
     run_migration(fresh_url, "head", monkeypatch)
+    check_migration(fresh_url, monkeypatch)
     fresh_engine = make_engine(fresh_url)
     try:
         fresh_tables = set(inspect(fresh_engine).get_table_names())
@@ -98,6 +110,7 @@ def test_alembic_fresh_and_upgrade_preserves_legacy_rows(migration_urls, monkeyp
             connection.execute(text("INSERT INTO allocation_plans (id, day, cost, units, allocations, status, created_at) VALUES (51, '2026-10-10', 400, 1, '[]', 'draft', '2026-10-10 00:00:00')"))
         legacy_engine.dispose()
         run_migration(upgrade_url, "head", monkeypatch)
+        check_migration(upgrade_url, monkeypatch)
         legacy_engine = make_engine(upgrade_url)
         with legacy_engine.connect() as connection:
             facility = connection.execute(text("SELECT id, public_id, participation_status, zone_id FROM facilities WHERE id=41")).one()

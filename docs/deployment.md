@@ -5,7 +5,7 @@ Target: Vercel for the frontend, Railway for FastAPI and PostgreSQL. These instr
 ## Railway
 
 1. Create a project and add PostgreSQL. Keep its actual credentials in Railway variables.
-2. Add a service from this GitHub repository. Set its **root directory to `/backend`**. Use the included Dockerfile and set the config file path to `/backend/railway.toml` if Railway does not detect it automatically.
+2. Add a service from this GitHub repository. Set its **root directory to `/`** so the versioned `data/seed/` fixture is in the build context. Set the Dockerfile to `backend/Dockerfile` and the config file path to `/backend/railway.toml` if Railway does not detect it automatically.
 3. Set `DATABASE_URL` to the PostgreSQL service's connection URL using Railway's variable reference picker. Both `postgres://` and `postgresql://` are normalized to the psycopg SQLAlchemy driver.
 4. Set `APP_TIMEZONE=Asia/Karachi`, `SEED_ON_START=true`, `ENABLE_DEMO_RESET=false`, and initially `CORS_ORIGINS` to the expected frontend domain. Keep one API replica for the MVP.
 5. Deploy and generate a public HTTPS domain. `/health` must return `{"status":"ok"}`; `/docs` must load. The container runs Alembic before serving and seeds only if the database is empty.

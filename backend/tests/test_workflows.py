@@ -235,6 +235,74 @@ def test_health_export_and_reset_disabled(client):
     assert api.post("/api/demo/reset?confirm=RESET_SYNTHETIC_DATA").status_code == 403
 
 
+def test_enabled_demo_reset_preserves_legacy_rows(client, monkeypatch):
+    from sqlalchemy import func, select
+    from app.main import settings
+    from app.models import Budget, CareRequest, Facility, SeedMetadata
+
+    api, factory = client
+    monkeypatch.setattr(settings, "enable_demo_reset", True)
+    with factory() as session:
+        old_facility_ids = set(session.scalars(select(Facility.id)).all())
+        old_request_ids = set(session.scalars(select(CareRequest.id)).all())
+        old_budget = session.get(Budget, 1)
+        old_budget_values = (old_budget.total, old_budget.committed)
+
+    response = api.post("/api/demo/reset?confirm=RESET_SYNTHETIC_DATA")
+    assert response.status_code == 200, response.text
+    with factory() as session:
+        assert old_facility_ids <= set(session.scalars(select(Facility.id)).all())
+        assert old_request_ids <= set(session.scalars(select(CareRequest.id)).all())
+        assert (session.get(Budget, 1).total, session.get(Budget, 1).committed) == old_budget_values
+        assert session.scalar(select(func.count()).select_from(SeedMetadata)) == 1
+        assert session.scalar(select(func.count()).select_from(CareRequest).where(CareRequest.cohort.is_not(None))) == 20
+
+
+def test_demo_reset_refuses_linked_activity_atomically(client, monkeypatch):
+    from sqlalchemy import select
+    from app.main import settings
+    from app.models import Capacity, CareRequest, Facility, Referral, SeedMetadata
+    from app.seed import seed
+
+    api, factory = client
+    monkeypatch.setattr(settings, "enable_demo_reset", True)
+    with factory() as session:
+        seed(session, today(), reset=True)
+        request = session.scalar(select(CareRequest).where(CareRequest.public_id == "REQ-DEMO-001"))
+        capacity = session.scalar(select(Capacity).where(Capacity.origin_type == "synthetic"))
+        assert request is not None and capacity is not None
+        linked_facility = session.get(Facility, capacity.facility_id)
+        unrelated_request = CareRequest(
+            public_id="REQ-LEGACY-REF-DEMO", reference="SG-LEGACY-REF-DEMO",
+            source_facility_id=linked_facility.id, service_id=request.service_id,
+            zone="Central", zone_id="Central", day=today(), priority="routine", status="pending",
+            origin_type="legacy",
+        )
+        session.add(unrelated_request)
+        session.flush()
+        activity = Referral(request_id=request.id, capacity_id=capacity.id, status="reserved")
+        session.add(activity)
+        session.commit()
+        activity_id = activity.id
+        demo_request_id = request.id
+        unrelated_request_id = unrelated_request.id
+        demo_capacity_id = capacity.id
+        demo_facility_ids = set(session.scalars(
+            select(Facility.id).where(Facility.public_id.like("FAC-P%"))
+        ).all())
+
+    response = api.post("/api/demo/reset?confirm=RESET_SYNTHETIC_DATA")
+    assert response.status_code == 409, response.text
+    assert "persisted" in response.json()["detail"]
+    with factory() as session:
+        assert session.get(Referral, activity_id) is not None
+        assert session.get(CareRequest, demo_request_id) is not None
+        assert session.get(CareRequest, unrelated_request_id) is not None
+        assert session.get(Capacity, demo_capacity_id) is not None
+        assert demo_facility_ids <= set(session.scalars(select(Facility.id)).all())
+        assert session.scalar(select(SeedMetadata.id)) is not None
+
+
 def test_new_provider_can_offer_capacity_and_receive_referrals(client):
     api, _ = client
     registered = api.post(

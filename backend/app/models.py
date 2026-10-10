@@ -160,7 +160,7 @@ class CareRequest(Base):
     zone: Mapped[str] = mapped_column(String(50), index=True)
     day: Mapped[date] = mapped_column(Date, index=True)
     priority: Mapped[str] = mapped_column(String(20))
-    status: Mapped[str] = mapped_column(String(24), default="pending", index=True)
+    status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
     reason: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     public_id: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
@@ -191,7 +191,7 @@ class Referral(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     request_id: Mapped[int] = mapped_column(ForeignKey("care_requests.id"), index=True)
     capacity_id: Mapped[int] = mapped_column(ForeignKey("capacities.id"))
-    status: Mapped[str] = mapped_column(String(24), default="reserved")
+    status: Mapped[str] = mapped_column(String(20), default="reserved")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     __table_args__ = (CheckConstraint("status IN ('reserved', 'confirmed', 'completed', 'cancelled')"),)
 
@@ -382,7 +382,7 @@ class AllocationPlan(Base):
     cost: Mapped[int]
     units: Mapped[int]
     allocations: Mapped[list] = mapped_column(JSON)
-    status: Mapped[str] = mapped_column(String(24), default="draft")
+    status: Mapped[str] = mapped_column(String(20), default="draft")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     public_id: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
     version: Mapped[int] = mapped_column(Integer, default=1)

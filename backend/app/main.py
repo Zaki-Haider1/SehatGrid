@@ -22,7 +22,7 @@ from .schemas import (
     MatchInput,
     ZONES,
 )
-from .seed import seed
+from .seed import DemoResetConflict, seed
 from .workflows import require, capacity_upsert, recommendations, reserve, transition, optimize, approve
 
 settings = get_settings()
@@ -321,10 +321,8 @@ def reset(confirm: str = Query(), db: Session = Depends(get_db)):
         raise HTTPException(403, "Demo reset is disabled on this deployment")
     if confirm != "RESET_SYNTHETIC_DATA":
         raise HTTPException(422, "Explicit reset confirmation is required")
-    from .database import Base
-
-    for table in reversed(Base.metadata.sorted_tables):
-        db.execute(table.delete())
-    db.commit()
-    seed(db, today())
+    try:
+        seed(db, today(), reset=True)
+    except DemoResetConflict as exc:
+        raise HTTPException(409, str(exc)) from exc
     return {"status": "reset"}

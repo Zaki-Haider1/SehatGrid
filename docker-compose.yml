@@ -15,7 +15,9 @@ services:
       timeout: 5s
       retries: 10
   backend:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     environment:
       DATABASE_URL: postgresql+psycopg://sehat_grid:local_demo_only@db:5432/sehat_grid
       CORS_ORIGINS: http://localhost:3000
