@@ -7,7 +7,7 @@
 
 ## Current integration verification — 10 October 2026
 
-Dev 1's latest fix (`e43c7ee`) is integrated on `integrate/referral-reservation`, branched from `origin/main` at Dev 2's `b840941`, as `c1ab59c`. The original Dev 1 branch remains unchanged. The conflict in `todo.md` was reconciled so the referral and draft-plan revision features are both recorded. [PR #2](https://github.com/Zaki-Haider1/akon/pull/2) passed all six GitHub CI job instances at head `14d23de`; the push run is [38062163445](https://github.com/Zaki-Haider1/akon/actions/runs/38062163445), and the pull-request run is [38062177550](https://github.com/Zaki-Haider1/akon/actions/runs/38062177550).
+Dev 1's latest fix (`e43c7ee`) is integrated on `integrate/referral-reservation`, branched from `origin/main` at Dev 2's `b840941`, as `c1ab59c`. The original Dev 1 branch remains unchanged. The conflict in `todo.md` was reconciled so the referral and draft-plan revision features are both recorded. [PR #2](https://github.com/Zaki-Haider1/akon/pull/2) passed all six GitHub CI job instances at final PR head `e9259e3`; the push run is [38062705176](https://github.com/Zaki-Haider1/akon/actions/runs/38062705176), and the pull-request run is [38062708947](https://github.com/Zaki-Haider1/akon/actions/runs/38062708947). It was merged on 10 October 2026; merge commit `aa8793a` is on `origin/main`. Read-only code review found no blocking issues.
 
 | Gate | Command / environment | Result |
 |---|---|---|
@@ -22,7 +22,7 @@ Dev 1's latest fix (`e43c7ee`) is integrated on `integrate/referral-reservation`
 | Frontend build | `npm run build` | Passed with Next.js 16.4.0. |
 | Frontend formatting | `npm run format:check` | The local Windows run flagged nine unchanged files (`app/globals.css`, `app/layout.tsx`, `app/page.tsx`, `components/dialog.tsx`, `components/pilot-map.tsx`, `lib/api.ts`, `next.config.ts`, `tsconfig.json`, `package.json`). `git ls-files --eol` reports LF in the index and CRLF in the Windows worktree. Both Linux GitHub frontend jobs passed, including `format:check`; no frontend files differ from `origin/main`. |
 
-The backend now proves that `POST /referrals` creates `PROPOSED` without a hold, `POST /referrals/{id}/reserve` performs the hold on the same attempt, stale proposals expire and reopen the request, and Dev 2's draft-plan revision behavior remains covered. No frontend source was changed. The existing UI has not been updated for a Reserve action; browser acceptance remains with Dev 3 and is not complete. PR #2's required CI checks passed and read-only review found no blocking issues; merge is still pending.
+The backend now proves that `POST /referrals` creates `PROPOSED` without a hold, `POST /referrals/{id}/reserve` performs the hold on the same attempt, stale proposals expire and reopen the request, and Dev 2's draft-plan revision behavior remains covered. No frontend source was changed. The existing UI has not been updated for a Reserve action; browser acceptance remains with Dev 3 and is not complete. PR #2's required CI checks passed, read-only review found no blocking issues, and the merge is confirmed on `origin/main` as `aa8793a`.
 
 ## Status at interruption
 
@@ -190,7 +190,7 @@ These are implementation choices to review when continuing; they are not evidenc
 
 ## Remaining verification and deployment work
 
-- [x] Open integration PR #2 and inspect its CI. Both push and pull-request runs passed the backend, frontend and combined-container jobs. The local Windows `format:check` discrepancy is due to CRLF worktree line endings; the Linux CI formatter step passed.
+- [x] Open integration PR #2, inspect its CI, merge, and confirm the merge commit on `origin/main`. Both push and pull-request runs passed the backend, frontend and combined-container jobs. The local Windows `format:check` discrepancy is due to CRLF worktree line endings; the Linux CI formatter step passed.
 - [ ] Complete a browser rehearsal of operator intake, matching review, recommendations/reservation, receiving acceptance, patient agreement, funding approval, arrival and completion.
 - [ ] Complete the browser planning loop: snapshot, compute, approve, resource activation/rejection, reprocess unresolved demand and inspect results/export.
 - [ ] Check all new screens at phone and desktop widths, including empty/error states and permission-denied cases.
@@ -218,4 +218,4 @@ A patient self-service portal, forecasting, emergency triage, clinical decision 
 - [Matching evaluation](outputs/matching-results.json)
 - [Allocation evaluation](outputs/allocation-results.json)
 
-The integration PR is open with passing checks; merge it only after confirming the final PR head remains green. Do not claim browser acceptance or Reserve UI support; Dev 3 still owns those items. Complete the open browser, demonstration, and deployment checks above before claiming the MVP fully accepted.
+PR #2 is merged on `origin/main` as `aa8793a`, after its final head passed all six CI job instances. Do not claim browser acceptance or Reserve UI support; Dev 3 still owns those items. Complete the open browser, demonstration, and deployment checks above before claiming the MVP fully accepted.
