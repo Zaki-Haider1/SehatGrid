@@ -3,7 +3,7 @@
 Prepare once: install pinned dependencies, preload the model, migrate and seed/reset. Start API and frontend. Confirm `/health` and sign in. The default coordinate map works with internet disconnected. All dates below use the date displayed in the app, not a hardcoded calendar fixture.
 
 1. **0:00 — planner:** Network overview shows eight demo providers, fresh/exhausted/unknown quota, sourced Islamabad campus coordinates and synthetic labels. Explain the two roles and the narrow service.
-2. **0:35 — operator P03:** In Referral coordination enter `a routine visit with a family physician`, obtain a semantic suggestion, review it, and register a separate synthetic East-zone request with staff suitability checked. Choose P03, reserve, record partner acceptance and patient agreement, then arrival and completion. This separate example changes registered/completed totals but leaves the worked 20 unresolved units intact.
+2. **0:35 — operator P03:** In Referral coordination enter `a routine visit with a family physician`, obtain a semantic suggestion, review it, and register a separate synthetic East-zone request with staff suitability checked. Choose P03 → Save referral proposal; refresh to show the persisted proposal consumes no quota/funds. Approve & reserve proposal, record partner acceptance and patient agreement, then arrival and completion. This separate example changes registered/completed totals but leaves the worked 20 unresolved units intact.
 3. **2:00 — planner:** Unresolved demand shows eight South affordability units, seven Central exhausted-quota units and five North no-eligible-partner units. The count is unique requests, not failed attempts or the city's population.
 4. **2:40 — planner:** Monthly planner → Create snapshot & optimize. Verify 8 subsidies costing PKR 8,000, QUOTA-7 costing 7,000, MOBILE-5 costing 10,000, baseline 0 and projected additional 20. Inspect assumptions and actual solver status.
 5. **3:40 — planner:** Approve plan. Funds move to commitments; quota/mobile resources remain pending.
@@ -12,3 +12,13 @@ Prepare once: install pinned dependencies, preload the model, migrate and seed/r
 8. **4:50 — planner:** Compare projected additional accommodation with post-activation confirmed/completed counts. Download JSON/CSV and show the immutable snapshot hash and cost breakdown.
 
 Use the README reset command to rehearse again. Reset is a deliberate local/CLI maintenance operation; there is no unauthenticated destructive reset route. Restarting without reset preserves records and does not fake fresh capacity.
+
+Separate acceptance checks, outside the five-minute pitch: Funding approvals → edit the ranking order with a reason and show the resulting recommendation order/version as an operator. Monthly planner → Revise draft with reason → leave B/C requests unresolved, retaining the eight A subsidy assignments → save/reload/approve/export. This creates an eight-unit PKR 8,000 human decision with the original 20-unit/25,000 solver output preserved; it changes the worked plan and must be rehearsed after a separate reset. [Browser acceptance](browser-acceptance.md) automates both flows and the unchanged 8/7/5 pitch independently.
+
+## Three-interface design walkthrough
+
+Start as `planner` in Network overview. Orbit/zoom the pale 3D city, search PIMS, select its hospital block, switch capacity/demand/funding layers and open Monthly outcomes. Review the previous month explicitly: a freshly seeded demo has no prior-month records. Budgets and ranking policy remain in Monthly planner and Funding approvals.
+
+Sign in as `operator-p03` for the reception desk, incoming/outgoing referral cards and reviewed intake. Sign in as `onboarder-p03` for Hospital setup and Services & prices: add a laboratory test with a declared price/capacity, reload, edit it, and verify that the government hospital detail sees the saved catalog. The onboarding account has no patient referrals or government actions. Catalog tests do not expand the primary-care routing scope.
+
+The operational five-minute acceptance journey and the additional design/catalog checks are separate reproducible browser cases; see `docs/browser-acceptance.md`.

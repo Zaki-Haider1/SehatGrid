@@ -1,0 +1,195 @@
+.planner-city .audit-panel {
+  display: none;
+}
+.catalog-price {
+  margin: 14px 0;
+  font-size: 10px;
+}
+.catalog-price small {
+  display: block;
+  font-size: 8px;
+  color: #a5b0c5;
+  margin-top: 4px;
+}
+.city-controls {
+  right: 310px;
+}
+@media (max-width: 1100px) and (min-width: 761px) {
+  .city-controls {
+    right: 270px;
+  }
+}
+.outcome-bars {
+  margin: 28px 0;
+}
+.referral-context {
+  display: grid;
+  gap: 4px;
+  margin: 12px 0;
+  padding: 10px 12px;
+  background: #f6f8fd;
+  border-radius: 6px;
+  font-size: 11px;
+}
+.referral-context span {
+  font-size: 10px;
+  color: #97a2b9;
+}
+.outcome-bars > div {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  margin: 22px 0;
+}
+.outcome-bars span {
+  width: 195px;
+  color: #929db4;
+  font-size: 11px;
+}
+.outcome-bars > div > div {
+  height: 10px;
+  background: #f1f4fa;
+  border-radius: 4px;
+  flex: 1;
+  overflow: hidden;
+}
+.outcome-bars i {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+}
+.outcome-bars strong {
+  width: 38px;
+  text-align: right;
+  font-size: 18px;
+  font-weight: 500;
+  color: #7c8ba9;
+}
+.outcome-facts > div {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid #eef1f7;
+  padding: 14px 0;
+  font-size: 12px;
+}
+.outcome-facts dt {
+  color: #929db4;
+}
+.outcome-facts dd {
+  margin: 0;
+  color: #7285af;
+}
+.period-plan {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 17px 0;
+  border-bottom: 1px solid #eef1f7;
+}
+.period-plan strong {
+  display: block;
+  font-size: 12px;
+}
+.period-plan span:not(.badge) {
+  display: block;
+  color: #9ca6ba;
+  font-size: 10px;
+  margin-top: 6px;
+}
+.outcome-caption {
+  font-size: 11px !important;
+}
+@media (max-width: 760px) {
+  .city-controls {
+    right: 17px;
+  }
+  .outcome-bars > div {
+    gap: 10px;
+  }
+  .outcome-bars span {
+    width: 128px;
+    font-size: 9px;
+  }
+  .outcome-bars strong {
+    width: 24px;
+    font-size: 15px;
+  }
+}
+.sidebar > button {
+  flex-shrink: 0;
+}
+.empty {
+  background: #f7f9fe;
+}
+.onboarding-app .network-layout .provider-list {
+  min-height: 180px;
+}
+.catalog-card .card-title button {
+  white-space: nowrap;
+}
+@media (max-width: 760px) {
+  .government-city {
+    min-height: 0;
+    padding-bottom: 1px;
+  }
+  .city-insight {
+    display: block;
+  }
+  .city-detail {
+    position: absolute;
+    top: 120px;
+    left: 16px;
+    right: 16px;
+    width: auto;
+    max-height: 345px;
+    overflow: auto;
+    z-index: 8;
+    box-shadow: 0 8px 25px #4d668035;
+  }
+  .city-detail .detail-illustration {
+    height: 65px;
+  }
+  .city-detail .detail-building {
+    width: 42px;
+    height: 40px;
+    box-shadow: 8px 5px 0 color-mix(in srgb, var(--cube-color) 70%, #4a6587);
+  }
+  .city-detail .detail-building svg {
+    width: 25px;
+  }
+  .city-detail .eyebrow {
+    font-size: 8px;
+    margin: 0;
+  }
+  .city-detail h2 {
+    font-size: 15px;
+    margin: 8px 0;
+  }
+  .city-detail .detail-metrics {
+    padding: 12px 0;
+  }
+  .city-detail .detail-metrics strong {
+    font-size: 23px;
+  }
+  .city-detail .hospital-facts {
+    margin: 10px 0;
+  }
+  .city-detail .detail-close {
+    z-index: 1;
+    background: #ffffffb0;
+  }
+  .date-controls {
+    flex-direction: row;
+    align-items: end;
+    flex-wrap: nowrap;
+  }
+  .date-controls input {
+    width: 124px;
+  }
+  .date-controls label {
+    font-size: 9px;
+  }
+  .date-controls .icon-button {
+    padding: 7px;
+  }
+}

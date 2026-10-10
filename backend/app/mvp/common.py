@@ -61,6 +61,15 @@ def operator(u, facility):
     )
 
 
+def facility_admin(u, facility):
+    require(
+        u["role"] in {"onboarder", "operator"} and facility in u["facility_ids"],
+        "ROLE_FORBIDDEN",
+        "Hospital setup permission for this facility is required",
+        403,
+    )
+
+
 def audit(s, u, action, entity, before=None, after=None, reason=None):
     add(
         s,

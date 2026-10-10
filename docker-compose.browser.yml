@@ -1,0 +1,15 @@
+# Dedicated synthetic acceptance database. Never points at the working demo.
+services:
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DATABASE_URL: sqlite:////app/browser-acceptance.db
+      JWT_SECRET: isolated-browser-acceptance-signing-key-32-characters
+      DEMO_PASSWORD: isolated-browser-demo-password
+      APP_TIMEZONE: Asia/Karachi
+      SEED_ON_START: "true"
+      HF_HUB_OFFLINE: "1"
+    ports:
+      - "127.0.0.1:18000:8000"

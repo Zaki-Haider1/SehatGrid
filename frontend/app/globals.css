@@ -1126,3 +1126,16 @@ dialog::backdrop {
 dialog .fields {
   grid-template-columns: 1fr;
 }
+.revision-choices {
+  max-height: 320px;
+  overflow: auto;
+  margin: 15px 0;
+}
+.revision-choices select {
+  min-width: 200px;
+  max-width: 320px;
+}
+dialog {
+  max-height: calc(100dvh - 40px);
+  overflow: auto;
+}

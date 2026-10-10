@@ -1,4 +1,5 @@
 from datetime import timedelta
+from copy import deepcopy
 from pathlib import Path
 import json
 from sqlalchemy import select
@@ -105,6 +106,7 @@ def make_seed():
                 "label": "Public directory context — not a confirmed partner",
             },
             "aliases": [fid, f"Demo Provider {fid}"],
+            "catalog": [],
         }
         capid = capacity_key(fid, day)
         s["capacities"][capid] = {
@@ -127,6 +129,15 @@ def make_seed():
             "id": uid,
             "name": f"{fid} hospital operator",
             "role": "operator",
+            "facility_ids": [fid],
+            "active": True,
+            "password_hash": password_hash(config.demo_password),
+        }
+        setup_id = f"onboarder-{fid.lower()}"
+        s["users"][setup_id] = {
+            "id": setup_id,
+            "name": f"{fid} hospital onboarder",
+            "role": "onboarder",
             "facility_ids": [fid],
             "active": True,
             "password_hash": password_hash(config.demo_password),
@@ -242,6 +253,32 @@ def make_seed():
 def seed(db, reset=False):
     row = db.scalar(select(PilotState).where(PilotState.id == 1))
     if row and not reset:
+        # Extend an existing synthetic demo without replacing requests, plans or ledger.
+        state = deepcopy(row.payload)
+        changed = False
+        if state.get("seed_id") == "worked-example-8-7-5":
+            for i in range(1, 9):
+                fid = f"P{i:02d}"
+                source = state["users"].get(f"operator-{fid.lower()}")
+                uid = f"onboarder-{fid.lower()}"
+                if source and uid not in state["users"]:
+                    state["users"][uid] = {
+                        "id": uid,
+                        "name": f"{fid} hospital onboarder",
+                        "role": "onboarder",
+                        "facility_ids": [fid],
+                        "active": True,
+                        "password_hash": password_hash(get_settings().demo_password),
+                    }
+                    changed = True
+            for facility in state["facilities"].values():
+                if "catalog" not in facility:
+                    facility["catalog"] = []
+                    changed = True
+        if changed:
+            row.payload = state
+            row.version += 1
+            db.commit()
         return
     state = make_seed()
     if row:

@@ -6,7 +6,7 @@ export const API = (
 export type User = {
   id: string;
   name: string;
-  role: "operator" | "planner";
+  role: "operator" | "planner" | "onboarder";
   facility_ids: string[];
 };
 export type Capacity = {
@@ -38,6 +38,7 @@ export type Facility = {
   service_reviewed: boolean;
   subsidy_required: boolean;
   capacities: Capacity[];
+  catalog?: CatalogItem[];
   directory_context?: {
     name: string;
     label: string;
@@ -48,6 +49,14 @@ export type Facility = {
       directory_sources: { title: string; url: string }[];
     };
   };
+};
+export type CatalogItem = {
+  id: string;
+  name: string;
+  category: "Consultation" | "Laboratory" | "Imaging" | "Other";
+  price: number;
+  daily_capacity: number;
+  active: boolean;
 };
 export type CareRequest = {
   id: string;
@@ -72,7 +81,7 @@ export type Referral = {
   patient_agreed: boolean;
   partner_accepted: boolean;
   funding_approved: boolean;
-  expires_at: string;
+  expires_at?: string;
   reason?: string;
 };
 export type Budget = {
@@ -97,6 +106,15 @@ export type Offer = {
 };
 export type Plan = {
   id: string;
+  version: number;
+  decision_source?: "SOLVER" | "HUMAN_REVISION";
+  original_solver_result?: { coverage: number; cost: number; status: string };
+  revisions?: {
+    version: number;
+    reason: string;
+    actor: string;
+    timestamp: string;
+  }[];
   month: string;
   status: string;
   solver_status: string;
@@ -123,6 +141,27 @@ export type Plan = {
   assumptions: string[];
   excluded: Record<string, number>;
 };
+export type RevisionOptions = {
+  contract_version: "plan-revision-v1";
+  version: number;
+  current_assignments: { request_id: string; resource_id: string }[];
+  remaining_budget: number;
+  resources: {
+    id: string;
+    units: number;
+    cost: number;
+    facility_id: string;
+    date: string;
+  }[];
+  choices: {
+    request_id: string;
+    resource_id: string;
+    facility_id: string;
+    date: string;
+    subsidy: number;
+    funding_included: boolean;
+  }[];
+};
 export type Match = {
   id: string;
   status: string;
@@ -135,6 +174,7 @@ export type Match = {
   }[];
 };
 export type Recommendation = {
+  ranking_policy_version: string;
   facility_id: string;
   name: string;
   capacity_id: string;
@@ -145,6 +185,20 @@ export type Recommendation = {
   facility_version: number;
   explanation: string;
 };
+export type RankingPolicy = {
+  criteria: ("same_zone" | "subsidy" | "available")[];
+  version: number;
+  policy_version: string;
+};
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public code: string,
+    public status: number,
+  ) {
+    super(message);
+  }
+}
 export type Summary = {
   month: string;
   unresolved: number;
@@ -220,10 +274,12 @@ export async function api<T>(
   });
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
-    throw new Error(
+    throw new ApiError(
       typeof data.detail === "string"
         ? data.detail
         : data.detail?.message || "The server could not complete this action",
+      data.detail?.code || "API_ERROR",
+      response.status,
     );
   }
   return response.json();

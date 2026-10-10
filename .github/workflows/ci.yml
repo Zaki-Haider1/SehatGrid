@@ -106,3 +106,42 @@ jobs:
       - name: Stop offline container
         if: always()
         run: docker rm -f sehat-grid-offline || true
+  browser-acceptance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Start isolated synthetic API
+        run: |
+          docker compose -p sehat-grid-browser -f docker-compose.browser.yml up -d --build
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:18000/health; then exit 0; fi
+            sleep 2
+          done
+          docker compose -p sehat-grid-browser -f docker-compose.browser.yml logs
+          exit 1
+      - run: npm ci
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+        env:
+          API_PROXY_TARGET: http://127.0.0.1:18000
+      - run: npm run test:browser
+        working-directory: frontend
+      - name: Save browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-acceptance
+          path: |
+            frontend/test-results/
+            frontend/playwright-report/
+      - name: Stop isolated API
+        if: always()
+        run: docker compose -p sehat-grid-browser -f docker-compose.browser.yml down

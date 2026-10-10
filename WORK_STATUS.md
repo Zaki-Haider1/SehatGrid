@@ -3,7 +3,7 @@
 **Date:** 10 October 2026  
 **Implementation checkpoint:** `0f3e91a` â€” Implement scope-v1 primary-care coordination MVP  
 **Repository:** https://github.com/Zaki-Haider1/akon  
-**Authoritative scope:** [User-supplied MVP README](docs/mvp-scope-v1.md)
+**Current scope:** [Original supplied MVP README](docs/mvp-scope-v1.md), with the user’s subsequent [three-interface / 3D frontend revision](docs/frontend-redesign.md).
 
 ## Status at interruption
 
@@ -29,12 +29,13 @@ There is **no public deployment URL yet**. Deployment configuration and instruct
 
 ## Interfaces implemented
 
-There are **two authenticated role interfaces in one application**:
+The original checkpoint had two interfaces. The current frontend revision has **three authenticated interfaces**:
 
-- **Government/planner representative:** participation review, network map, demand intelligence, budget and subsidy management, referral funding approval, monthly optimization, plan approval, results/export and audit.
-- **Hospital/provider operator:** assigned-facility profile, service and quota reporting, request intake and matching review, sending/receiving referrals, patient-agreement recording, arrival/completion, offers and resource activation.
+- **Government representative:** pale 3D hospital city, search and data layers, floating facility details, participation/ranking policy, budgets, optimization/revision/approval, monthly outcomes and exports.
+- **Hospital receptionist:** reviewed intake, proposals/reservations, sending/receiving/rerouting, patient agreement, arrival/completion, offers and activation.
+- **Hospital onboarder:** profile/service eligibility, dated quota and persisted service/test catalog with prices, daily capacity and availability.
 
-A separate patient interface is **not part of the supplied MVP**. Operators record patient agreement and request progress. The earlier three-interface proposal is superseded by the README.
+A separate patient interface is **not part of the supplied MVP**. Operators record patient agreement and request progress. The user’s later three-interface request concerns a separate hospital onboarder, not a patient portal, and supersedes the original two-interface layout.
 
 ## Implemented features
 
@@ -45,8 +46,8 @@ A separate patient interface is **not part of the supplied MVP**. Operators reco
 - Twelve researched hospital records retained as provenance; eight used in the operational seed.
 - Provider registration, planner participation review, service/zone declarations and dated referral quotas.
 - Capacity freshness, available/limited/exhausted/unknown states and quota-floor validation.
-- MapLibre coordinate map with backend-driven provider status and aggregate unresolved-demand labels.
-- Optional OpenStreetMap street layer and a basic SVG fallback when WebGL is unavailable.
+- Three.js city with hospital blocks, backend-driven status, directory search and capacity/demand/funding layers.
+- Procedural context roads/buildings and a rotatable software 3D renderer when WebGL is unavailable; no external tile dependency.
 - Mobile-clinic activation creates a separate site; it does not move the hospital's campus coordinates.
 
 ### 2. Authentication and permissions

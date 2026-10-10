@@ -1,14 +1,15 @@
 # SEHAT GRID
 
-A synthetic, non-emergency primary-care coordination MVP for five Islamabad pilot catchments. The controlling product specification is [docs/mvp-scope-v1.md](docs/mvp-scope-v1.md), copied from the supplied scope-v1 README.
+A synthetic, non-emergency primary-care coordination MVP for five Islamabad pilot catchments. The original specification is [docs/mvp-scope-v1.md](docs/mvp-scope-v1.md). The user’s October 10 frontend revision adds three interfaces and a required 3D government map; see [the frontend design and role contract](docs/frontend-redesign.md).
 
 ## What runs
 
-- **Hospital operator:** assigned provider profile/services, dated quota, reviewed request intake, outgoing reservations, incoming acceptance/rejection, patient agreement, arrival/completion, dated resource offers and activation.
-- **Network planner:** participation review, aggregate unresolved demand, monthly budget/subsidy schedule, immutable snapshots, three-intervention allocation, approval, funding authorization, audit and JSON/CSV exports.
-- **No patient portal.** Operators record voluntary patient agreement. No forecasts, diagnosis, emergencies, exact appointment slots, waiting-time predictions, routing, construction, payment or voucher features.
+- **Hospital receptionist:** reviewed request intake, recommendations and saved proposals, acceptance/rejection, patient agreement, arrival/completion, rerouting/reprocessing, offers and activation.
+- **Hospital onboarder:** assigned hospital profile, primary-care eligibility, dated quota, and an editable service/test catalog with PKR prices, daily capacity and availability.
+- **Government representative:** interactive 3D city, hospital details and capacity/demand/funding layers; participation and ranking policy; monthly budgets, allocation/revision/approval, funding authorization, monthly outcomes and JSON/CSV exports.
+- **No patient portal.** Operators record voluntary patient agreement. No forecasts, diagnosis, emergencies, exact appointment slots, waiting-time predictions, travel-time routing, construction, payment or voucher features.
 
-Next.js/TypeScript and MapLibre share a FastAPI backend. A pinned MiniLM embedding model plus RapidFuzz suggests matches; human reviews persist. OR-Tools computes monthly allocations for subsidies, purchased quota packages and mobile visits. All operational data and costs are synthetic. Public hospital coordinates remain separately attributed directory context, not confirmed partnerships.
+Next.js/TypeScript and Three.js share a FastAPI backend. A pinned MiniLM embedding model plus RapidFuzz suggests matches; human reviews persist. OR-Tools computes monthly allocations for subsidies, purchased quota packages and mobile visits. All operational data and costs are synthetic. Public hospital coordinates remain separately attributed directory context, not confirmed partnerships.
 
 ## Run locally
 
@@ -33,9 +34,11 @@ npm ci
 npm run dev
 ```
 
-Open `http://localhost:3000`. The Next.js server proxies `/api/v1` to FastAPI on port 8000. Use account `planner` or `operator-p01` through `operator-p08` and the configured `DEMO_PASSWORD`. Accounts are seeded once; changing an environment variable does not silently change persisted account credentials. A deliberate synthetic reset recreates them.
+Open `http://localhost:3000`. The Next.js server proxies `/api/v1` to FastAPI on port 8000. Use account `planner` or `operator-p01` through `operator-p08` (reception), or `onboarder-p01` through `onboarder-p08` (setup) and the configured `DEMO_PASSWORD`. Existing synthetic demos gain onboarding accounts when the seed command or seed-on-start runs, without resetting requests, plans or funds. New accounts use the configured demo password. Existing accounts are seeded once; changing an environment variable does not silently change persisted account credentials. A deliberate synthetic reset recreates them.
 
 For a separate frontend host, set `NEXT_PUBLIC_API_BASE_URL` at build time and configure backend `CORS_ORIGINS` accordingly. Same-origin local/container operation needs no public API variable.
+
+For a local production frontend, run `npm run build` then `npm start` from `frontend/`. The start script copies static assets into `.next/standalone` and runs its `server.js`. Set `PORT`/`HOSTNAME` to change its listener. The private `API_PROXY_TARGET` build variable changes the default internal API origin (`http://127.0.0.1:8000`); rebuild after changing it. Do not use `next start` with this standalone configuration.
 
 ## Reproducible demonstration
 
@@ -62,6 +65,8 @@ Follow [docs/demo-script.md](docs/demo-script.md). Matching/model files and coor
 ```
 
 Set `TEST_DATABASE_URL` to an isolated PostgreSQL connection to run the same workflow suite against PostgreSQL as well as SQLite. Each PostgreSQL test uses its own temporary schema. Frontend: `npm run typecheck`, `npm run format:check`, `npm run build`.
+
+Real-browser acceptance uses Chromium at desktop and phone widths, the production frontend, and a dedicated synthetic API/database. See [browser acceptance](docs/browser-acceptance.md) for exact setup, reset boundaries and evidence. Run `npm run test:browser` after that setup; backend unit tests alone do not count as browser acceptance.
 
 Evaluation artifacts live in `outputs/matching-results.json` and `outputs/allocation-results.json`. Threshold tuning and held-out matching examples are separated. The allocation check independently enumerates 42 tiny cases and records a constrained greedy comparator. These small checks do not establish clinical impact or general model superiority.
 
