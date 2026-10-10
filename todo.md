@@ -6,7 +6,7 @@ The team has three developers. Names are deliberately unassigned; claim a lane o
 
 ## Current state
 
-**Dev 3 update:** Three interfaces and the user's 3D government-city revision are locally implemented and verified on `codex/dev3-acceptance-delivery`, based on `origin/main` at `a957e00`. **24 distinct Chromium desktop/phone cases passed across staged runs**, with 122 backend tests, frontend typecheck/format/build, migrations and evaluations passing. Exact commands, failed-attempt fixes and limits are in [WORK_STATUS.md](WORK_STATUS.md) and [sanitized evidence](outputs/dev3-verification.json). Final branch CI/review/merge and required public hosting remain separate gates.
+**Dev 3 update:** Three interfaces and the user's 3D government-city revision are locally implemented and verified on `codex/dev3-acceptance-delivery`, based on `origin/main` at `a957e00`. **24 distinct Chromium desktop/phone cases passed across staged runs**, with 122 backend tests, frontend typecheck/format/build, migrations and evaluations passing. Exact commands, failed-attempt fixes and limits are in [WORK_STATUS.md](WORK_STATUS.md) and [sanitized evidence](outputs/dev3-verification.json). Final implementation CI passed at bb64845; PR #4 review/merge remain pending and public hosting is deferred by the user.
 
 | Area | Status | Evidence and limit |
 |---|---|---|
@@ -35,21 +35,21 @@ Dev 3 owns `frontend/app/page.tsx` and `frontend/lib/api.ts` during parallel wor
 
 ### R1 — Planner-configurable referral ranking
 
-**Owner:** Dev 1 backend / Dev 3 frontend. **Status:** Backend merged in PR #2; planner ranking UI, operator ordering/version changes and stale/permission recovery locally verified on the Dev 3 branch. Final frontend CI/review/merge remain pending.
+**Owner:** Dev 1 backend / Dev 3 frontend. **Status:** Backend merged in PR #2; planner ranking UI, operator ordering/version changes and stale/permission recovery locally verified on the Dev 3 branch. Implementation CI passed; PR #4 review/merge remain pending.
 
 - [x] Define allowed ordering controls in `docs/api-contracts.md` without allowing a policy to bypass service, suitability, zone, date, freshness, capacity or funding eligibility.
 - [x] Persist a versioned planner policy; expose planner-only read/update API and include the applied version in recommendations. Keep deterministic stable-ID tie breaking.
 - [x] Test default behavior, changed ranking, unauthorized update, stale policy version, eligibility filtering and reservation recheck.
 - [x] Add the planner control through Dev 3's UI lane using the versioned contract example in `docs/api-contracts.md`; browser checks pass at both widths.
 
-**Backend baseline evidence:** PR #2 passed 116 SQLite-only tests and 210 PostgreSQL-enabled cases, Ruff and evaluations, and merged with CI green. Dev 3 additionally passed the current 122-test SQLite suite and ranking browser cases at both widths; final frontend CI/review/merge and public deployment remain open.
+**Backend baseline evidence:** PR #2 passed 116 SQLite-only tests and 210 PostgreSQL-enabled cases, Ruff and evaluations, and merged with CI green. Dev 3 additionally passed the current 122-test SQLite suite and ranking browser cases at both widths; implementation CI passed; PR #4 review/merge remain pending and public deployment is deferred.
 
 **Done when:** A planner can change ranking, operators see the new order and version, and ineligible providers never appear. Record test command and PR.
 
 
 ### R2 — Explicit referral `PROPOSED` stage
 
-**Owner:** Dev 1 backend / Dev 3 frontend. **Status:** Backend merged in PR #2; reception proposal/reserve/cancel/reload and expired-proposal recovery locally verified on the Dev 3 branch. Final frontend CI/review/merge remain pending.
+**Owner:** Dev 1 backend / Dev 3 frontend. **Status:** Backend merged in PR #2; reception proposal/reserve/cancel/reload and expired-proposal recovery locally verified on the Dev 3 branch. Implementation CI passed; PR #4 review/merge remain pending.
 
 - [x] Make normal `POST /referrals` persist a `PROPOSED` attempt; reserve that same attempt into `AWAITING_CONFIRMATIONS` only after current eligibility/version checks. `/referrals/proposals` remains a proposal-only alias.
 - [x] Keep one active attempt per request, preserve history and idempotency, and ensure proposals have no quota or ledger effect. Stale proposals expire on state/recommendation reads or reserve; sender cancellation remains available and reopens the request.
@@ -64,7 +64,7 @@ Dev 3 owns `frontend/app/page.tsx` and `frontend/lib/api.ts` during parallel wor
 
 ### P1 — Manual draft-plan revision with reason
 
-**Owner:** Dev 2 backend / Dev 3 frontend. **Status:** Backend merged in PR #2; draft revision/reason validation, reload/concurrent-edit recovery, displayed-version approval and original solver exports locally verified at both browser widths. Final frontend CI/review/merge remain pending.
+**Owner:** Dev 2 backend / Dev 3 frontend. **Status:** Backend merged in PR #2; draft revision/reason validation, reload/concurrent-edit recovery, displayed-version approval and original solver exports locally verified at both browser widths. Implementation CI passed; PR #4 review/merge remain pending.
 
 - [x] Define a draft-only planner revision operation that records actor, timestamp, reason, prior and revised choices. Preserve original solver output and distinguish a human revision in exports/audit.
 - [x] Recheck revised assignments and actions with the same budget, date, service, zone, capacity, offer and mobile exclusivity constraints as optimization. Reject stale snapshot/input versions and unfeasible edits. Approval must revalidate again.
@@ -74,11 +74,11 @@ Dev 3 owns `frontend/app/page.tsx` and `frontend/lib/api.ts` during parallel wor
 
 **Handoff:** [Revision API and UI contract](docs/dev2-plan-revision.md), [versioned fixture](data/contracts/plan-revision-v1.json). Approval requires the displayed plan version after a human revision. No migration or new dependency is needed.
 
-**Backend baseline evidence:** PR #2 passed **116 SQLite-only tests** and **210 PostgreSQL-enabled cases**, migrations on both databases, Ruff and **42 independent allocation cases**. Dev 3's current local revision browser checks and 122-test SQLite suite pass; final frontend CI/review/merge and public deployment remain open.
+**Backend baseline evidence:** PR #2 passed **116 SQLite-only tests** and **210 PostgreSQL-enabled cases**, migrations on both databases, Ruff and **42 independent allocation cases**. Dev 3's current local revision browser checks and 122-test SQLite suite pass; implementation CI passed; PR #4 review/merge remain pending and public deployment is deferred.
 
 ### V1 — Browser and responsive acceptance
 
-**Owner:** Dev 3 (Codex). **Status:** LOCAL ACCEPTANCE VERIFIED on delivery branch; final CI/review/merge pending.
+**Owner:** Dev 3 (Codex). **Status:** LOCAL AND CI ACCEPTANCE VERIFIED on delivery branch; PR #4 review/merge pending. Implementation head `bb64845` passed 24 browser cases in each full CI run and 224 SQLite/PostgreSQL backend cases; [PR CI evidence](https://github.com/Zaki-Haider1/akon/actions/runs/38068866580).
 
 - [x] Automate a reproducible real-browser reception journey: login, matching review, intake, recommendation, proposal/reserve, partner response, patient agreement, funding approval, arrival and completion.
 - [x] Exercise planner snapshot → optimize/revise → approve → operator quota/mobile activation or rejection → formerly unresolved reprocessing → results and JSON/CSV export. Verify projected, confirmed and completed counts separately.
@@ -102,7 +102,8 @@ Dev 3 owns `frontend/app/page.tsx` and `frontend/lib/api.ts` during parallel wor
 - [x] Merge R1, R2 and P1 backend contracts through reviewed PR #2 as `aa8793a`, with all six CI job instances passed. Dev 3 UI integration is locally verified; its review/merge is a separate gate below.
 - [x] Run backend `pytest -q`, `ruff check .`, SQLite/PostgreSQL Alembic upgrade/checks, matching/allocation evaluations, and frontend typecheck/format/build on the integration branch. PR #2 CI passed for the same tree; exact local results are in `WORK_STATUS.md`.
 - [x] V1 local browser and phone acceptance; V2 local reset/production-start/restart/five-minute demo completed with documented limits.
-- [ ] Final Dev 3 branch CI and reviewed PR merge (includes new PostgreSQL/combined-container gates).
+- [x] Final Dev 3 implementation CI at `bb64845`: both workflows green, including expanded PostgreSQL suite, full 24-case browser run and combined app offline cold start. Later handoff changes are documentation/evidence only.
+- [ ] Review and merge [Dev 3 draft PR #4](https://github.com/Zaki-Haider1/akon/pull/4).
 - [x] Update `WORK_STATUS.md` with merged commits, exact commands/results and remaining limits.
 - [ ] Record the required public URL and live persistence/restart evidence after deployment.
 

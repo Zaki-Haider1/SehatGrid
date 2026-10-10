@@ -2,7 +2,7 @@
   "date": "2026-10-10",
   "branch": "codex/dev3-acceptance-delivery",
   "integrated_main": "a957e00",
-  "status": "local_acceptance_verified_public_deployment_open",
+  "status": "implementation_verified_deployment_deferred_review_pending",
   "backend": {
     "database": "isolated SQLite",
     "tests_passed": 122,
@@ -277,12 +277,24 @@
   ],
   "limits": [
     "Phone checks use Chromium emulation, not physical-device Safari/WebKit.",
-    "New PostgreSQL-enabled suite and combined network-disabled image are assigned to final CI; prior merged CI is only a baseline.",
     "Catalog tests are informational; automated routing remains reviewed primary-care OPD.",
     "City roads, context buildings and heights are illustrative, not surveyed geometry.",
     "No hosting project/account access or public HTTPS deployment/restart evidence has been supplied.",
-    "PR review, final CI and merge remain separate from local acceptance."
+    "PR #4 review and merge remain pending; final implementation CI passed."
   ],
   "pull_request": "https://github.com/Zaki-Haider1/akon/pull/4",
-  "public_deployment": "pending_at_user_request_2026-10-10"
+  "public_deployment": "pending_at_user_request_2026-10-10",
+  "ci": {
+    "source_revision": "bb648458a78049a680333fb0ae69c1a5632f51fb",
+    "pull_request_run": "https://github.com/Zaki-Haider1/akon/actions/runs/38068866580",
+    "push_run": "https://github.com/Zaki-Haider1/akon/actions/runs/38068863439",
+    "all_eight_jobs": "passed",
+    "backend_sqlite_postgresql_tests": 224,
+    "backend_warnings": 13,
+    "full_browser_cases": 24,
+    "pull_request_browser_duration": "2.5m",
+    "push_browser_duration": "2.9m",
+    "network_disabled_combined_cold_start": "passed",
+    "note": "Subsequent handoff edits are documentation/evidence only."
+  }
 }
