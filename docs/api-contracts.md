@@ -23,9 +23,8 @@ The Pydantic input contracts live in `backend/app/mvp/schemas.py`. All inputs fo
 | GET | `/requests/{id}/recommendations` | Sending operator; eligibility explanations and input versions |
 | GET/PUT | `/referral-ranking` | Planner reads/updates an ordered permutation of `same_zone`, `subsidy`, and `available` with expected `version` and change `reason`; this changes order only, never eligibility. Recommendations return `ranking_policy_version`. |
 | POST | `/requests/{id}/reprocess`, `/cancel` | Sending operator; reason; no active attempt allowed |
-| POST | `/referrals/proposals` | Sending operator; request ID, capacity ID/version and facility version; persists a `PROPOSED` attempt without holding capacity or funds |
+| POST | `/referrals`, `/referrals/proposals` | Sending operator; request ID, capacity ID/version and facility version; persists a `PROPOSED` attempt without holding capacity or funds. `/referrals/proposals` is an alias; both routes are proposal-only. |
 | POST | `/referrals/{id}/reserve` | Sending operator; empty body; rechecks the selected candidate and atomically advances `PROPOSED` to `AWAITING_CONFIRMATIONS`, creating the temporary capacity/funding hold |
-| POST | `/referrals` | Legacy direct-reservation operation; sending approval with request ID, capacity ID/version and facility version; atomic temporary hold |
 | POST | `/referrals/{id}/partner-response` | Receiving operator; accepted boolean and rejection reason |
 | POST | `/referrals/{id}/patient-agreement` | Sending/receiving operator; independent recorded agreement |
 | POST | `/referrals/{id}/funding-approval` | Planner; accepted boolean; operator funding delegation is deliberately zero |
@@ -48,7 +47,7 @@ The Pydantic input contracts live in `backend/app/mvp/schemas.py`. All inputs fo
 | GET | `/plans/{id}/export?format=json` (or csv) | Planner; traceable aggregate summary without request identifiers |
 | GET | `/audit` | Planner network audit / operator own events |
 
-## Reservation example
+## Proposal-first referral example
 
 Draft revision examples, error recovery and Dev 3's UI fixture are in [the plan revision handoff](dev2-plan-revision.md). Original solver output remains immutable; `decision_source` identifies human decisions in the plan and aggregate JSON/CSV exports.
 
@@ -59,7 +58,7 @@ First fetch recommendations and copy the returned versions. Submit:
 ```
 
 Dates and versions above are illustrative. Use the actual selected seed date and live recommendation. `CAPACITY_CONFLICT` or `STALE_INPUT` requires refreshed recommendations; do not bypass a conflict by sending an invented version.
-This body is for the legacy direct `POST /referrals` route. New operator controls should use the proposal-first sequence below so the selected attempt is visible before reservation.
+`POST /referrals` persists this as `PROPOSED`; it does not reserve capacity or funds. The selected attempt is visible in the role-scoped `GET /state` response before the sender chooses to reserve it.
 
 ## Planner referral ranking
 
@@ -123,10 +122,10 @@ Recommendation response shape (string values, dates, and counts depend on the li
 
 ## Proposed referral attempt
 
-Use the selected candidate and its versions from `GET /requests/{id}/recommendations`. The same payload applies to proposal creation:
+Use the selected candidate and its versions from `GET /requests/{id}/recommendations`. The current UI should call `POST /referrals`; `/referrals/proposals` is a proposal-only alias for clients that adopted that path earlier.
 
 ```http
-POST /api/v1/referrals/proposals
+POST /api/v1/referrals
 Authorization: Bearer <sending operator JWT>
 Idempotency-Key: proposal-B-01
 Content-Type: application/json
@@ -168,7 +167,7 @@ The response is a persisted referral attempt; representative fields are:
 }
 ```
 
-There is no `expires_at` until reservation. The request remains `OPEN` and appears as unresolved demand; the proposal blocks a second active attempt for that request. Refresh `GET /state` to recover the persisted attempt in the role-scoped `referrals` list. Capacity held/committed/completed counts, package-funded units, reservations, subsidy ledger entries and budget totals do not change. A proposal remains until cancelled or reserved; only the subsequent reservation hold has an expiry.
+There is no `expires_at` until reservation. The request remains `OPEN` and appears as unresolved demand; the proposal blocks a second active attempt for that request. Refresh `GET /state` to recover the persisted attempt in the role-scoped `referrals` list. Capacity held/committed/completed counts, package-funded units, reservations, subsidy ledger entries and budget totals do not change. The sender can cancel a proposal through `POST /referrals/{id}/cancel`; cancellation keeps it in history and reopens the request without a resource effect.
 
 The sender can reserve the same attempt after a fresh server-side eligibility/version check:
 
@@ -183,7 +182,77 @@ Content-Type: application/json
 {}
 ```
 
-The returned attempt keeps its ID and advances to `AWAITING_CONFIRMATIONS`, with `expires_at`, `capacity_version_at_hold`, and `facility_version_at_hold`. A stale capacity/facility version or newly ineligible provider returns `STALE_INPUT` or `CAPACITY_CONFLICT`; the attempt remains `PROPOSED` and no hold is created. Current subsidy terms and authorization requirements are also recalculated at reservation time. Cancellation uses the existing `POST /referrals/{id}/cancel` route with `{"reason":"Sender chose another provider"}` and leaves the proposal in history without a resource effect.
+The returned attempt keeps its ID and advances to `AWAITING_CONFIRMATIONS`, with `expires_at`, `capacity_version_at_hold`, and `facility_version_at_hold`. If the proposal's capacity or facility version changed, its capacity became stale, or the selected candidate is no longer eligible, it advances to `EXPIRED` instead; this response has no `expires_at`, capacity hold, reservation or ledger entry. A stale proposal also expires when a GET refreshes state or recommendations. In either case the request is refreshed and the sender can choose from current recommendations. Current subsidy terms and authorization requirements are recalculated at reservation time.
+
+Example reserve response (dynamic IDs, timestamps, amounts and versions come from the selected request):
+
+```json
+{
+  "id": "ref-0001",
+  "request_id": "B-01",
+  "facility_id": "P02",
+  "capacity_id": "P02:PRIMARY_CARE_OPD:2026-10-11",
+  "date": "2026-10-11",
+  "status": "AWAITING_CONFIRMATIONS",
+  "partner_accepted": false,
+  "patient_agreed": false,
+  "funding_approved": true,
+  "subsidy": 0,
+  "package_funded": false,
+  "ledger_id": null,
+  "plan_id": null,
+  "created_at": "<UTC timestamp>",
+  "version": 2,
+  "policy_version": "same-zone-cost-capacity-id-v1",
+  "ranking_policy_version": "referral-ranking-v1",
+  "capacity_version_at_proposal": 3,
+  "facility_version_at_proposal": 1,
+  "proposed_by": "operator-p01",
+  "expires_at": "<UTC timestamp>",
+  "capacity_version_at_hold": 3,
+  "facility_version_at_hold": 1
+}
+```
+
+If input versions are stale, reserve instead returns the same attempt with a response like this; refresh `GET /requests/{id}/recommendations`, then create a new proposal:
+
+```json
+{
+  "id": "ref-0001",
+  "request_id": "B-01",
+  "status": "EXPIRED",
+  "reason": "Proposal inputs changed; refresh recommendations",
+  "version": 2
+}
+```
+
+To abandon a current proposal, call:
+
+```http
+POST /api/v1/referrals/ref-0001/cancel
+Authorization: Bearer <sending operator JWT>
+Idempotency-Key: cancel-ref-0001
+Content-Type: application/json
+```
+
+```json
+{"reason":"Sender chose another provider"}
+```
+
+The response keeps the attempt in history with `status: "CANCELLED"` and the supplied `reason`; it creates no reservation or ledger entry. Representative response fields:
+
+```json
+{
+  "id": "ref-0001",
+  "request_id": "B-01",
+  "status": "CANCELLED",
+  "reason": "Sender chose another provider",
+  "version": 2,
+  "updated_at": "<UTC timestamp>"
+}
+```
+
+A new proposal can then be created if the request is still eligible.
 
 All three mutations require an idempotency key. Repeating the same key and request returns the original response. A proposal does not authorize partner/patient/funding confirmation; those existing transitions remain available only after reservation.
 

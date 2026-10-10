@@ -20,6 +20,8 @@ from .common import (
 )
 from ..config import get_settings
 
+STALE_PROPOSAL_REASON = "Proposal inputs changed; refresh recommendations"
+
 
 def compatible(r, f, day):
     return (
@@ -210,7 +212,26 @@ def release(s, a, status, reason, actor):
     audit(s, actor, status, a["id"], before=was, after=status, reason=reason)
 
 
-def expire(s):
+def proposal_is_stale(s, a):
+    c = s["capacities"].get(a["capacity_id"])
+    f = s["facilities"].get(a["facility_id"])
+    r = s["requests"].get(a["request_id"])
+    if not c or not f or not r:
+        return True
+    if (
+        c["version"] != a["capacity_version_at_proposal"]
+        or f["version"] != a["facility_version_at_proposal"]
+        or not fresh(c)
+        or not compatible(r, f, c["date"])
+    ):
+        return True
+    return not any(
+        option["capacity_id"] == a["capacity_id"]
+        for option in recommendations(s, r, allow_attempt=a["id"])["candidates"]
+    )
+
+
+def expire(s, include_proposals=True):
     from .planning import cancel_plan
 
     for p in s["plans"].values():
@@ -222,6 +243,8 @@ def expire(s):
         ):
             cancel_plan(s, {"id": "system", "role": "planner"}, p["id"], "Dated plan resources expired")
     for a in s["referrals"].values():
+        if include_proposals and a["status"] == "PROPOSED" and proposal_is_stale(s, a):
+            release(s, a, "EXPIRED", STALE_PROPOSAL_REASON, {"id": "system"})
         if a["status"] == "AWAITING_CONFIRMATIONS" and datetime.fromisoformat(a["expires_at"]) <= now():
             release(s, a, "EXPIRED", "Response deadline elapsed", {"id": "system"})
 
@@ -388,9 +411,11 @@ def reserve(s, u, data, attempt=None):
 
 def reserve_proposal(s, u, aid):
     a = get(s, "referrals", aid)
-    require(a["status"] == "PROPOSED", "INVALID_TRANSITION", "Referral is not proposed")
     r = get(s, "requests", a["request_id"])
     operator(u, r["source_facility_id"])
+    if a["status"] == "EXPIRED" and a.get("reason") == STALE_PROPOSAL_REASON:
+        return a
+    require(a["status"] == "PROPOSED", "INVALID_TRANSITION", "Referral is not proposed")
     return reserve(
         s,
         u,

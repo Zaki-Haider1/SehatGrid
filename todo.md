@@ -1,6 +1,6 @@
 # SEHAT GRID — current delivery board
 
-Reviewed 10 October 2026 against [scope v1](docs/mvp-scope-v1.md), the implementation at `49c44b4`, referral ranking backend commit `69f2110`, [WORK_STATUS.md](WORK_STATUS.md), tests, evaluation artifacts and CI run [38054258367](https://github.com/Zaki-Haider1/akon/actions/runs/38054258367). The prior board described pre-MVP code and incorrectly marked most implemented features as missing. This board supersedes it.
+Reviewed 10 October 2026 against [scope v1](docs/mvp-scope-v1.md), the implementation at `49c44b4`, referral ranking backend commit `69f2110`, [WORK_STATUS.md](WORK_STATUS.md), tests, evaluation artifacts and CI run [38054258367](https://github.com/Zaki-Haider1/akon/actions/runs/38054258367). Follow-up review checked CI run [38058683201](https://github.com/Zaki-Haider1/akon/actions/runs/38058683201), which concluded successfully for `b3c13de`; the route and stale-proposal fixes on this branch were made after that run. The prior board described pre-MVP code and incorrectly marked most implemented features as missing. This board supersedes it.
 
 The team has three developers. Names are deliberately unassigned; claim a lane or exchange tasks as needed. Each numbered task has one owner and its own acceptance evidence. A task marked **coded** means the repository implements it; **verified** means the cited check ran; **open** means work remains. Do not infer full product acceptance from CI.
 
@@ -10,8 +10,8 @@ The team has three developers. Names are deliberately unassigned; claim a lane o
 |---|---|---|
 | Narrow pilot, provider network, two authenticated roles, permissions and audit | Coded; automated checks | Eight synthetic providers, five Islamabad catchments, one non-emergency primary-care service; `backend/app/mvp/seed.py`, `auth.py`, `api.py`, `frontend/app/page.tsx`. |
 | Matching and human review | Coded; small evaluation | Pinned MiniLM/ONNX inference and persisted review in `matching.py`; `outputs/matching-results.json` covers 6 development and 14 held-out synthetic examples. No clinical accuracy claim. |
-| Referral lifecycle, capacity, funding and ledger | Coded; automated checks | `referrals.py`, `common.py`, `api.py`; `backend/tests/test_mvp.py` includes completion, permissions, idempotency and concurrent guards. The distinct persisted `PROPOSED` attempt state is absent. |
-| Unique unresolved demand, snapshots and monthly three-action allocation | Coded; revision integration pending | `intelligence.py`, `planning.py`; worked 8/7/5, PKR 25,000 loop and 42 tiny independent allocation cases. Dev 2's draft revision backend and fixture are on `codex/dev2-plan-revision`; planner UI remains with Dev 3. |
+| Referral lifecycle, capacity, funding and ledger | Coded; automated checks | `referrals.py`, `common.py`, `api.py`; `backend/tests/test_mvp.py` covers proposal-first creation, reserve, stale recovery, cancellation, permissions, idempotency and concurrent capacity/funding guards. |
+| Unique unresolved demand, snapshots and monthly three-action allocation | Coded; backend revision integrated, verification in progress | `intelligence.py`, `planning.py`; worked 8/7/5, PKR 25,000 loop and 42 tiny independent allocation cases. Draft revision backend and fixture are integrated; planner UI remains with Dev 3. |
 | Islamabad map, role screens and JSON/CSV export | Coded; partial browser checks | `frontend/components/pilot-map.tsx`, `frontend/app/page.tsx`; planner login/map/allocation draft exercised. Full operator, activation and mobile journeys remain unverified in a browser. |
 | CI and local delivery package | Verified CI, deployment open | GitHub run 38054258367 completed successfully for backend, frontend and combined-container jobs. CI includes PostgreSQL, migrations, evaluations and an offline container cold start. No public URL or live restart check. |
 
@@ -40,20 +40,25 @@ Dev 3 owns `frontend/app/page.tsx` and `frontend/lib/api.ts` during parallel wor
 - [x] Test default behavior, changed ranking, unauthorized update, stale policy version, eligibility filtering and reservation recheck.
 - [ ] Add the planner control through Dev 3's UI lane using the versioned contract example in `docs/api-contracts.md`.
 
-**Backend evidence:** `uv run --with-requirements requirements-dev.txt python -m pytest -q tests/test_mvp.py -k "planner_can_configure_referral_ranking or ranking_never_selects_an_ineligible_provider or proposed_referral or legacy_direct_reservation"` passed (7 tests); `uv run --with-requirements requirements-dev.txt ruff check .` passed. Full local backend suite: 58 passed, 21 failed because the pinned matcher artifact `backend/models/all-MiniLM-L6-v2/manifest.json` is absent; no browser or deployment acceptance is claimed.
+**Backend evidence:** The common focused R1/R2 command passed all 8 selected tests: `uv run --with-requirements requirements-dev.txt python -m pytest -q tests/test_mvp.py -k "planner_can_configure_referral_ranking or ranking_never_selects_an_ineligible_provider or proposed_referral or post_referrals or stale_proposal_expires_when_recommendations_refresh"`. Ruff passed. Full backend gate evidence is recorded under R2. CI run 38058683201 is the successful pre-follow-up run for `b3c13de`, not evidence for these local changes. Browser and deployment acceptance remain open.
 
 **Done when:** A planner can change ranking, operators see the new order and version, and ineligible providers never appear. Record test command and PR.
+
 
 ### R2 — Explicit referral `PROPOSED` stage
 
 **Owner:** Dev 1. **Status:** Backend implementation, focused lifecycle checks, and request/response examples are complete on `dev1/referral-ranking-proposals`; operator UI and browser acceptance remain open for Dev 3.
 
-- [x] Add a separately persisted proposed attempt before the sender's reservation/hold action, with permitted transition and cancellation semantics matching the scope state table.
-- [x] Keep one active attempt per request, preserve attempt history, and ensure proposal alone consumes no quota or funds. Define idempotent retries and stale capacity/funding handling.
-- [x] Update API contract and focused lifecycle tests; provide final DTO examples for Dev 3.
+- [x] Make normal `POST /referrals` persist a `PROPOSED` attempt; reserve that same attempt into `AWAITING_CONFIRMATIONS` only after current eligibility/version checks. `/referrals/proposals` remains a proposal-only alias.
+- [x] Keep one active attempt per request, preserve history and idempotency, and ensure proposals have no quota or ledger effect. Stale proposals expire on state/recommendation reads or reserve; sender cancellation remains available and reopens the request.
+- [x] Update route contract, scope route catalogue, focused lifecycle/concurrency tests, and exact request/response examples for Dev 3.
 - [ ] Update operator UI through Dev 3 and complete lifecycle/browser acceptance.
 
-**Done when:** A proposal survives reload, can be approved into the existing confirmation flow or cancelled, and never changes ledger/quota before reservation. Backend portion is implemented; browser/operator UI proof remains open.
+**Dev 3 handoff:** Use `POST /api/v1/referrals` with the selected `request_id`, `capacity_id`, `capacity_version`, and `facility_version`; render its `status: "PROPOSED"` response. On the sender's Reserve action, call `POST /api/v1/referrals/{id}/reserve` with `{}` and a new idempotency key; it returns the same ID as `AWAITING_CONFIRMATIONS` with `expires_at`, or `EXPIRED` with a refresh message if inputs changed. Show Cancel for `PROPOSED` and call `POST /api/v1/referrals/{id}/cancel` with a reason. See the exact JSON in [API contract examples](docs/api-contracts.md#proposed-referral-attempt). No frontend files were changed in this backend handoff.
+
+**Done when:** A proposal survives reload, can be reserved into the existing confirmation flow or cancelled, and never changes ledger/quota before reservation. Backend portion is implemented; browser/operator UI proof remains open.
+
+**Backend gate evidence:** On `dev1/referral-ranking-proposals`, the full local backend CI job passed after the proposal-first route change: Ruff, Alembic upgrade/check, 153 SQLite/PostgreSQL tests (13 existing migration warnings), matching evaluation, 42 allocation checks, and backend-only container build/boot against PostgreSQL. The concurrency tests race the reservation step and verify only one capacity or budget hold is created. CI run 38058683201 concluded `success` for `b3c13de` before this follow-up and does not cover the changes below.
 
 ### P1 — Manual draft-plan revision with reason
 
