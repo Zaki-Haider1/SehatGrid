@@ -233,3 +233,44 @@ def test_health_export_and_reset_disabled(client):
     assert api.get("/health").json()["status"] == "ok"
     assert len(api.get("/api/export").json()["facilities"]) == 6
     assert api.post("/api/demo/reset?confirm=RESET_SYNTHETIC_DATA").status_code == 403
+
+
+def test_new_provider_can_offer_capacity_and_receive_referrals(client):
+    api, _ = client
+    registered = api.post(
+        "/api/facilities",
+        json={
+            "name": "North Community Support",
+            "zone": "North",
+            "kind": "Community center",
+            "latitude": 24.96,
+            "longitude": 67.07,
+        },
+    )
+    assert registered.status_code == 201
+    provider = registered.json()["id"]
+    assert (
+        api.put(
+            f"/api/facilities/{provider}/capacity",
+            json={"service_id": 6, "total": 1, "day": today().isoformat()},
+        ).status_code
+        == 200
+    )
+    request = new_request(api, 6, "North")
+    assert request["recommendations"][0]["facility_id"] == provider
+    assert request["recommendations"][0]["local"]
+    assert (
+        api.post(f"/api/requests/{request['id']}/reserve", json={"facility_id": provider}).status_code == 201
+    )
+    assert capacity(api, provider, 6)["available"] == 0
+
+
+def test_no_demand_creates_empty_plan_without_spending(client):
+    api, _ = client
+    future_day = (today() + timedelta(days=30)).isoformat()
+    result = api.post("/api/plans", json={"day": future_day, "limit": 50000})
+    assert result.status_code == 201
+    plan = result.json()
+    assert plan["units"] == 0 and plan["cost"] == 0 and plan["allocations"] == []
+    assert api.post(f"/api/plans/{plan['id']}/approve").status_code == 409
+    assert api.get("/api/dashboard").json()["budget"]["committed"] == 0
