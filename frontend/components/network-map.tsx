@@ -156,6 +156,17 @@ export function NetworkMap({
     );
   }
 
+  function focusHospital() {
+    const hospital = facilities.find((facility) => facility.id === selected);
+    if (hospital && map.current) {
+      map.current.flyTo({
+        center: [hospital.longitude, hospital.latitude],
+        zoom: 16,
+        duration: 500,
+      });
+    }
+  }
+
   return (
     <div className="geographic-map">
       <div className="map-canvas">
@@ -177,6 +188,13 @@ export function NetworkMap({
         )}
         <button className="map-fit" onClick={fitHospitals} disabled={!ready}>
           Fit hospitals
+        </button>
+        <button
+          className="map-fit map-focus"
+          onClick={focusHospital}
+          disabled={!ready || !selected}
+        >
+          Zoom to hospital
         </button>
         <div className="map-legend">
           <span>

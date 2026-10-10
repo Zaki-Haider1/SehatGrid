@@ -550,6 +550,9 @@ main {
   font-size: 12px;
   line-height: 1.6;
 }
+.map-focus {
+  top: 49px;
+}
 .map-error {
   border: 1px solid #eacaaa;
 }
@@ -766,6 +769,7 @@ main {
   margin-left: 6px;
 }
 .table-scroll {
+  position: relative;
   overflow-x: auto;
 }
 table {
