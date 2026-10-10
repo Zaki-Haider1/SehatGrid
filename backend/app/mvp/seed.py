@@ -42,6 +42,10 @@ def make_seed():
         service_date=day,
         scope_version="1.0",
         policy_version="same-zone-cost-capacity-id-v1",
+        ranking_policy={
+            "criteria": ["same_zone", "subsidy", "available"],
+            "version": 1,
+        },
         subsidy_rule={"id": "SUBSIDY-1", "service_id": SERVICE, "amount": 1000, "version": 1, "month": month},
     )
     for name, lat, lon in [

@@ -21,6 +21,7 @@ The Pydantic input contracts live in `backend/app/mvp/schemas.py`. All inputs fo
 | POST | `/matching/reviews` | `match_id`, ACCEPT/CORRECT/DECLINE, canonical candidate, reason, optional existing record ID; actor/scope checks |
 | GET/POST | `/requests` | Own/incoming queue / synthetic request intake with stored review ID and human suitability flags |
 | GET | `/requests/{id}/recommendations` | Sending operator; eligibility explanations and input versions |
+| GET/PUT | `/referral-ranking` | Planner reads/updates the ordered `criteria` (`same_zone`, `subsidy`, `available`) with expected `version` and change `reason`; recommendations return `ranking_policy_version` |
 | POST | `/requests/{id}/reprocess`, `/cancel` | Sending operator; reason; no active attempt allowed |
 | POST | `/referrals` | Sending approval; request ID, capacity ID/version and facility version; atomic temporary hold |
 | POST | `/referrals/{id}/partner-response` | Receiving operator; accepted boolean and rejection reason |

@@ -117,6 +117,18 @@ class OfferInput(Input):
     longitude: float = Field(ge=72.7, le=73.4)
 
 
+class ReferralRankingInput(Input):
+    criteria: list[Literal["same_zone", "subsidy", "available"]] = Field(min_length=3, max_length=3)
+    version: int = Field(ge=1)
+    reason: str = Field(min_length=3, max_length=500)
+
+    @model_validator(mode="after")
+    def criteria_are_unique(self):
+        if len(set(self.criteria)) != 3:
+            raise ValueError("Include each ranking criterion exactly once")
+        return self
+
+
 class SubsidyInput(MonthInput):
     amount: int = Field(ge=0, le=1000000)
     version: int = Field(ge=1)

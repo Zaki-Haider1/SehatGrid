@@ -62,6 +62,7 @@ def entitlement(s, rid, fid, day):
 
 
 def recommendations(s, r):
+    ranking_policy = s["ranking_policy"]
     if not r["suitable"]:
         return {"candidates": [], "reasons": ["OUT_OF_SCOPE"]}
     if not r["service_reviewed"] or r["service_id"] != SERVICE:
@@ -127,18 +128,26 @@ def recommendations(s, r):
                 "package_funded": package_funded,
                 "same_zone": f["zone"] == r["zone"],
                 "policy_version": s["policy_version"],
+                "ranking_policy_version": f"referral-ranking-v{ranking_policy['version']}",
                 "plan_id": p["id"] if p else None,
                 "funding_authorization_required": bool(cost),
                 "explanation": f"Reviewed primary-care service; declared zone eligibility; {available(c) + int(entitled)} eligible units (including any reserved plan unit). Receiving acceptance and patient agreement required.",
             }
         )
+    criterion_keys = {
+        "same_zone": lambda x: not x["same_zone"],
+        "subsidy": lambda x: x["subsidy"],
+        "available": lambda x: -x["available"],
+    }
     options.sort(
-        key=lambda x: (not x["same_zone"], x["subsidy"], -x["available"], x["facility_id"], x["date"])
+        key=lambda x: tuple(criterion_keys[name](x) for name in ranking_policy["criteria"])
+        + (x["facility_id"], x["date"])
     )
     if not eligible:
         reasons.add("NO_ELIGIBLE_PARTNER")
     return {
         "candidates": options,
+        "ranking_policy_version": f"referral-ranking-v{ranking_policy['version']}",
         "reasons": sorted(reasons)
         if not options
         else (["FUNDING_UNAVAILABLE"] if all(o["subsidy"] and not o["plan_id"] for o in options) else []),

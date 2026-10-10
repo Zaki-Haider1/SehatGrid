@@ -19,6 +19,45 @@ def reserve(p, rid="A-01"):
     )
 
 
+def test_planner_can_configure_referral_ranking(pilot):
+    p = pilot
+    current = p.call("referral-ranking", user="planner")
+    assert current.status_code == 200
+    policy = current.json()
+    assert policy["criteria"] == ["same_zone", "subsidy", "available"]
+
+    updated = p.ok(
+        "referral-ranking",
+        {
+            "criteria": ["subsidy", "same_zone", "available"],
+            "version": policy["version"],
+            "reason": "Prefer lower subsidy before zone proximity",
+        },
+        method="PUT",
+    )
+    assert updated["version"] == policy["version"] + 1
+    assert updated["criteria"] == ["subsidy", "same_zone", "available"]
+
+    request_id = "A-01"
+    result = p.ok(f"requests/{request_id}/recommendations", user="operator-p01")
+    candidates = result["candidates"]
+
+    def key(candidate):
+        values = {
+            "same_zone": not candidate["same_zone"],
+            "subsidy": candidate["subsidy"],
+            "available": -candidate["available"],
+        }
+        return tuple(values[name] for name in updated["criteria"]) + (
+            candidate["facility_id"],
+            candidate["date"],
+        )
+
+    assert candidates == sorted(candidates, key=key)
+    assert result["ranking_policy_version"] == updated["policy_version"]
+    assert p.call("referral-ranking", {"criteria": ["same_zone", "subsidy", "available"], "version": 1, "reason": "Operator cannot change planner policy"}, "operator-p01", "PUT").status_code == 403
+
+
 def test_worked_example_and_closed_loop(pilot):
     p = pilot
     plan = make_plan(p)

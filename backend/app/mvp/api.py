@@ -160,6 +160,15 @@ def view(s, u, month, day):
 
 def mutate(s, u, path, method, body):
     parts = path.split("/")
+    if path == "referral-ranking" and method == "PUT":
+        planner(u)
+        d = validate(schemas.ReferralRankingInput, body)
+        current = s["ranking_policy"]
+        require(d["version"] == current["version"], "STALE_INPUT", "Refresh referral ranking policy")
+        before = deepcopy(current)
+        current.update(criteria=d["criteria"], version=current["version"] + 1)
+        audit(s, u, "REFERRAL_RANKING_UPDATED", "REFERRAL-RANKING", before=before, after=deepcopy(current), reason=d["reason"])
+        return {**current, "policy_version": f"referral-ranking-v{current['version']}"}
     if path == "facilities" and method == "POST":
         require(u["role"] == "operator", "ROLE_FORBIDDEN", "Operators register providers", 403)
         d = validate(schemas.FacilityInput, body)
@@ -506,6 +515,10 @@ async def api(path: str, request: Request, db: Session = Depends(get_db)):
         if method == "GET":
             if path in ["state", "auth/me"]:
                 return view(s, u, month, day) if path == "state" else public_user(u)
+            if path == "referral-ranking":
+                planner(u)
+                policy = s["ranking_policy"]
+                return {**policy, "policy_version": f"referral-ranking-v{policy['version']}"}
             if path == "services":
                 return list(s["services"].values())
             if path.startswith("facilities/") and path.endswith("/services"):

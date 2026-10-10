@@ -137,7 +137,7 @@ A fresh CI status lookup during this handoff failed because `api.github.com` cou
 
 These items prevent an unconditional statement that every detail of the README is finished:
 
-- [ ] **Planner-configurable referral ranking:** the specified deterministic order and policy version are implemented, but there is no planner interface/API to change the ranking policy.
+- [x] **Planner-configurable referral ranking:** planner-only `GET/PUT /api/v1/referral-ranking` validates a versioned criteria order, audits changes, and returns the ranking policy version with recommendations. Added a focused API regression test; the frontend configuration control remains unimplemented.
 - [ ] **Manual draft-plan revision with a recorded reason:** plans can be recomputed after inputs change, but direct manual editing/override of draft allocations is not implemented. Any implementation must retain all budget/capacity/eligibility constraints.
 - [ ] **Explicit `PROPOSED` referral state:** the current sending action creates an attempt in `AWAITING_CONFIRMATIONS` with its hold. A separately persisted proposed stage from the README state table is not implemented.
 
