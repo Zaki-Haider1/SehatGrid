@@ -34,3 +34,4 @@ See [WORK_STATUS.md](WORK_STATUS.md) for the interruption handoff, known README 
 ## Deployment boundary
 
 Public hosting remains the deployment teammate's handoff, as requested in the earlier planning messages. The repository supplies the complete container and configuration; no unrelated Railway project is changed. No patient portal, forecasting, clinical decision automation, real payments or other excluded scope is a hidden delivery task.
+
