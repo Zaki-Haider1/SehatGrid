@@ -7,7 +7,7 @@
 
 ## Current integration verification — 10 October 2026
 
-Dev 1's latest fix (`e43c7ee`) is integrated on `integrate/referral-reservation`, branched from `origin/main` at Dev 2's `b840941`, as `c1ab59c`. The original Dev 1 branch remains unchanged. The conflict in `todo.md` was reconciled so the referral and draft-plan revision features are both recorded. The PR and its CI are still pending at this checkpoint.
+Dev 1's latest fix (`e43c7ee`) is integrated on `integrate/referral-reservation`, branched from `origin/main` at Dev 2's `b840941`, as `c1ab59c`. The original Dev 1 branch remains unchanged. The conflict in `todo.md` was reconciled so the referral and draft-plan revision features are both recorded. [PR #2](https://github.com/Zaki-Haider1/akon/pull/2) passed all six GitHub CI job instances at head `14d23de`; the push run is [38062163445](https://github.com/Zaki-Haider1/akon/actions/runs/38062163445), and the pull-request run is [38062177550](https://github.com/Zaki-Haider1/akon/actions/runs/38062177550).
 
 | Gate | Command / environment | Result |
 |---|---|---|
@@ -20,9 +20,9 @@ Dev 1's latest fix (`e43c7ee`) is integrated on `integrate/referral-reservation`
 | Allocation evaluation | `uv run --with-requirements requirements-dev.txt python scripts/evaluate_allocation.py` | **42 independent exhaustive checks passed** for seed `islamabad-primary-care-v1`; tiny synthetic fixtures only. The tracked report was restored because this run changed only nondeterministic timing values. |
 | Frontend typecheck | From `frontend/`, after `npm ci`: `npm run typecheck` | Passed (`next typegen` and `tsc --noEmit`). |
 | Frontend build | `npm run build` | Passed with Next.js 16.4.0. |
-| Frontend formatting | `npm run format:check` | **Failed** on nine unchanged files: `app/globals.css`, `app/layout.tsx`, `app/page.tsx`, `components/dialog.tsx`, `components/pilot-map.tsx`, `lib/api.ts`, `next.config.ts`, `tsconfig.json`, `package.json`. No frontend files differ from `origin/main`; they remain in Dev 3's lane. |
+| Frontend formatting | `npm run format:check` | The local Windows run flagged nine unchanged files (`app/globals.css`, `app/layout.tsx`, `app/page.tsx`, `components/dialog.tsx`, `components/pilot-map.tsx`, `lib/api.ts`, `next.config.ts`, `tsconfig.json`, `package.json`). `git ls-files --eol` reports LF in the index and CRLF in the Windows worktree. Both Linux GitHub frontend jobs passed, including `format:check`; no frontend files differ from `origin/main`. |
 
-The backend now proves that `POST /referrals` creates `PROPOSED` without a hold, `POST /referrals/{id}/reserve` performs the hold on the same attempt, stale proposals expire and reopen the request, and Dev 2's draft-plan revision behavior remains covered. No frontend source was changed. The existing UI has not been updated for a Reserve action; browser acceptance remains with Dev 3 and is not complete. Do not merge unless the PR's required checks pass; the formatter failure is recorded above for triage within the frontend ownership lane.
+The backend now proves that `POST /referrals` creates `PROPOSED` without a hold, `POST /referrals/{id}/reserve` performs the hold on the same attempt, stale proposals expire and reopen the request, and Dev 2's draft-plan revision behavior remains covered. No frontend source was changed. The existing UI has not been updated for a Reserve action; browser acceptance remains with Dev 3 and is not complete. PR #2's required CI checks passed and read-only review found no blocking issues; merge is still pending.
 
 ## Status at interruption
 
@@ -40,7 +40,7 @@ Ran from `backend/` in the isolated Dev 2 worktree using Python 3.12, pinned dev
 | `alembic upgrade head`, then `alembic check` with isolated PostgreSQL `DATABASE_URL` | Passed; no new upgrade operations detected. |
 | `python scripts/evaluate_allocation.py` | **42 independent exhaustive checks passed**. Runtime-only changes to the existing evaluation artifact were discarded. |
 
-Revisions consume no funds/quota before approval; invalid edits roll back, original solver results remain preserved, and revised approval requires the displayed version. No migration or dependency was added. Dev 3 still owns the planner editor, reload/error/mobile browser acceptance and required public deployment. PR review/merge and CI on the final integration remain open; local backend checks do not establish browser or deployment acceptance.
+Revisions consume no funds/quota before approval; invalid edits roll back, original solver results remain preserved, and revised approval requires the displayed version. No migration or dependency was added. Dev 3 still owns the planner editor, reload/error/mobile browser acceptance and required public deployment. PR review and CI passed; merge remains open. Local backend checks do not establish browser or deployment acceptance.
 
 Implementation is paused at the user's request. The main README-aligned implementation was committed and pushed to `main` at the checkpoint above. Most core features are coded and automated checks have passed, but this is **not a claim that every README requirement or acceptance check is complete**. The remaining items and known simplifications are listed below.
 
@@ -170,7 +170,7 @@ A fresh CI status lookup during this handoff failed because `api.github.com` cou
 
 ## Backend features present on the integration branch
 
-These implementations have local automated evidence above; PR merge is still pending, and frontend acceptance remains a separate Dev 3 responsibility:
+These implementations have local automated evidence above and passed PR #2 CI; frontend acceptance remains a separate Dev 3 responsibility:
 
 - **Planner-configurable referral ranking:** planner-only `GET/PUT /api/v1/referral-ranking` validates and audits a versioned criteria order, keeps eligibility independent of ranking, and returns the applied policy version. The planner UI control remains unimplemented.
 - **Manual draft-plan revision with a recorded reason:** `GET /plans/{id}/revision-options` and `POST /plans/{id}/revise` support draft-only human revisions, preserve solver output, revalidate edits and approval, and record revisions for export/audit. The planner editor/browser acceptance remain with Dev 3.
@@ -190,12 +190,12 @@ These are implementation choices to review when continuing; they are not evidenc
 
 ## Remaining verification and deployment work
 
-- [ ] Open the integration PR, inspect its CI, and resolve required-check failures before merging. The local `format:check` failure affects unchanged Dev 3-owned frontend files.
+- [x] Open integration PR #2 and inspect its CI. Both push and pull-request runs passed the backend, frontend and combined-container jobs. The local Windows `format:check` discrepancy is due to CRLF worktree line endings; the Linux CI formatter step passed.
 - [ ] Complete a browser rehearsal of operator intake, matching review, recommendations/reservation, receiving acceptance, patient agreement, funding approval, arrival and completion.
 - [ ] Complete the browser planning loop: snapshot, compute, approve, resource activation/rejection, reprocess unresolved demand and inspect results/export.
 - [ ] Check all new screens at phone and desktop widths, including empty/error states and permission-denied cases.
 - [ ] Reconcile the local frontend startup command with Next.js standalone output. `next start` emitted a standalone warning; the combined container uses the standalone server.
-- [x] Run the requested local backend suites, Ruff, SQLite/PostgreSQL Alembic upgrade/checks, matching/allocation evaluations, and frontend typecheck/build on the integration branch; results are recorded above. The repository formatter check is the outstanding local CI failure.
+- [x] Run the requested local backend suites, Ruff, SQLite/PostgreSQL Alembic upgrade/checks, matching/allocation evaluations, and frontend typecheck/build on the integration branch; results are recorded above. The local Windows formatter discrepancy is due to CRLF worktree line endings; Linux CI passed `format:check`.
 - [ ] Perform the final five-minute demonstration and record its results against the supplied README acceptance criteria.
 - [ ] Provision the chosen hosting environment and PostgreSQL, configure secrets, run migrations and initialize synthetic data according to deployment instructions.
 - [ ] Verify the deployed application, authentication, API proxy, persistent data, model availability and restart behavior, then record the public URL.
@@ -218,4 +218,4 @@ A patient self-service portal, forecasting, emergency triage, clinical decision 
 - [Matching evaluation](outputs/matching-results.json)
 - [Allocation evaluation](outputs/allocation-results.json)
 
-Resume by opening the integration PR and checking its required CI. Do not claim browser acceptance or Reserve UI support; Dev 3 still owns those items. Complete the open browser, demonstration, and deployment checks above before claiming the MVP fully accepted.
+The integration PR is open with passing checks; merge it only after confirming the final PR head remains green. Do not claim browser acceptance or Reserve UI support; Dev 3 still owns those items. Complete the open browser, demonstration, and deployment checks above before claiming the MVP fully accepted.

@@ -1,6 +1,6 @@
 # SEHAT GRID — current delivery board
 
-Updated 10 October 2026 on `integrate/referral-reservation`, based on `origin/main` at `b840941` and integrating Dev 1's `e43c7ee` as `c1ab59c`. Local results and the current CI limitation are recorded in [WORK_STATUS.md](WORK_STATUS.md). The earlier CI runs [38054258367](https://github.com/Zaki-Haider1/akon/actions/runs/38054258367) and [38058683201](https://github.com/Zaki-Haider1/akon/actions/runs/38058683201) verify earlier commits only; neither covers this integration. The prior board described pre-MVP code and incorrectly marked most implemented features as missing. This board supersedes it.
+Updated 10 October 2026 for [integration PR #2](https://github.com/Zaki-Haider1/akon/pull/2), based on `origin/main` at `b840941` and integrating Dev 1's `e43c7ee` as `c1ab59c`. All six GitHub CI job instances passed at PR head `14d23de`. Local results and the Windows line-ending note are recorded in [WORK_STATUS.md](WORK_STATUS.md). The earlier CI runs [38054258367](https://github.com/Zaki-Haider1/akon/actions/runs/38054258367) and [38058683201](https://github.com/Zaki-Haider1/akon/actions/runs/38058683201) verify earlier commits only; neither covers this integration. The prior board described pre-MVP code and incorrectly marked most implemented features as missing. This board supersedes it.
 
 The team has three developers. Names are deliberately unassigned; claim a lane or exchange tasks as needed. Each numbered task has one owner and its own acceptance evidence. A task marked **coded** means the repository implements it; **verified** means the cited check ran; **open** means work remains. Do not infer full product acceptance from CI.
 
@@ -10,10 +10,10 @@ The team has three developers. Names are deliberately unassigned; claim a lane o
 |---|---|---|
 | Narrow pilot, provider network, two authenticated roles, permissions and audit | Coded; automated checks | Eight synthetic providers, five Islamabad catchments, one non-emergency primary-care service; `backend/app/mvp/seed.py`, `auth.py`, `api.py`, `frontend/app/page.tsx`. |
 | Matching and human review | Coded; small evaluation | Pinned MiniLM/ONNX inference and persisted review in `matching.py`; `outputs/matching-results.json` covers 6 development and 14 held-out synthetic examples. No clinical accuracy claim. |
-| Referral lifecycle, capacity, funding and ledger | Backend locally verified; PR pending | `referrals.py`, `common.py`, `api.py`; proposal-first creation, reserve holds, stale recovery, cancellation, permissions, idempotency and concurrent capacity/funding guards. Full SQLite and PostgreSQL-enabled suite results are in `WORK_STATUS.md`. Dev 3's Reserve UI/browser acceptance remain open. |
-| Unique unresolved demand, snapshots and monthly three-action allocation | Backend revision locally verified; PR pending | `intelligence.py`, `planning.py`; worked 8/7/5, PKR 25,000 loop and 42 tiny independent allocation cases. Draft revision backend and fixture are present; planner UI/browser acceptance remain with Dev 3. |
+| Referral lifecycle, capacity, funding and ledger | Backend locally verified; integration PR #2 CI green | `referrals.py`, `common.py`, `api.py`; proposal-first creation, reserve holds, stale recovery, cancellation, permissions, idempotency and concurrent capacity/funding guards. Full SQLite and PostgreSQL-enabled suite results are in `WORK_STATUS.md`. Dev 3's Reserve UI/browser acceptance remain open. |
+| Unique unresolved demand, snapshots and monthly three-action allocation | Backend revision locally verified; integration PR #2 CI green | `intelligence.py`, `planning.py`; worked 8/7/5, PKR 25,000 loop and 42 tiny independent allocation cases. Draft revision backend and fixture are present; planner UI/browser acceptance remain with Dev 3. |
 | Islamabad map, role screens and JSON/CSV export | Coded; partial browser checks | `frontend/components/pilot-map.tsx`, `frontend/app/page.tsx`; planner login/map/allocation draft exercised. Full operator, activation and mobile journeys remain unverified in a browser. |
-| CI and local delivery package | Verified CI, deployment open | GitHub run 38054258367 completed successfully for backend, frontend and combined-container jobs. CI includes PostgreSQL, migrations, evaluations and an offline container cold start. No public URL or live restart check. |
+| CI and local delivery package | Integration PR #2 CI passed; deployment open | Both push and pull-request workflows for PR #2 passed backend, frontend and combined-container jobs. CI includes PostgreSQL, migrations, evaluations and an offline container cold start. No public URL or live restart check. |
 
 The implementation stores versioned canonical collections in a transactional `pilot_state` JSON aggregate, not normalized tables for every entity. This is a documented small-pilot design limit, not an unimplemented feature to silently add. Expiry runs on API access. Seeded partners and operational data are synthetic; public coordinates are geographic context only. A patient portal, emergency triage, forecasting, real payments and real-provider onboarding are outside scope.
 
@@ -33,21 +33,21 @@ Dev 3 owns `frontend/app/page.tsx` and `frontend/lib/api.ts` during parallel wor
 
 ### R1 — Planner-configurable referral ranking
 
-**Owner:** Dev 1. **Status:** Backend policy, stale-version/recheck coverage, and contract examples are integrated and locally verified on `integrate/referral-reservation`; PR/merge is pending. Planner UI remains open for Dev 3.
+**Owner:** Dev 1. **Status:** Backend policy, stale-version/recheck coverage, and contract examples are integrated and locally verified in [PR #2](https://github.com/Zaki-Haider1/akon/pull/2); all six GitHub CI jobs passed. Planner UI remains open for Dev 3.
 
 - [x] Define allowed ordering controls in `docs/api-contracts.md` without allowing a policy to bypass service, suitability, zone, date, freshness, capacity or funding eligibility.
 - [x] Persist a versioned planner policy; expose planner-only read/update API and include the applied version in recommendations. Keep deterministic stable-ID tie breaking.
 - [x] Test default behavior, changed ranking, unauthorized update, stale policy version, eligibility filtering and reservation recheck.
 - [ ] Add the planner control through Dev 3's UI lane using the versioned contract example in `docs/api-contracts.md`.
 
-**Backend evidence:** SQLite-only suite: 116 passed; PostgreSQL-enabled full suite: 210 passed across SQLite and PostgreSQL fixtures. Ruff and the matching/allocation evaluations passed. Exact commands/results are in `WORK_STATUS.md`. PR CI is pending; frontend ranking controls, browser acceptance and deployment remain open.
+**Backend evidence:** SQLite-only suite: 116 passed; PostgreSQL-enabled full suite: 210 passed across SQLite and PostgreSQL fixtures. Ruff and the matching/allocation evaluations passed. Exact commands/results are in `WORK_STATUS.md`. PR #2 CI passed; merge, frontend ranking controls, browser acceptance and deployment remain open.
 
 **Done when:** A planner can change ranking, operators see the new order and version, and ineligible providers never appear. Record test command and PR.
 
 
 ### R2 — Explicit referral `PROPOSED` stage
 
-**Owner:** Dev 1. **Status:** Backend implementation, lifecycle tests, and request/response examples are integrated and locally verified on `integrate/referral-reservation`; PR/merge is pending. Operator UI and browser acceptance remain open for Dev 3.
+**Owner:** Dev 1. **Status:** Backend implementation, lifecycle tests, and request/response examples are integrated and locally verified in [PR #2](https://github.com/Zaki-Haider1/akon/pull/2); all six GitHub CI jobs passed. Operator UI and browser acceptance remain open for Dev 3.
 
 - [x] Make normal `POST /referrals` persist a `PROPOSED` attempt; reserve that same attempt into `AWAITING_CONFIRMATIONS` only after current eligibility/version checks. `/referrals/proposals` remains a proposal-only alias.
 - [x] Keep one active attempt per request, preserve history and idempotency, and ensure proposals have no quota or ledger effect. Stale proposals expire on state/recommendation reads or reserve; sender cancellation remains available and reopens the request.
@@ -58,15 +58,15 @@ Dev 3 owns `frontend/app/page.tsx` and `frontend/lib/api.ts` during parallel wor
 
 **Done when:** A proposal survives reload, can be reserved into the existing confirmation flow or cancelled, and never changes ledger/quota before reservation. Backend portion is implemented; browser/operator UI proof remains open.
 
-**Backend gate evidence:** On this integration branch, the SQLite-only suite passed 116 tests; the PostgreSQL-enabled full suite passed 210 tests across SQLite and PostgreSQL. Fresh Alembic upgrades/checks passed on both databases, Ruff passed, matching evaluation completed on the pinned MiniLM model, and all 42 allocation checks passed. Reservation concurrency tests verify that only one capacity or budget hold is created. PR CI is pending and no browser or deployment acceptance is claimed.
+**Backend gate evidence:** On this integration branch, the SQLite-only suite passed 116 tests; the PostgreSQL-enabled full suite passed 210 tests across SQLite and PostgreSQL. Fresh Alembic upgrades/checks passed on both databases, Ruff passed, matching evaluation completed on the pinned MiniLM model, and all 42 allocation checks passed. Reservation concurrency tests verify that only one capacity or budget hold is created. PR #2 CI passed; merge is pending. No browser or deployment acceptance is claimed.
 
 ### P1 — Manual draft-plan revision with reason
 
-**Owner:** Dev 2 (Codex). **Status:** Backend and contract are integrated on `integrate/referral-reservation` and verified by the current local suite; PR/merge is pending. Planner UI/browser acceptance remain with Dev 3. Checkboxes remain open until merge.
+**Owner:** Dev 2 (Codex). **Status:** Backend and contract are integrated and verified in [PR #2](https://github.com/Zaki-Haider1/akon/pull/2); SQLite/PostgreSQL suites and all six GitHub CI jobs passed. Planner UI/browser acceptance remain with Dev 3.
 
-- [ ] Define a draft-only planner revision operation that records actor, timestamp, reason, prior and revised choices. Preserve original solver output and distinguish a human revision in exports/audit.
-- [ ] Recheck revised assignments and actions with the same budget, date, service, zone, capacity, offer and mobile exclusivity constraints as optimization. Reject stale snapshot/input versions and unfeasible edits. Approval must revalidate again.
-- [ ] Add focused valid/invalid/stale/concurrent tests. Give Dev 3 a fixture for the planner edit/reason UI.
+- [x] Define a draft-only planner revision operation that records actor, timestamp, reason, prior and revised choices. Preserve original solver output and distinguish a human revision in exports/audit.
+- [x] Recheck revised assignments and actions with the same budget, date, service, zone, capacity, offer and mobile exclusivity constraints as optimization. Reject stale snapshot/input versions and unfeasible edits. Approval must revalidate again.
+- [x] Add focused valid/invalid/stale/concurrent tests. Give Dev 3 a fixture for the planner edit/reason UI.
 
 **Done when:** A planner can revise a draft for a stated reason; an invalid or stale revision has no side effects; displayed/approved totals and export match the revised persisted plan.
 
@@ -102,4 +102,4 @@ Dev 3 owns `frontend/app/page.tsx` and `frontend/lib/api.ts` during parallel wor
 - [ ] V1 full browser and mobile acceptance completed; V2 local reset/cold-start/five-minute demo completed.
 - [ ] Update `WORK_STATUS.md` with merged commits, exact commands/results and any remaining limits; include the required public URL and live persistence/restart evidence.
 
-The existing CI successes are baselines for earlier commits only. Keep reports of failed checks and partial outcomes with their fixes. Claim MVP completion only after the open scope gaps and acceptance gates above pass.
+The earlier CI successes are baselines for earlier commits only; PR #2 checks cover this integration. Keep reports of failed checks and partial outcomes with their fixes. Claim MVP completion only after the open scope gaps and acceptance gates above pass.
