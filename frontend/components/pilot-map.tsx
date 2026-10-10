@@ -113,10 +113,16 @@ export function PilotMap({
     rotate: () => void;
   } | null>(null);
   const [engine, setEngine] = useState("loading");
+  const inputs = useRef({ state, layer });
+  inputs.current = { state, layer };
+  const recolor = useRef<(() => void) | null>(null);
+  const geometryKey = JSON.stringify(
+    state.facilities.map((f) => [f.id, f.latitude, f.longitude]),
+  );
   useEffect(() => {
     if (!host.current) return;
     const container = host.current,
-      blocks = city(state, layer);
+      blocks = city(inputs.current.state, inputs.current.layer);
     let disposed = false,
       cleanup = () => {};
     const placePins = (
@@ -366,7 +372,14 @@ export function PilotMap({
           draw();
         },
       };
-      draw();
+      recolor.current = () => {
+        const { state, layer } = inputs.current;
+        blocks.forEach((b) => {
+          if (b.id) b.color = hospitalColor(state, b.id, layer);
+        });
+        draw();
+      };
+      recolor.current();
       cleanup = () => {
         observer.disconnect();
         canvas.remove();
@@ -586,14 +599,28 @@ export function PilotMap({
           renderer.dispose();
           renderer.domElement.remove();
         };
+        recolor.current = () => {
+          const { state, layer } = inputs.current;
+          meshes.forEach((mesh) => {
+            if (mesh.material instanceof T.MeshStandardMaterial) {
+              mesh.material.color.set(hospitalColor(state, mesh.userData.id, layer));
+            }
+          });
+          render();
+        };
         resize();
+        recolor.current();
       })
       .catch(software);
     return () => {
       disposed = true;
       cleanup();
       controls.current = null;
+      recolor.current = null;
     };
+  }, [geometryKey]);
+  useEffect(() => {
+    recolor.current?.();
   }, [state.facilities, state.summary, layer]);
   return (
     <div

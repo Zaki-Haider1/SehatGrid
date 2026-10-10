@@ -39,6 +39,7 @@ import { HospitalCatalog } from "@/components/hospital-catalog";
 import { MonthlyOutcomes } from "@/components/monthly-outcomes";
 import { Dialog } from "@/components/dialog";
 import { PlanRevision } from "@/components/plan-revision";
+import { GuidedDemo } from "@/components/guided-demo";
 import {
   AllocationDecisionTrace,
   MatchDecisionTrace,
@@ -608,6 +609,7 @@ export default function Home() {
           workload
         </span>
       </div>
+      <GuidedDemo state={state} screen={screen} navigate={setScreen} />
       <div className="workspace">
         <aside className="sidebar">
           <span className="nav-label">WORKSPACE</span>
@@ -658,6 +660,7 @@ export default function Home() {
           ).map((item) => (
             <button
               key={item.id}
+              data-demo-nav={item.id}
               className={screen === item.id ? "active" : ""}
               onClick={() => {
                 setScreen(item.id);
@@ -1143,7 +1146,7 @@ export default function Home() {
               )}
               {onboarder && (
                 <div className="two-col">
-                  <Card title="Register a demonstration provider">
+                  <Card title="Register a provider">
                     <Form
                       fields={profileFields()}
                       busy={busy}
@@ -1624,7 +1627,7 @@ export default function Home() {
                       </thead>
                       <tbody>
                         {state.requests.map((r) => (
-                          <tr key={r.id}>
+                          <tr key={r.id} data-demo-request={r.id}>
                             <td>
                               <strong>{r.reference}</strong>
                               <small>{r.original_text}</small>
@@ -1719,7 +1722,7 @@ export default function Home() {
                             ),
                         );
                       return (
-                        <div className="referral" key={a.id}>
+                        <div className="referral" key={a.id} data-demo-referral={a.request_id}>
                           <div>
                             <strong>
                               {a.id} → {facilityName(a.facility_id)}

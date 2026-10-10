@@ -1202,3 +1202,17 @@ dialog {
   max-height: calc(100dvh - 40px);
   overflow: auto;
 }
+/* Optional role-specific walkthrough; workflow actions remain in their normal screens. */
+.demo-launch { position: fixed; right: 20px; bottom: 20px; z-index: 90; }
+.demo-launch button { background: #244e89; color: white; box-shadow: 0 5px 22px #17305225; }
+.guided-demo { position: fixed; right: 20px; bottom: 20px; width: min(460px, calc(100vw - 32px)); max-height: 45vh; overflow-y: auto; z-index: 90; padding: 18px; border: 1px solid #a7bfd9; border-radius: 16px; background: #f8fbff; color: #173052; box-shadow: 0 10px 40px #17305230; }
+.demo-tour-top, .demo-tour-controls, .demo-tour-selects { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.guided-demo h2 { margin: 14px 0 8px; font-size: 18px; }
+.guided-demo p { font-size: 14px; line-height: 1.55; margin: 8px 0 14px; }
+.guided-demo small { display: block; margin-top: 12px; font-size: 12px; line-height: 1.4; color: #52647b; }
+.demo-tour-selects { margin-top: 12px; flex-wrap: wrap; align-items: flex-start; }
+.demo-tour-selects label { display: grid; gap: 4px; flex: 1; min-width: 140px; font-size: 12px; }
+.demo-tour-selects select { width: 100%; padding: 8px; border: 1px solid #b8cadd; border-radius: 8px; background: white; }
+.demo-step-recorded { display: inline-block; margin-left: 8px; font-size: 11px; color: #24624b; }
+.demo-highlight { outline: 3px solid #3c7dc4 !important; outline-offset: 5px; }
+@media (max-width: 600px) { .guided-demo, .demo-launch { right: 16px; bottom: 16px; } .guided-demo { padding: 14px; } }
