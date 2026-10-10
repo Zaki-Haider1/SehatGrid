@@ -644,6 +644,7 @@ def planning_advice(body: dict, request: Request, db: Session = Depends(get_db))
     offer_ids = {r["offer_id"] for r in resources if r["offer_id"]}
     offers = [{k: v for k, v in snap["inputs"]["offers"][oid].items() if k in {"id", "kind", "facility_id", "date", "cost", "units", "eligible_zones"}} for oid in sorted(offer_ids)]
     evidence = {"month": month, "remaining_budget_pkr": remaining, "eligible_requests": len(snap["requests"]), "bottlenecks": snap["summary"]["zones"], "excluded": snap["excluded"], "available_offers": offers, "subsidy_per_request_pkr": snap["inputs"]["subsidy_rule"]["amount"]}
+    evidence["existing_quota"] = [{"facility_id": r["facility_id"], "date": r["date"], "units": r["units"], "eligible_zones": r["zones"], "requires_subsidy": r["subsidy_required"] and not r["funding_included"]} for r in resources if not r["offer_id"]]
     proposal = propose_scenario(settings, evidence, goal)
     require(set(proposal["excluded_offer_ids"]) <= offer_ids, "INVALID_AI_PROPOSAL", "AI named an unavailable offer. Please try again.", 422)
     if proposal["clarification"]:
