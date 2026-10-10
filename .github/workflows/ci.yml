@@ -33,6 +33,23 @@ jobs:
       - run: alembic upgrade head
       - run: alembic check
       - run: pytest -q
+      - name: Build deployment container
+        run: docker build -t sehat-grid-api .
+      - name: Boot deployment container against PostgreSQL
+        run: |
+          docker run -d --name sehat-grid-api --network host -e DATABASE_URL -e SEED_ON_START=true sehat-grid-api
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://localhost:8000/health; then
+              curl --fail --silent http://localhost:8000/api/dashboard
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs sehat-grid-api
+          exit 1
+      - name: Stop deployment container
+        if: always()
+        run: docker rm -f sehat-grid-api || true
   frontend:
     runs-on: ubuntu-latest
     defaults:
