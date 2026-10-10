@@ -23,9 +23,9 @@ test.beforeEach(() =>
 );
 async function login(page: Page, account: string) {
   await page.goto("/");
-  await page.getByLabel("Account", { exact: true }).selectOption(account);
+  await page.getByLabel("Username", { exact: true }).fill(account);
   await page
-    .getByLabel("Demo password", { exact: true })
+    .getByLabel("Password", { exact: true })
     .fill("isolated-browser-demo-password");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(

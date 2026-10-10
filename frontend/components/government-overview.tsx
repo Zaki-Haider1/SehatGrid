@@ -12,7 +12,13 @@ import {
   Activity,
 } from "lucide-react";
 import { PilotMap, hospitalColor, type MapLayer } from "./pilot-map";
-import { money, human, type State } from "@/lib/api";
+import {
+  money,
+  human,
+  hospitalName,
+  hospitalShortName,
+  type State,
+} from "@/lib/api";
 export function GovernmentOverview({
   state,
   selected,
@@ -107,7 +113,7 @@ export function GovernmentOverview({
                 <Building2 size={20} />
               </div>
               <div>
-                <strong>{f.directory_context?.name || f.name}</strong>
+                <strong>{hospitalName(f)}</strong>
                 <span>
                   {f.zone} · {f.ownership}
                 </span>
@@ -173,10 +179,10 @@ export function GovernmentOverview({
             >
               <Building2 size={40} />
             </div>
-            <span>{f.id}</span>
+            <span>{hospitalShortName(f)}</span>
           </div>
           <span className="eyebrow">HOSPITAL OVERVIEW</span>
-          <h2>{f.directory_context?.name || f.name}</h2>
+          <h2>{hospitalName(f)}</h2>
           <p className="subtle">
             <MapPin size={12} />
             {f.zone} · {f.ownership}

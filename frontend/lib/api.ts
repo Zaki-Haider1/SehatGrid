@@ -289,6 +289,25 @@ export function money(value: number) {
     value,
   );
 }
+export function hospitalName(facility: Facility) {
+  return /^Demo\b.*\bProvider P\d+$/.test(facility.name)
+    ? facility.directory_context?.name || facility.name
+    : facility.name;
+}
+export function hospitalShortName(facility: Facility) {
+  const name = hospitalName(facility);
+  const labels: Record<string, string> = {
+    "Shifa International Hospital": "Shifa",
+    "Pakistan Institute of Medical Sciences (PIMS)": "PIMS",
+    "Federal Government Polyclinic": "Polyclinic",
+    "Kulsum International Hospital": "Kulsum",
+    "Maroof International Hospital": "Maroof",
+    "Ali Medical Centre": "Ali Medical",
+    "Capital Hospital (CDA)": "CDA",
+    "NORI Atomic Energy Cancer Hospital": "NORI",
+  };
+  return labels[name] || name;
+}
 export function human(value: string) {
   return value.replaceAll("_", " ").toLowerCase();
 }

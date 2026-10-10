@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { Compass, Minus, Plus, RotateCcw } from "lucide-react";
-import type { State } from "@/lib/api";
+import { hospitalName, hospitalShortName, type State } from "@/lib/api";
 type Block = {
   x: number;
   z: number;
@@ -121,19 +121,46 @@ export function PilotMap({
       cleanup = () => {};
     const placePins = (
       project: (x: number, y: number, z: number) => { x: number; y: number },
-    ) =>
+    ) => {
+      const placed: {
+        left: number;
+        right: number;
+        top: number;
+        bottom: number;
+      }[] = [];
       blocks
         .filter((b) => b.id)
-        .forEach((b) => {
+        .map((b) => ({ b, p: project(b.x, b.h + 0.6, b.z) }))
+        .sort((a, b) => b.p.y - a.p.y)
+        .forEach(({ b, p }) => {
           const el = pins.current?.querySelector<HTMLElement>(
             `[data-hospital="${b.id}"]`,
           );
           if (el) {
-            const p = project(b.x, b.h + 0.6, b.z);
+            const width = el.offsetWidth,
+              height = el.offsetHeight;
+            const left = p.x - width / 2,
+              right = p.x + width / 2;
+            let bottom = p.y;
+            // Lift crowded labels while keeping a stem anchored to their building.
+            for (let attempt = 0; attempt < placed.length; attempt++) {
+              const collision = placed.find(
+                (r) =>
+                  left < r.right + 5 &&
+                  right > r.left - 5 &&
+                  bottom - height < r.bottom + 5 &&
+                  bottom > r.top - 5,
+              );
+              if (!collision) break;
+              bottom = collision.top - 6;
+            }
+            placed.push({ left, right, top: bottom - height, bottom });
             el.style.left = `${p.x}px`;
-            el.style.top = `${p.y}px`;
+            el.style.top = `${bottom}px`;
+            el.style.setProperty("--pin-stem", `${p.y - bottom}px`);
           }
         });
+    };
     function software() {
       if (disposed) return;
       setEngine("software-3d");
@@ -583,9 +610,10 @@ export function PilotMap({
             className={`city-pin ${selected === f.id ? "selected" : ""}`}
             style={{ borderColor: hospitalColor(state, f.id, layer) }}
             onClick={() => onSelect(f.id)}
-            aria-label={`Select ${f.name}`}
+            aria-label={`Select ${hospitalName(f)}`}
+            title={hospitalName(f)}
           >
-            <span>{f.id}</span>
+            <span>{hospitalShortName(f)}</span>
           </button>
         ))}
       </div>

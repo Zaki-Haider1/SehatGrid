@@ -37,8 +37,8 @@ function card(page: Page, title: string) {
 }
 async function login(page: Page, account: string) {
   await page.goto("/");
-  await page.getByLabel("Account", { exact: true }).selectOption(account);
-  await page.getByLabel("Demo password", { exact: true }).fill(password);
+  await page.getByLabel("Username", { exact: true }).fill(account);
+  await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Sign out", exact: true }),
@@ -94,9 +94,7 @@ async function reserve(
   await row
     .getByRole("button", { name: "Find providers", exact: true })
     .click();
-  const option = page
-    .locator(".recommendation")
-    .filter({ has: page.getByText(new RegExp(`Provider ${facility}$`)) });
+  const option = page.locator(`.recommendation[data-facility="${facility}"]`);
   await expect(option.getByText(/Ranking: referral-ranking-v/)).toBeVisible();
   const before = await state(page);
   const proposal = await saved(
@@ -169,9 +167,7 @@ test("five-minute demo: reviewed referral, 8/7/5 plan, activation, funding and e
       : route.abort(),
   );
   await login(page, "planner");
-  await expect(
-    page.getByRole("button", { name: /^Select Demo .* Provider/ }),
-  ).toHaveCount(8);
+  await expect(page.locator(".city-pin")).toHaveCount(8);
   await expect(page.locator(".pilot-map")).toHaveAttribute(
     "data-engine",
     /^(webgl|software)-3d$/,
@@ -563,7 +559,7 @@ test("ranking integration, stale-version recovery and operator permission", asyn
     .click();
   await expect(
     page.locator(".recommendation").first().locator("strong"),
-  ).toHaveText("Demo Public Provider P03");
+  ).toHaveText("Federal Government Polyclinic");
   await switchRole(page, "planner");
   await page
     .getByRole("button", { name: "Funding approvals", exact: true })
@@ -632,7 +628,7 @@ test("ranking integration, stale-version recovery and operator permission", asyn
     .click();
   await expect(
     page.locator(".recommendation").first().locator("strong"),
-  ).toHaveText("Demo Private Provider P04");
+  ).toHaveText("Kulsum International Hospital");
   await expect(
     page
       .locator(".recommendation")
@@ -647,9 +643,8 @@ test("empty states, failed login, API outage recovery and expired session", asyn
   page,
 }) => {
   await page.goto("/");
-  await page
-    .getByLabel("Demo password", { exact: true })
-    .fill("incorrect-password");
+  await page.getByLabel("Username", { exact: true }).fill("planner");
+  await page.getByLabel("Password", { exact: true }).fill("incorrect-password");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.locator('.error[role="alert"]')).toHaveText(
     "Incorrect username or password",
@@ -809,7 +804,7 @@ test("software 3D map preserves colors, interaction and keyboard selection witho
   await expect(map).toBeVisible();
   await expect(map).toHaveAttribute("data-engine", "software-3d");
   const p02 = map.getByRole("button", {
-    name: "Select Demo Public Provider P02",
+    name: "Select Pakistan Institute of Medical Sciences (PIMS)",
     exact: true,
   });
   await expect(p02).toHaveCSS("border-top-color", "rgb(230, 140, 146)");

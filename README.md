@@ -4,6 +4,8 @@ A synthetic, non-emergency primary-care coordination MVP for five Islamabad pilo
 
 ## What runs
 
+Sign in with a username and password. The authenticated account's stored role opens its government, reception or onboarding interface automatically; there is no role selector. Hospital labels use the bundled Islamabad directory names in place of generic seed labels. Internal provider IDs remain stable, and capacity, budgets and patient activity remain demonstration data.
+
 - **Hospital receptionist:** reviewed request intake, recommendations and saved proposals, acceptance/rejection, patient agreement, arrival/completion, rerouting/reprocessing, offers and activation.
 - **Hospital onboarder:** assigned hospital profile, primary-care eligibility, dated quota, and an editable service/test catalog with PKR prices, daily capacity and availability.
 - **Government representative:** interactive 3D city, hospital details and capacity/demand/funding layers; participation and ranking policy; monthly budgets, allocation/revision/approval, funding authorization, monthly outcomes and JSON/CSV exports.
