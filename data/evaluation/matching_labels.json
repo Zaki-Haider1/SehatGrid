@@ -1,0 +1,22 @@
+[
+ {"split":"development","kind":"service","text":"general doctor consultation","expected":"PRIMARY_CARE_OPD"},
+ {"split":"development","kind":"service","text":"visit a family physician for a routine checkup","expected":"PRIMARY_CARE_OPD"},
+ {"split":"development","kind":"service","text":"primary care outpatient appointment","expected":"PRIMARY_CARE_OPD"},
+ {"split":"development","kind":"service","text":"emergency heart surgery","expected":null},
+ {"split":"development","kind":"service","text":"buy a train ticket","expected":null},
+ {"split":"development","kind":"service","text":"dental root canal treatment","expected":null},
+ {"split":"evaluation","kind":"service","text":"routine consultation with a family doctor","expected":"PRIMARY_CARE_OPD"},
+ {"split":"evaluation","kind":"service","text":"general medical outpatient visit","expected":"PRIMARY_CARE_OPD"},
+ {"split":"evaluation","kind":"service","text":"see a general practitioner","expected":"PRIMARY_CARE_OPD"},
+ {"split":"evaluation","kind":"service","text":"general outpatient consultation","expected":"PRIMARY_CARE_OPD"},
+ {"split":"evaluation","kind":"service","text":"kidney transplantation operation","expected":null},
+ {"split":"evaluation","kind":"service","text":"intensive care ventilator bed","expected":null},
+ {"split":"evaluation","kind":"service","text":"MRI brain scan","expected":null},
+ {"split":"evaluation","kind":"service","text":"wheel alignment for my car","expected":null},
+ {"split":"evaluation","kind":"facility","text":"Demo Provider P01","expected":"P01","zone":"South"},
+ {"split":"evaluation","kind":"facility","text":"Pakistan Institute of Medical Sciences","expected":"P02","zone":"Central"},
+ {"split":"evaluation","kind":"facility","text":"Shifa International Hospital Islamabad","expected":"P01","zone":"South"},
+ {"split":"evaluation","kind":"facility","text":"Federal Government Poly Clinic","expected":"P03","zone":"East"},
+ {"split":"evaluation","kind":"facility","text":"Demo Public Provider","expected":null,"ambiguous":true},
+ {"split":"evaluation","kind":"facility","text":"Shifa Hospital Karachi","expected":null,"zone":"Karachi"}
+]

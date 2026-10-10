@@ -19,3 +19,6 @@ work/
 
 # Local source plan; share actionable work through todo.md.
 /plan.md
+
+# Preloaded model artifacts: use backend/scripts/preload_model.py
+backend/models/

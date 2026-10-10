@@ -1,97 +1,35 @@
-# Architecture and implementation decisions
+# Implementation decisions — scope v1
 
-## Purpose and boundaries
+The supplied [MVP specification](docs/mvp-scope-v1.md) controls product scope. Earlier optional patient-portal and broad service proposals are superseded.
 
-Sehat Grid maps real Islamabad hospitals and coordinates **synthetic service slots**, referrals, unmet demand, and incremental funding. The hospital directory is sourced; capacities, requests, prices and budgets remain simulated. Requests use generated references and contain no names, diagnoses, contact details, or real patient data. No authentication is included in this MVP. Operator and planner controls are view modes, not security permissions; anyone with API access can perform either workflow.
+## One operational loop
 
-## Technology choices
+Next.js renders role-specific screens from persisted FastAPI outputs. Operators review semantic suggestions and publish dated primary-care quota. A sending operator reserves capacity; the receiver accepts; an operator records patient agreement; a planner authorizes any unfunded subsidy. Confirmation requires all three conditions. Receiving operators record arrival then completion. Every action has an actor and UTC audit event.
 
-| Layer | Choice | Reason |
-|---|---|---|
-| Dashboard | Next.js App Router, TypeScript, Tailwind CSS | Typed API integration, responsive UI, straightforward Vercel deployment |
-| API | Python 3.12, FastAPI, Pydantic | Validated contracts and interactive API docs; easy access to optimization libraries |
-| Persistence | PostgreSQL, SQLAlchemy 2, Alembic | Transactions, conditional writes, uniqueness, and check constraints protect capacity and funding |
-| Local demo | SQLite with foreign keys and WAL | Quick setup without running a database service; PostgreSQL remains the hosting target |
-| Service matching | RapidFuzz alias and name similarity | Fast, explainable suggestions with explicit human review |
-| Resource planning | Google OR-Tools CP-SAT | Real integer optimization with budget and demand constraints |
-| Map | MapLibre GL JS with raster street tiles and sourced coordinates | Geographic hospital positions, pan/zoom, public/private markers and selectable profiles |
-| Packaging | Backend Dockerfile, Compose, pinned dependencies, GitHub Actions | Reproducible setup and a concrete deployment handoff |
-| Hosting target | Vercel frontend, Railway API + PostgreSQL | Separately deployable frontend and persistent Python service |
+Intelligence aggregates unique unresolved requests, never referral-attempt counts. An immutable snapshot contains eligibility records, excluded reasons, dated capacity/offer versions and a hash. The monthly optimizer assigns request units to compatible base/quota/mobile resources, maximizes coverage, minimizes cost, then uses stable ordered decisions. One worker and a fixed seed make runs reproducible. A draft is revalidated transactionally at approval. A resource operator must activate purchased/mobile resources. Subsidy-pool commitments transfer into referral holds/commitments and settlements without additional charges.
 
-MapLibre is implemented for the Islamabad map. Sentence Transformers remains future work: pretrained embeddings add download/hosting overhead before we have an evaluation dataset. RapidFuzz is text similarity, not an ML model or confidence probability. Map coordinates do not change referral ranking; distance, travel time and clinical appropriateness are not calculated. See [directory research](docs/islamabad-directory.md) and [planned role portals](docs/role-portals.md).
+## Database choice and concurrency
 
-## System flow
+PostgreSQL is the deployment database; SQLite is the single-machine demo option. The justification for judges is: **database transactions reserve capacity and monthly funds together, preventing concurrent requests from overbooking or overspending.**
 
-```mermaid
-flowchart LR
-  UI[Next.js dashboard] -->|JSON /api| API[FastAPI]
-  API --> DB[(PostgreSQL)]
-  API --> Match[Human-reviewed text matching]
-  API --> Solver[OR-Tools optimizer]
-  Solver --> Draft[Stored draft plan]
-  Draft --> Approval[Atomic budget + capacity approval]
-  Approval --> Retry[Retry pending referrals]
-```
+This small 5–10-provider implementation persists the canonical entity collections in one versioned JSON aggregate (`pilot_state`) through SQLAlchemy. PostgreSQL `SELECT FOR UPDATE` serializes aggregate writes; SQLite `BEGIN IMMEDIATE` provides the equivalent writer exclusion. This includes reads that lazily expire holds. Database locks, not a Python mutex, protect multiple workers. The aggregate contains users, facilities/services, capacity records, requests, attempts/reservations, offers, snapshots, plans/actions, ledger entries, reviews, audit history and idempotency receipts. Invariants are checked before commit.
 
-The browser uses `NEXT_PUBLIC_API_URL`, which must be configured before the frontend build. FastAPI allows only the configured `CORS_ORIGINS`. API startup seeds empty demo databases and syncs directory facts after migrations. `/health` checks database connectivity. Dates come from `APP_TIMEZONE` (default Asia/Karachi); timestamps are UTC. Currency is integer PKR, avoiding floating-point money calculations.
+This is an explicit pilot-scale tradeoff: transaction correctness and a single coherent snapshot over write throughput. It is **not** a high-throughput normalized relational deployment. Growth would require separating these entities into indexed tables while preserving the same cross-resource locking rules. The JSON objects retain all contract fields; the proposed README table names are not falsely represented as individual SQL tables.
 
-## Data model
+Alembic adds the new pilot state without dropping the earlier demo tables. Legacy tables are historical data only; their unauthenticated endpoints and daily slot-purchase code have been removed. A reset touches only the new synthetic state.
 
-| Table | Key fields and relationships |
-|---|---|
-| `facilities` | Name + zone unique, kind, latitude, longitude, unique source key, sourced profile JSON |
-| `services` | Canonical service name, aliases, synthetic marginal unit cost |
-| `capacities` | Unique facility + service + day; total, reserved, consumed |
-| `care_requests` | Generated reference, service, zone, date, priority, status, reason |
-| `referrals` | Request + capacity linkage, state; cancelled history is retained |
-| `budgets` | One global envelope: total and committed funding |
-| `allocation_plans` | Date, allocations JSON snapshot, total cost, units, draft/approved state |
+## Machine learning
 
-`available = total - reserved - consumed`. A completed referral consumes one slot for that date. Cancellation releases a held slot and returns the request to pending. Capacity cannot be edited below reservations plus completed care. The MVP supports one slot per request, six canonical services, and five demonstration zones. Capacity updates also register a facility's service offer for a date; a zero-total offer remains eligible for funding.
+The actual model is `sentence-transformers/all-MiniLM-L6-v2`, pinned at revision `1110a243fdf4706b3f48f1d95db1a4f5529b4d41`. ONNX Runtime executes its pretrained transformer; the tokenizer, attention-mask mean pooling and L2 normalization reproduce the model's sentence-embedding pipeline. This avoids shipping a separate PyTorch runtime. The preload manifest records artifact SHA-256 checksums and model card/license metadata.
 
-## Referral invariants
+Suggestions combine embedding cosine similarity (80%) and fuzzy string similarity (20%), with exact reviewed aliases preferred. Facility candidates include locality/type evidence. Scores are not probabilities. A threshold of 0.69 was selected using six development cases; 14 separate evaluation cases contain paraphrases, duplicates, ambiguous names and unsupported text. Near-tied facility candidates are marked ambiguous. Every final service assignment or identity link requires a stored human decision. Identity links preserve original IDs and do not move quotas or requests.
 
-1. Request intake saves unresolved demand. It does not silently reserve a provider.
-2. Recommendations require an available slot for the exact service and day. Local-zone providers rank first, then larger available capacity; other zones remain available for operator choice. There is no distance or medical appropriateness score.
-3. Reservation conditionally changes a pending request to reserved and increments a capacity counter only while a slot remains. Both writes and referral creation commit together. Failure rolls everything back.
-4. Confirmation accepts only reserved referrals. Completion accepts only confirmed referrals and transfers one reserved slot to consumed.
-5. Cancellation accepts reserved/confirmed referrals, releases exactly one slot, retains referral history, and reopens demand. Repeat or invalid state changes return HTTP 409.
+## Geography and frontend
 
-PostgreSQL rechecks the conditional update after a competing writer commits. Capacity and budget constraints are also enforced by database checks. SQLite runs the same guarded writes for the single-node demo; PostgreSQL is the concurrent deployment target.
+Eight public hospital coordinate records provide attributed context for clearly labelled synthetic partners. Demo catchments are not legal boundaries or road-access estimates. MapLibre's bundled coordinate layer works offline; an optional OSM raster layer is an enhancement. A basic SVG pin fallback remains if WebGL fails. Provider pins use backend current/limited/exhausted/unknown status; planner zone labels show aggregate unresolved units. Mobile sites have separate synthetic pins.
 
-## Intelligence and planning
+Two authenticated roles share one Next.js app. There is no client-side role switch granting authority. JWTs are signed with an external secret, passwords use salted PBKDF2, tokens expire, and every operation enforces role/facility scope on the server. Demo accounts intentionally share a configured presentation password; this is not a real-provider onboarding scheme.
 
-Demand insights are recalculated from pending requests and **current** local capacity, rather than relying on old intake reasons. A gap is labelled no local provider, local capacity exhausted, or awaiting referral.
+## Deployment
 
-The optimizer considers existing facility/service/day offers in the same zone as demand. Existing local free slots are deducted from pending demand before buying more. It uses each service's synthetic marginal cost and integer quantities. Its objective prioritizes the number of urgent requests coverable, then total slots, then lower cost. The envelope is the smaller of the operator's spend limit and remaining global budget. The solver is bounded to five seconds; feasible results are accepted even if the optimum is not proven. The first facility ID with the appropriate local offer receives incremental resources in this simple model.
-
-Approval conditionally claims a draft plan and available budget, activates capacity, and retries pending requests within one transaction. Urgent requests are retried first. A rejected approval leaves the plan and budget unchanged. Approval creates reserved referrals; partner confirmation remains a separate operator step.
-
-Plans are stored funding proposals, not live forecasts. If demand changes after drafting, the plan's allocations remain fixed. A planner should regenerate outdated plans; funding already approved is not refunded on referral cancellation. Reprocessing may also use other existing available capacity. Resource activation assumes funding instantly creates synthetic service slots: real procurement, staffing lead times, facility maxima, availability expiration, accounting ledgers, multiple funding envelopes, and plan amendments are future work.
-
-## API contracts
-
-See the generated `/docs` OpenAPI UI for complete request and response details.
-
-| Method / endpoint | Purpose |
-|---|---|
-| `GET /health`, `GET /api/config` | Connectivity; demo date, zones, reset availability |
-| `GET /api/services`, `POST /api/services/match` | Canonical services and reviewable text suggestions |
-| `GET/POST /api/facilities` | Dated directory and registration |
-| `PUT /api/facilities/{id}/capacity` | `{service_id, day, total}`; atomically update dated total |
-| `GET/POST /api/requests` | List requests; create with `{service_id, zone, day, priority}` |
-| `GET /api/requests/{id}/recommendations` | Live available providers for a pending request |
-| `POST /api/requests/{id}/reserve` | `{facility_id}`; atomically reserve one slot |
-| `POST /api/referrals/{id}/confirm`, `/complete`, `/cancel` | Validated lifecycle transitions |
-| `GET /api/dashboard` | Capacity, referrals, current demand gaps, global budget |
-| `PUT /api/budget` | `{total}`; cannot reduce below committed funding |
-| `GET/POST /api/plans` | List; optimize with `{day, limit}` |
-| `POST /api/plans/{id}/approve` | Commit budget, activate capacity, retry demand |
-| `GET /api/export` | JSON snapshot of selected date plus global budget |
-| `POST /api/demo/reset?confirm=RESET_SYNTHETIC_DATA` | Explicit destructive reset, disabled by default |
-
-Collection endpoints accept `?day=YYYY-MM-DD` where relevant. `GET /api/requests` and `/api/plans` without a date return all dates. Errors use FastAPI's `detail` field: 404 missing entity, 409 workflow conflict, 422 invalid input. Reservations, plan drafting, approval, and capacity editing reject past dates.
-
-## Production follow-up
-
-Before using real data, add authentication and authorization, auditing, data protection, and operator accountability. Further milestones include expiry of unconfirmed reservations, evaluated semantic matching and duplicate-review management, geographic routing, notification integrations, pagination, robust migration coordination when scaling replicas, and a real cost/resource catalogue. Single API replica startup migrations suit this MVP; run migrations as a dedicated deployment job before scaling.
+The combined root container serves Next.js and proxies API requests internally to FastAPI. PostgreSQL stays external. A backend-only container is also included for split hosting. Model downloads happen during preparation/build, never during startup or the demonstration. Runtime secrets are excluded from Git and build context. Local and container startup validate configuration and fail visibly when model assets are missing.

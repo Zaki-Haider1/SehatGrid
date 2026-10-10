@@ -1,15 +1,12 @@
-# Planned government, hospital and patient portals
+# Two MVP interfaces
 
-The final design has three user-facing interfaces, sharing one FastAPI backend and PostgreSQL database. They can live in a single Next.js application with separate routes and navigation. Backend authorization must enforce the same boundaries as the interface.
+The MVP has exactly two authenticated application roles in a shared Next.js application and FastAPI backend.
 
-| Portal | Primary actions | Access boundary |
-|---|---|---|
-| Government representative (`/government`, planned) | View citywide capacity and unmet demand, compare catchments, review funding proposals, approve allocations and monitor outcomes | Aggregate network information and authorized funding; patient-identifying information requires a separate justified permission |
-| Hospital representative (`/hospital`, planned) | Manage the hospital's verified profile, publish dated service capacity, receive referrals, confirm or decline them and record completion | Only assigned facilities and their authorized referrals |
-| Patient (`/patient`, planned) | Browse the hospital map and directory, request a service, see referral/appointment status, receive instructions and cancel a request | Public directory plus the signed-in patient's own requests |
+| Role | Operational scope |
+|---|---|
+| Hospital operator | Assigned providers; profiles, reviewed primary-care service and zone declarations, dated quota, own outgoing requests, incoming partner responses, patient agreement, arrival/completion, dated offers and resource activation |
+| Network planner / government representative | Participation approval, aggregate network intelligence, monthly budgets/subsidy rules, draft computation, approval, subsidy authorization, plan export and network audit |
 
-A patient submits a care request. An authorized hospital/operator reviews the service and offers a referral or appointment. The receiving hospital confirms it and records completion. Unmet requests contribute to anonymized government planning; approved resources become available through hospital operations. Clinical triage and emergency decisions require qualified staff. Directory pins never imply that a hospital has joined the platform.
+No patient account or portal is part of scope v1. Operators record voluntary patient agreement independently from the receiving partner's decision. Software roles do not establish clinical qualifications. The earlier three-portal proposal has been removed.
 
-The current implementation has **operator and planner view modes in a shared demo dashboard**. These are not authenticated portals. Operator mode demonstrates much of the hospital workflow, while planner mode demonstrates the government funding workflow. The patient portal, hospital-specific access, role-based login, patient ownership checks, invitation/verification flow, notifications and audit trail remain to be implemented before real onboarding.
-
-The development sequence is authentication and backend permission checks, government/hospital route separation, facility onboarding, then patient intake and status tracking with appropriate privacy controls. The demo continues to use generated references and no personal patient data during that work.
+The seeded hospital accounts are `operator-p01` through `operator-p08`; `planner` is the planner account. Passwords come from `DEMO_PASSWORD` on initial seed/reset. UI navigation reflects the signed-in account; the backend independently verifies every permission. Mobile activation grants the responsible operator scope for the newly created synthetic mobile-site provider.

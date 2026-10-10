@@ -1,1294 +1,1963 @@
 "use client";
-import { useCallback, useEffect, useRef, useState, FormEvent } from "react";
+import { useEffect, useState, FormEvent, ReactNode } from "react";
 import {
   Activity,
-  ArrowDownToLine,
-  ArrowRight,
   Building2,
-  Check,
-  ChevronRight,
-  CircleHelp,
-  ClipboardList,
-  HeartPulse,
-  LayoutDashboard,
   MapPin,
-  Plus,
-  RefreshCw,
-  SlidersHorizontal,
-  Sparkles,
+  ArrowRight,
+  LogOut,
+  Network,
+  ClipboardList,
   Wallet,
+  ShieldCheck,
+  RefreshCw,
+  Download,
+  Check,
+  Plus,
   X,
 } from "lucide-react";
 import {
   api,
+  API,
+  human,
   money,
-  Service,
+  State,
+  User,
   Facility,
   CareRequest,
   Recommendation,
-  Dashboard,
+  Match,
   Plan,
-  Config,
 } from "@/lib/api";
-import { NetworkMap } from "@/components/network-map";
+import { PilotMap } from "@/components/pilot-map";
 import { Dialog } from "@/components/dialog";
-import { HospitalProfile } from "@/components/hospital-profile";
 
-const tabs = [
-  { name: "Overview", icon: LayoutDashboard },
-  { name: "Providers", icon: Building2 },
-  { name: "Referrals", icon: ClipboardList },
-  { name: "Demand insights", icon: Activity },
-  { name: "Resources", icon: Wallet },
-];
-type Modal = {
-  type: "request" | "facility" | "capacity" | "recommend" | "reset";
-  id?: number;
-} | null;
-
+type Field = {
+  name: string;
+  label: string;
+  value?: string | number | boolean;
+  type?: string;
+  options?: { value: string; label: string }[];
+  required?: boolean;
+};
+function Form({
+  fields,
+  onSubmit,
+  submit = "Save",
+  busy = false,
+}: {
+  fields: Field[];
+  onSubmit: (data: Record<string, string | boolean>) => Promise<void>;
+  submit?: string;
+  busy?: boolean;
+}) {
+  return (
+    <form
+      onSubmit={async (e: FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        const form = e.currentTarget;
+        const raw = new FormData(form);
+        const data: Record<string, string | boolean> = {};
+        fields.forEach(
+          (f) =>
+            (data[f.name] =
+              f.type === "checkbox"
+                ? raw.has(f.name)
+                : String(raw.get(f.name) || "")),
+        );
+        await onSubmit(data);
+      }}
+    >
+      <div className="fields">
+        {fields.map((f) => (
+          <label
+            key={f.name}
+            className={f.type === "checkbox" ? "check-field" : ""}
+          >
+            {f.type === "checkbox" ? (
+              <>
+                <input
+                  name={f.name}
+                  type="checkbox"
+                  defaultChecked={Boolean(f.value)}
+                />
+                <span>{f.label}</span>
+              </>
+            ) : (
+              <>
+                <span>{f.label}</span>
+                {f.options ? (
+                  <select
+                    name={f.name}
+                    defaultValue={String(f.value ?? "")}
+                    required={f.required !== false}
+                  >
+                    {f.options.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    name={f.name}
+                    type={f.type || "text"}
+                    defaultValue={String(f.value ?? "")}
+                    required={f.required !== false}
+                    min={f.type === "number" ? 0 : undefined}
+                  />
+                )}
+              </>
+            )}
+          </label>
+        ))}
+      </div>
+      <button className="primary" disabled={busy}>
+        {busy ? "Working…" : submit}
+        <ArrowRight size={15} />
+      </button>
+    </form>
+  );
+}
+function Badge({ value }: { value: string }) {
+  return <span className={`badge ${value.toLowerCase()}`}>{human(value)}</span>;
+}
+function Card({
+  title,
+  children,
+  aside,
+}: {
+  title: string;
+  children: ReactNode;
+  aside?: ReactNode;
+}) {
+  return (
+    <section className="card">
+      <div className="card-title">
+        <h2>{title}</h2>
+        {aside}
+      </div>
+      {children}
+    </section>
+  );
+}
 export default function Home() {
-  const [tab, setTab] = useState("Overview");
-  const [view, setView] = useState("operator");
-  const [config, setConfig] = useState<Config | null>(null);
-  const [day, setDay] = useState("");
-  const [services, setServices] = useState<Service[]>([]);
-  const [facilities, setFacilities] = useState<Facility[]>([]);
-  const [requests, setRequests] = useState<CareRequest[]>([]);
-  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
-  const [plans, setPlans] = useState<Plan[]>([]);
-  const [selected, setSelected] = useState<number | null>(null);
-  const [modal, setModal] = useState<Modal>(null);
-  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
-  const [matches, setMatches] = useState<
-    { service_id: number; name: string; score: number }[]
-  >([]);
-  const [serviceChoice, setServiceChoice] = useState("");
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("all");
-  const [hospitalSearch, setHospitalSearch] = useState("");
-  const [ownership, setOwnership] = useState("all");
-  const refreshVersion = useRef(0);
+  const [reasonAction, setReasonAction] = useState<{
+    path: string;
+    body: Record<string, unknown>;
+    method: string;
+    resolve: (value: unknown) => void;
+    reject: (reason: Error) => void;
+  } | null>(null);
+  const [reasonSaving, setReasonSaving] = useState(false),
+    [reasonError, setReasonError] = useState("");
 
-  const refresh = useCallback(async (targetDay: string) => {
-    const version = ++refreshVersion.current;
-    const suffix = `?day=${targetDay}`;
-    const [f, r, d, p] = await Promise.all([
-      api<Facility[]>(`/api/facilities${suffix}`),
-      api<CareRequest[]>(`/api/requests${suffix}`),
-      api<Dashboard>(`/api/dashboard${suffix}`),
-      api<Plan[]>(`/api/plans${suffix}`),
-    ]);
-    if (version !== refreshVersion.current) return;
-    setFacilities(f);
-    setRequests(r);
-    setDashboard(d);
-    setPlans(p);
-    setSelected((current) =>
-      f.some((provider) => provider.id === current)
-        ? current
-        : f[0]?.id || null,
+  const [token, setToken] = useState(""),
+    [state, setState] = useState<State | null>(null),
+    [screen, setScreen] = useState("network"),
+    [error, setError] = useState(""),
+    [notice, setNotice] = useState(""),
+    [busy, setBusy] = useState(false),
+    [selected, setSelected] = useState<string | null>(null),
+    [month, setMonth] = useState(""),
+    [day, setDay] = useState("");
+  const [request, setRequest] = useState<CareRequest | null>(null),
+    [options, setOptions] = useState<Recommendation[]>([]),
+    [reasons, setReasons] = useState<string[]>([]),
+    [match, setMatch] = useState<Match | null>(null),
+    [reviewId, setReviewId] = useState(""),
+    [description, setDescription] = useState("general doctor consultation"),
+    [matchKind, setMatchKind] = useState<"service" | "facility">("service"),
+    [plan, setPlan] = useState<Plan | null>(null);
+  useEffect(() => {
+    setToken(sessionStorage.getItem("sehat-token") || "");
+  }, []);
+  async function load(auth = token) {
+    if (!auth) return;
+    const data = await api<State>(
+      `state${month || day ? `?month=${month || state?.config.month}&date=${day || state?.config.service_date}` : ""}`,
+      auth,
     );
-  }, []);
-
+    setState(data);
+    setPlan((p) => (p ? data.plans.find((x) => x.id === p.id) || p : null));
+  }
   useEffect(() => {
-    let live = true;
-    Promise.all([api<Config>("/api/config"), api<Service[]>("/api/services")])
-      .then(([c, s]) => {
-        if (live) {
-          setConfig(c);
-          setServices(s);
-          setDay(c.today);
-        }
-      })
-      .catch((e) => {
-        if (live) {
-          setError(
-            `Cannot connect to the API. ${e.message}. Start the backend and refresh.`,
-          );
-          setLoading(false);
+    if (token)
+      load().catch((e) => {
+        setError(e.message);
+        if (e.message.includes("Sign in")) {
+          setToken("");
+          sessionStorage.removeItem("sehat-token");
         }
       });
-    return () => {
-      live = false;
-    };
-  }, []);
-  useEffect(() => {
-    if (!day) return;
-    let live = true;
-    setLoading(true);
-    refresh(day)
-      .catch((e) => {
-        if (live) setError(e.message);
-      })
-      .finally(() => {
-        if (live) setLoading(false);
-      });
-    return () => {
-      live = false;
-    };
-  }, [day, refresh]);
-
-  async function act(work: () => Promise<void>, message = "") {
-    if (busy || loading) return;
+  }, [token, month, day]); // eslint-disable-line react-hooks/exhaustive-deps
+  async function run(
+    action: () => Promise<unknown>,
+    message = "Saved. Related totals have been refreshed.",
+  ) {
     setBusy(true);
     setError("");
     setNotice("");
     try {
-      await work();
-      await refresh(day);
-      if (message) setNotice(message);
+      await action();
+      await load();
+      setNotice(message);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong");
+      setError(e instanceof Error ? e.message : "Action failed");
     } finally {
       setBusy(false);
     }
   }
-  async function showRecommendations(id: number) {
-    await act(async () => {
-      const options = await api<Recommendation[]>(
-        `/api/requests/${id}/recommendations`,
+  async function mutate(path: string, body: unknown = {}, method = "POST") {
+    const data = body as Record<string, unknown>;
+    if (
+      data?.reason &&
+      (/\/(cancel|reject|no-show|reprocess|participation)$/.test(path) ||
+        (path.endsWith("partner-response") && data.accepted === false))
+    ) {
+      setReasonError("");
+      return new Promise((resolve, reject) =>
+        setReasonAction({ path, body: data, method, resolve, reject }),
       );
-      setRecommendations(options);
-      setModal({ type: "recommend", id });
-    });
+    }
+    return api<unknown>(path, token, method, body);
   }
-  function openRequest() {
-    setMatches([]);
-    setServiceChoice(String(services[0]?.id || ""));
-    setModal({ type: "request" });
-  }
-  function formValues(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    return Object.fromEntries(new FormData(event.currentTarget));
-  }
-  async function submitRequest(event: FormEvent<HTMLFormElement>) {
-    const values = formValues(event);
-    await act(async () => {
-      const result = await api<{
-        id: number;
-        reference: string;
-        recommendations: Recommendation[];
-      }>("/api/requests", "POST", {
-        service_id: Number(values.service_id),
-        zone: values.zone,
-        day,
-        priority: values.priority,
-      });
-      setRecommendations(result.recommendations);
-      setModal({ type: "recommend", id: result.id });
-      setNotice(`${result.reference} added to the care queue`);
-    });
-  }
-  async function exportData() {
-    await act(async () => {
-      const data = await api(`/api/export?day=${day}`);
-      const url = URL.createObjectURL(
-        new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }),
+  async function login(data: Record<string, string | boolean>) {
+    setBusy(true);
+    setError("");
+    try {
+      const result = await api<{ token: string; user: User }>(
+        "auth/login",
+        "",
+        "POST",
+        data,
       );
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = `sehat-grid-${day}.json`;
-      anchor.click();
-      URL.revokeObjectURL(url);
-    }, "Demo data exported");
+      sessionStorage.setItem("sehat-token", result.token);
+      setToken(result.token);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   }
-  const chosen = facilities.find((f) => f.id === selected);
-  const queue = requests.filter((r) => filter === "all" || r.status === filter);
-  const directory = facilities.filter(
-    (f) =>
-      (ownership === "all" || f.profile.ownership === ownership) &&
-      `${f.name} ${f.profile.sector || ""} ${f.profile.address || ""}`
-        .toLowerCase()
-        .includes(hospitalSearch.trim().toLowerCase()),
-  );
-  const zoneSelect = (
-    <select name="zone" defaultValue="Central">
-      {config?.zones.map((z) => (
-        <option key={z}>{z}</option>
-      ))}
-    </select>
-  );
-  const serviceSelect = (
-    <select name="service_id">
-      {services.map((s) => (
-        <option key={s.id} value={s.id}>
-          {s.name}
-        </option>
-      ))}
-    </select>
-  );
-
-  function requestTable(limit?: number) {
-    const rows = limit ? queue.slice(0, limit) : queue;
+  function logout() {
+    setToken("");
+    setState(null);
+    setPlan(null);
+    setMatch(null);
+    setRequest(null);
+    sessionStorage.removeItem("sehat-token");
+  }
+  if (!token || !state)
     return (
-      <div className="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Request / service</th>
-              <th>Zone</th>
-              <th>Provider</th>
-              <th>Status</th>
-              <th>
-                <span className="sr-only">Actions</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id}>
-                <td>
-                  <strong>{r.service_name}</strong>
-                  <small>
-                    {r.reference}
-                    {r.priority === "urgent" && (
-                      <span className="urgent"> · Urgent</span>
-                    )}
-                  </small>
-                </td>
-                <td>{r.zone}</td>
-                <td>
-                  {r.provider || (
-                    <span className="muted">Awaiting provider</span>
-                  )}
-                </td>
-                <td>
-                  <span className={`badge ${r.status}`}>{r.status}</span>
-                </td>
-                <td className="row-actions">
-                  {r.status === "pending" && (
-                    <button
-                      className="text-button"
-                      disabled={busy}
-                      onClick={() => showRecommendations(r.id)}
-                    >
-                      Find provider <ArrowRight size={14} />
-                    </button>
-                  )}
-                  {r.status === "reserved" && (
-                    <button
-                      className="text-button"
-                      disabled={busy}
-                      onClick={() =>
-                        act(async () => {
-                          await api(
-                            `/api/referrals/${r.referral_id}/confirm`,
-                            "POST",
-                          );
-                        }, "Referral confirmed")
-                      }
-                    >
-                      Confirm
-                    </button>
-                  )}
-                  {r.status === "confirmed" && (
-                    <button
-                      className="text-button"
-                      disabled={busy}
-                      onClick={() =>
-                        act(async () => {
-                          await api(
-                            `/api/referrals/${r.referral_id}/complete`,
-                            "POST",
-                          );
-                        }, "Care marked complete")
-                      }
-                    >
-                      Complete
-                    </button>
-                  )}
-                  {["reserved", "confirmed"].includes(r.status) && (
-                    <button
-                      title="Cancel referral and release slot"
-                      aria-label={`Cancel ${r.reference}`}
-                      className="icon-button subtle"
-                      disabled={busy}
-                      onClick={() =>
-                        act(async () => {
-                          await api(
-                            `/api/referrals/${r.referral_id}/cancel`,
-                            "POST",
-                          );
-                        }, "Slot released; request returned to queue")
-                      }
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
-                  {r.status === "completed" && (
-                    <Check size={16} className="green" />
-                  )}
-                </td>
-              </tr>
-            ))}
-            {!rows.length && (
-              <tr>
-                <td colSpan={5} className="empty">
-                  No requests for this view. Add a request to begin.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <main className="login">
+        <div className="login-intro">
+          <div className="brand">
+            <Activity />
+            SEHAT GRID
+          </div>
+          <span className="eyebrow">ISLAMABAD · PRIMARY-CARE PILOT</span>
+          <h1>
+            Connect available care.
+            <br />
+            Make every resource count.
+          </h1>
+          <p>
+            A shared workspace for hospital operators and network planners.
+            Coordinate reviewed referrals, see unresolved requests, and put a
+            monthly resource plan into action.
+          </p>
+          <div className="login-pills">
+            <span>01 Hospital network</span>
+            <span>02 Referral coordination</span>
+            <span>03 Network intelligence</span>
+            <span>04 Monthly allocation</span>
+          </div>
+          <small>
+            Synthetic demonstration · no patient login · no real payments
+          </small>
+        </div>
+        <div className="login-card">
+          <ShieldCheck size={32} />
+          <h2>Sign in to the pilot</h2>
+          <p>Your account determines your role and assigned facility.</p>
+          {error && (
+            <div role="alert" className="error">
+              {error}
+            </div>
+          )}
+          {token ? (
+            <p>Loading your workspace…</p>
+          ) : (
+            <Form
+              busy={busy}
+              onSubmit={login}
+              submit="Sign in"
+              fields={[
+                {
+                  name: "username",
+                  label: "Account",
+                  value: "planner",
+                  options: [
+                    { value: "planner", label: "Network planner" },
+                    ...Array.from({ length: 8 }, (_, i) => ({
+                      value: `operator-p0${i + 1}`,
+                      label: `P0${i + 1} hospital operator`,
+                    })),
+                  ],
+                },
+                { name: "password", label: "Demo password", type: "password" },
+              ]}
+            />
+          )}
+          <small>Use the password configured for this deployment.</small>
+        </div>
+      </main>
     );
+  const planner = state.user.role === "planner",
+    own = state.facilities.filter((f) =>
+      state.user.facility_ids.includes(f.id),
+    ),
+    facility =
+      state.facilities.find((f) => f.id === selected) ||
+      own[0] ||
+      state.facilities[0],
+    serviceDate = day || state.config.service_date,
+    planningMonth = month || state.config.month;
+  const zones = state.config.zones.map((z) => ({ value: z.id, label: z.name })),
+    facilityOptions = own.map((f) => ({ value: f.id, label: f.name }));
+  const stats =
+    planner && state.summary
+      ? [
+          ["Unresolved requests", state.summary.unresolved],
+          ["Confirmed requests", state.summary.confirmed],
+          ["Completed services", state.summary.completed],
+          [
+            "Monthly funds left",
+            `PKR ${money(state.summary.budget?.remaining || 0)}`,
+          ],
+        ]
+      : [
+          ["Assigned providers", own.length],
+          [
+            "Incoming referrals",
+            state.referrals.filter(
+              (a) =>
+                state.user.facility_ids.includes(a.facility_id) &&
+                ["AWAITING_CONFIRMATIONS", "CONFIRMED", "ARRIVED"].includes(
+                  a.status,
+                ),
+            ).length,
+          ],
+          [
+            "Outgoing requests",
+            state.requests.filter((r) =>
+              state.user.facility_ids.includes(r.source_facility_id),
+            ).length,
+          ],
+          [
+            "Fresh quota remaining",
+            own.reduce((n, f) => n + (f.capacities[0]?.available || 0), 0),
+          ],
+        ];
+  async function recommend(r: CareRequest) {
+    setRequest(r);
+    setOptions([]);
+    setReasons([]);
+    await run(async () => {
+      const result = await api<{
+        candidates: Recommendation[];
+        reasons: string[];
+      }>(`requests/${r.id}/recommendations`, token);
+      setOptions(result.candidates);
+      setReasons(result.reasons);
+    }, "Recommendations checked against current capacity and funding.");
   }
+  async function exportPlan(p: Plan, format: string) {
+    await run(async () => {
+      const response = await fetch(
+        `${API}/api/v1/plans/${p.id}/export?format=${format}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (!response.ok) throw new Error("Export failed");
+      const url = URL.createObjectURL(await response.blob());
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `sehat-grid-${p.id}.${format}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }, "Plan summary downloaded. It contains aggregate allocations, not request identities.");
+  }
+  const profileFields = (f?: Facility): Field[] => [
+    { name: "name", label: "Demo provider name", value: f?.name },
+    {
+      name: "ownership",
+      label: "Ownership",
+      value: f?.ownership,
+      options: [
+        { value: "Public", label: "Public" },
+        { value: "Private", label: "Private" },
+      ],
+    },
+    { name: "address", label: "Address", value: f?.address },
+    { name: "zone", label: "Pilot zone", value: f?.zone, options: zones },
+    { name: "latitude", label: "Latitude", value: f?.latitude || 33.7 },
+    { name: "longitude", label: "Longitude", value: f?.longitude || 73.05 },
+  ];
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <a href="/" className="brand">
-          <span className="brand-mark">
-            <HeartPulse size={23} />
-          </span>
-          <span>
-            sehat<span className="brand-light">grid</span>
-            <small>CARE, CONNECTED</small>
-          </span>
+    <div className="app">
+      {reasonAction && (
+        <Dialog
+          title="Record the operational reason"
+          close={() => {
+            reasonAction.reject(
+              new Error("Action cancelled before submission."),
+            );
+            setReasonAction(null);
+          }}
+        >
+          {reasonError && <p className="error">{reasonError}</p>}
+          <Form
+            busy={reasonSaving}
+            fields={[
+              {
+                name: "reason",
+                label: "Reason for this decision",
+                value: String(reasonAction.body.reason),
+              },
+            ]}
+            submit="Save decision"
+            onSubmit={async (d) => {
+              setReasonSaving(true);
+              try {
+                const result = await api(
+                  reasonAction.path,
+                  token,
+                  reasonAction.method,
+                  { ...reasonAction.body, reason: d.reason },
+                );
+                reasonAction.resolve(result);
+                setReasonAction(null);
+              } catch (e) {
+                setReasonError((e as Error).message);
+              } finally {
+                setReasonSaving(false);
+              }
+            }}
+          />
+        </Dialog>
+      )}
+
+      <header>
+        <a className="brand" href="/" aria-label="Sehat Grid home">
+          <Activity />
+          SEHAT GRID
         </a>
-        <div className="workspace-label">WORKSPACE</div>
-        <nav>
-          {tabs.map(({ name, icon: Icon }) => (
+        <div className="header-scope">
+          Islamabad <span> / </span> Primary-care pilot
+        </div>
+        <div className="account">
+          <span>{state.user.name}</span>
+          <Badge value={state.user.role} />
+          <button
+            className="icon-button"
+            onClick={logout}
+            aria-label="Sign out"
+          >
+            <LogOut size={18} />
+          </button>
+        </div>
+      </header>
+      <div className="demo-banner">
+        <span>
+          <i /> Synthetic demo data
+        </span>
+        <span>
+          Non-emergency primary-care only · reported network quota, not hospital
+          workload
+        </span>
+      </div>
+      <div className="workspace">
+        <aside className="sidebar">
+          <span className="nav-label">WORKSPACE</span>
+          {[
+            {
+              id: "network",
+              name: planner ? "Network overview" : "Facility dashboard",
+              icon: Network,
+            },
+            {
+              id: "referrals",
+              name: planner ? "Funding approvals" : "Referral coordination",
+              icon: ClipboardList,
+            },
+            {
+              id: "intelligence",
+              name: planner ? "Unresolved demand" : "Matching & review",
+              icon: MapPin,
+            },
+            {
+              id: "planning",
+              name: planner ? "Monthly planner" : "Offers & activation",
+              icon: Wallet,
+            },
+          ].map((item) => (
             <button
-              key={name}
-              onClick={() => setTab(name)}
-              className={tab === name ? "active" : ""}
+              key={item.id}
+              className={screen === item.id ? "active" : ""}
+              onClick={() => {
+                setScreen(item.id);
+                setError("");
+                setNotice("");
+              }}
             >
-              <Icon size={18} />
-              <span>{name}</span>
-              {name === "Referrals" && !!dashboard?.pending && (
-                <i>{dashboard.pending}</i>
-              )}
+              <item.icon size={18} />
+              {item.name}
             </button>
           ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <div className="demo-card">
-            <span className="dot indigo" />
-            <strong>Demo workspace</strong>
-            <p>Islamabad hospitals. Demo workflows.</p>
+          <div className="sidebar-note">
+            <ShieldCheck size={20} />
+            <strong>One connected workflow</strong>
+            <p>
+              Review → reserve → confirm → complete.
+              <br />
+              Plan → approve → activate.
+            </p>
+            <small>
+              Scope v{state.config.scope_version}
+              <br />
+              Asia/Karachi
+            </small>
           </div>
-          <div className="profile">
-            <span className="avatar">SG</span>
-            <div>
-              <strong>
-                {view === "operator" ? "Care operator" : "Resource planner"}
-              </strong>
-              <small>Sehat Grid team</small>
-            </div>
-            <CircleHelp size={17} />
-          </div>
-        </div>
-      </aside>
-      <div className="main-shell">
-        <header className="topbar">
-          <div className="breadcrumb">
-            Workspace <ChevronRight size={14} />
-            <strong>{tab}</strong>
-          </div>
-          <div className="topbar-controls">
-            <div className="view-switch">
-              <button
-                className={view === "operator" ? "selected" : ""}
-                onClick={() => {
-                  setView("operator");
-                  setTab("Overview");
-                }}
-              >
-                Operator
-              </button>
-              <button
-                className={view === "planner" ? "selected" : ""}
-                onClick={() => {
-                  setView("planner");
-                  setTab("Resources");
-                }}
-              >
-                Planner
-              </button>
-            </div>
-            <span className="topbar-divider" />
-            <span className="avatar small">SG</span>
-          </div>
-        </header>
-        <main>
+        </aside>
+        <main className="main">
           <div className="page-heading">
             <div>
-              <div className="eyebrow">YOUR CARE NETWORK</div>
+              <span className="eyebrow">
+                {planner ? "NETWORK PLANNER" : "HOSPITAL OPERATOR"}
+              </span>
               <h1>
-                {tab === "Overview" ? "A healthier city starts here." : tab}
+                {screen === "network"
+                  ? "Care, connected."
+                  : screen === "referrals"
+                    ? planner
+                      ? "Funding approvals"
+                      : "Referral coordination"
+                    : screen === "intelligence"
+                      ? planner
+                        ? "Recorded unmet network demand"
+                        : "Review before routing"
+                      : planner
+                        ? "Make resources go further."
+                        : "Offer resources. Activate care."}
               </h1>
               <p>
-                {tab === "Overview"
-                  ? "Explore Islamabad’s hospitals and coordinate demo care."
-                  : tab === "Providers"
-                    ? "Sourced hospital details and simulated capacity."
-                    : tab === "Referrals"
-                      ? "Coordinate care, from request to completion."
-                      : tab === "Demand insights"
-                        ? "See where demand needs a little more support."
-                        : "Put resources where they can make a difference."}
+                {screen === "network"
+                  ? "A current view of your participating primary-care network."
+                  : screen === "planning"
+                    ? "Monthly resources linked to dated, eligible unresolved requests."
+                    : "Every decision is attributable, reviewed and recorded."}
               </p>
             </div>
-            <div className="heading-actions">
-              <input
-                aria-label="Dashboard date"
-                type="date"
-                value={day}
-                onChange={(e) => {
-                  if (e.target.value) setDay(e.target.value);
-                }}
-              />
+            <div className="date-controls">
+              <label>
+                Service date
+                <input
+                  type="date"
+                  value={serviceDate}
+                  onChange={(e) => setDay(e.target.value)}
+                />
+              </label>
+              <label>
+                Planning month
+                <input
+                  type="month"
+                  value={planningMonth}
+                  onChange={(e) => setMonth(e.target.value)}
+                />
+              </label>
               <button
-                className="primary"
-                disabled={busy || !config}
-                onClick={openRequest}
+                className="icon-button"
+                disabled={busy}
+                onClick={() =>
+                  run(() => load(), "Updated from the shared backend.")
+                }
+                aria-label="Refresh"
               >
-                <Plus size={17} />
-                New request
+                <RefreshCw size={18} />
               </button>
             </div>
           </div>
           {error && (
-            <div role="alert" className="banner error">
+            <div className="error" role="alert">
               {error}
-              <button aria-label="Dismiss error" onClick={() => setError("")}>
-                <X size={16} />
-              </button>
             </div>
           )}
           {notice && (
-            <div role="status" className="banner success">
+            <div className="notice" role="status">
+              <Check size={16} />
               {notice}
-              <button
-                aria-label="Dismiss message"
-                onClick={() => setNotice("")}
-              >
-                <X size={16} />
-              </button>
             </div>
           )}
-          {loading && (
-            <div className="loading-line" role="status">
-              Connecting to your care network…
-            </div>
-          )}
-          {dashboard && (
+          <div className="stats">
+            {stats.map(([label, value]) => (
+              <div key={label}>
+                <span>{label}</span>
+                <strong>{value}</strong>
+                <small>
+                  {planner ? planningMonth : "Current operational scope"}
+                </small>
+              </div>
+            ))}
+          </div>
+          {screen === "network" && (
             <>
-              <div className="stats">
-                {[
-                  {
-                    label: "Network providers",
-                    value: dashboard.facilities,
-                    icon: Building2,
-                    note: "Islamabad hospital directory",
-                    tone: "blue",
-                  },
-                  {
-                    label: "Demo slots available",
-                    value: dashboard.available,
-                    icon: HeartPulse,
-                    note: "Simulated for workflow testing",
-                    tone: "green",
-                  },
-                  {
-                    label: "Active referrals",
-                    value: dashboard.active_referrals,
-                    icon: ClipboardList,
-                    note: `${dashboard.completed} care journeys completed`,
-                    tone: "purple",
-                  },
-                  {
-                    label: "Unresolved requests",
-                    value: dashboard.pending,
-                    icon: Activity,
-                    note: "Waiting for the right care",
-                    tone: "orange",
-                  },
-                ].map(({ label, value, icon: Icon, note, tone }) => (
-                  <div key={label} className="stat-card">
-                    <div className="stat-label">
-                      {label}
-                      <span className={`stat-icon ${tone}`}>
-                        <Icon size={18} />
-                      </span>
-                    </div>
-                    <div className="stat-value">
-                      {value.toString().padStart(2, "0")}
-                    </div>
-                    <small>{note}</small>
-                  </div>
-                ))}
-              </div>
-
-              {tab === "Overview" && (
-                <>
-                  <div className="overview-grid">
-                    <section className="panel network-panel">
-                      <div className="panel-heading">
-                        <div>
-                          <h2>Your provider network</h2>
-                          <p>
-                            Real hospital locations · simulated care workflows
-                          </p>
-                        </div>
-                        <span className="tag">
-                          <MapPin size={13} />
-                          Islamabad
-                        </span>
-                      </div>
-                      <NetworkMap
-                        facilities={facilities}
-                        selected={selected}
-                        onSelect={setSelected}
-                      />
-                    </section>
-                    <section className="panel facility-detail">
-                      <div className="panel-heading">
-                        <h2>Provider snapshot</h2>
-                        <SlidersHorizontal size={17} className="muted" />
-                      </div>
-                      <select
-                        aria-label="Select provider"
-                        value={selected || ""}
-                        onChange={(e) => setSelected(Number(e.target.value))}
-                      >
-                        {facilities.map((f) => (
-                          <option key={f.id} value={f.id}>
-                            {f.name}
-                          </option>
-                        ))}
-                      </select>
-                      {chosen && (
-                        <>
-                          <div className="provider-meta">
-                            <span className="provider-icon">
-                              <Building2 size={24} />
-                            </span>
-                            <div>
-                              <h3>{chosen.name}</h3>
-                              <p>
-                                {chosen.kind} ·{" "}
-                                {chosen.profile.sector || chosen.zone}
-                              </p>
-                            </div>
-                          </div>
-                          <HospitalProfile facility={chosen} />
-                          <p className="capacity-caption">
-                            Demo capacity for {day}
-                          </p>
-                          <div className="capacity-list">
-                            {chosen.capacities.map((c) => (
-                              <div key={c.service_id}>
-                                <span>
-                                  {c.service_name}
-                                  <small>
-                                    {c.reserved} reserved · {c.consumed}{" "}
-                                    completed
-                                  </small>
-                                </span>
-                                <strong
-                                  className={
-                                    c.available ? "green" : "coral-text"
-                                  }
-                                >
-                                  {c.available}
-                                  <small>demo slots</small>
-                                </strong>
-                              </div>
-                            ))}
-                            {!chosen.capacities.length && (
-                              <p className="muted">
-                                No demo capacity reported. This does not mean
-                                the hospital is full or lacks services.
-                              </p>
-                            )}
-                          </div>
-                          <button
-                            className="secondary full"
-                            disabled={busy}
-                            onClick={() =>
-                              setModal({ type: "capacity", id: chosen.id })
-                            }
-                          >
-                            <Plus size={16} />
-                            Update demo capacity
-                          </button>
-                        </>
-                      )}
-                    </section>
-                  </div>
-                  <section className="panel queue-panel">
-                    <div className="panel-heading">
-                      <div>
-                        <h2>
-                          Care queue{" "}
-                          <span className="count">{requests.length}</span>
-                        </h2>
-                        <p>The next step in every care journey</p>
-                      </div>
-                      <button
-                        className="text-button"
-                        onClick={() => setTab("Referrals")}
-                      >
-                        View all <ArrowRight size={15} />
-                      </button>
-                    </div>
-                    {requestTable(5)}
-                  </section>
-                </>
-              )}
-
-              {tab === "Providers" && (
-                <section className="panel">
-                  <div className="panel-heading">
-                    <div>
-                      <h2>Provider directory</h2>
-                      <p>
-                        {directory.length} hospitals shown · demo capacity for{" "}
-                        {day}
-                      </p>
-                    </div>
-                    <button
-                      className="secondary"
-                      onClick={() => setModal({ type: "facility" })}
-                    >
-                      <Plus size={16} />
-                      Register provider
-                    </button>
-                  </div>
-                  <div className="directory-controls">
-                    <input
-                      aria-label="Search hospitals"
-                      placeholder="Search hospital, sector or address"
-                      value={hospitalSearch}
-                      onChange={(e) => setHospitalSearch(e.target.value)}
-                    />
-                    <select
-                      aria-label="Hospital ownership"
-                      value={ownership}
-                      onChange={(e) => setOwnership(e.target.value)}
-                    >
-                      <option value="all">Public &amp; private</option>
-                      <option value="Public">Public hospitals</option>
-                      <option value="Private">Private hospitals</option>
-                    </select>
-                  </div>
-                  <div className="provider-grid">
-                    {directory.map((f) => (
-                      <article className="provider-card" key={f.id}>
-                        <span className="provider-icon">
-                          <Building2 size={24} />
-                        </span>
-                        <h3>{f.name}</h3>
-                        <p>
-                          {f.kind} · {f.profile.sector || f.zone}
-                        </p>
-                        <HospitalProfile facility={f} />
-                        <button
-                          className="text-button locate-hospital"
-                          onClick={() => {
-                            setSelected(f.id);
-                            setTab("Overview");
-                          }}
-                        >
-                          Locate on map <MapPin size={13} />
-                        </button>
-                        <p className="capacity-caption">
-                          Demo capacity · {f.zone} planning catchment
-                        </p>
-                        <div className="provider-capacity">
-                          {f.capacities.map((c) => (
-                            <div key={c.service_id}>
-                              <span>{c.service_name}</span>
-                              <strong>
-                                {c.available}
-                                <small> / {c.total}</small>
-                              </strong>
-                            </div>
-                          ))}
-                          {!f.capacities.length && (
-                            <p>No demo capacity reported for this date</p>
-                          )}
-                        </div>
-                        <button
-                          className="secondary full"
-                          onClick={() =>
-                            setModal({ type: "capacity", id: f.id })
-                          }
-                        >
-                          Update demo capacity <ArrowRight size={15} />
-                        </button>
-                      </article>
-                    ))}
-                    {!directory.length && (
-                      <p className="empty">No hospitals match your search.</p>
-                    )}
-                  </div>
-                </section>
-              )}
-
-              {tab === "Referrals" && (
-                <section className="panel">
-                  <div className="panel-heading">
-                    <h2>Referral workspace</h2>
-                    <select
-                      aria-label="Filter referrals"
-                      value={filter}
-                      onChange={(e) => setFilter(e.target.value)}
-                    >
-                      {[
-                        "all",
-                        "pending",
-                        "reserved",
-                        "confirmed",
-                        "completed",
-                      ].map((s) => (
-                        <option key={s} value={s}>
-                          {s === "all"
-                            ? "All statuses"
-                            : s.charAt(0).toUpperCase() + s.slice(1)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  {requestTable()}
-                </section>
-              )}
-
-              {tab === "Demand insights" && (
-                <section className="panel">
-                  <div className="panel-heading">
-                    <div>
-                      <h2>Unmet demand by zone</h2>
-                      <p>Live signals from unresolved requests</p>
-                    </div>
-                    <button
-                      className="secondary"
-                      onClick={() => setTab("Resources")}
-                    >
-                      Plan resources <ArrowRight size={16} />
-                    </button>
-                  </div>
-                  <div className="insight-list">
-                    {dashboard.gaps.map((g) => (
-                      <div
-                        className="insight-row"
-                        key={`${g.zone}-${g.service}`}
-                      >
-                        <span className="zone-icon">
-                          <MapPin size={20} />
-                        </span>
-                        <div>
-                          <h3>{g.zone}</h3>
-                          <p>{g.service}</p>
-                        </div>
-                        <span className="badge pending">{g.reason}</span>
-                        <div className="insight-count">
-                          <strong>{g.pending}</strong>
-                          <small>pending</small>
-                        </div>
-                      </div>
-                    ))}
-                    {!dashboard.gaps.length && (
-                      <p className="empty">
-                        All care requests have a next step. No unresolved
-                        demand.
-                      </p>
-                    )}
-                  </div>
-                </section>
-              )}
-
-              {tab === "Resources" && (
-                <div className="resource-grid">
-                  <section className="panel">
-                    <div className="panel-heading">
-                      <div>
-                        <h2>Fund the next care journey</h2>
-                        <p>
-                          Optimize additional slots against unresolved local
-                          demand
-                        </p>
-                      </div>
-                      <Sparkles size={19} className="indigo-text" />
-                    </div>
-                    <div className="budget-balance">
-                      <small>AVAILABLE BUDGET</small>
-                      <h2>
-                        <span>PKR</span> {money(dashboard.budget.remaining)}
-                      </h2>
-                      <p>
-                        PKR {money(dashboard.budget.committed)} committed of{" "}
-                        {money(dashboard.budget.total)}
-                      </p>
-                    </div>
-                    <form
-                      className="resource-form"
-                      onSubmit={(e) => {
-                        const v = formValues(e);
-                        act(async () => {
-                          await api("/api/budget", "PUT", {
-                            total: Number(v.total),
-                          });
-                        }, "Budget updated");
-                      }}
-                    >
-                      <label>
-                        Total budget (PKR)
-                        <input
-                          name="total"
-                          type="number"
-                          min={dashboard.budget.committed}
-                          max="100000000"
-                          required
-                          defaultValue={dashboard.budget.total}
-                          key={dashboard.budget.total}
-                        />
-                      </label>
-                      <button className="secondary" disabled={busy}>
-                        Save budget
-                      </button>
-                    </form>
-                    <form
-                      className="resource-form"
-                      onSubmit={(e) => {
-                        const v = formValues(e);
-                        act(async () => {
-                          await api("/api/plans", "POST", {
-                            day,
-                            limit: Number(v.limit),
-                          });
-                        }, "Allocation plan ready for review");
-                      }}
-                    >
-                      <label>
-                        Spend limit for this plan (PKR)
-                        <input
-                          name="limit"
-                          type="number"
-                          min="1"
-                          max="100000000"
-                          required
-                          defaultValue={Math.max(1, dashboard.budget.remaining)}
-                          key={dashboard.budget.remaining}
-                        />
-                      </label>
-                      <button
-                        className="primary"
-                        disabled={busy || !dashboard.budget.remaining}
-                      >
-                        <Sparkles size={16} />
-                        Generate plan
-                      </button>
-                    </form>
-                    <p className="form-note">
-                      Urgent demand first, then the most care slots within
-                      budget. Approval activates capacity and retries pending
-                      requests.
-                    </p>
-                  </section>
-                  <section className="panel">
-                    <div className="panel-heading">
-                      <h2>Allocation plans</h2>
-                      <span className="count">{plans.length}</span>
-                    </div>
-                    <div className="plan-list">
-                      {plans.map((p) => (
-                        <article className="plan-card" key={p.id}>
-                          <div className="plan-top">
-                            <h3>Plan #{p.id}</h3>
-                            <span className={`badge ${p.status}`}>
-                              {p.status}
-                            </span>
-                          </div>
-                          <div className="plan-numbers">
-                            <strong>
-                              {p.units} <small>new slots</small>
-                            </strong>
-                            <strong>PKR {money(p.cost)}</strong>
-                          </div>
-                          {p.allocations.map((a, i) => (
-                            <p className="allocation" key={i}>
-                              <span>
-                                {a.service_name}
-                                <small>
-                                  {a.facility_name} · {a.zone}
-                                </small>
-                              </span>
-                              <b>+{a.units}</b>
-                            </p>
-                          ))}
-                          {!p.units && (
-                            <p className="muted">
-                              No additional slots can be funded for this demand
-                              and limit.
-                            </p>
-                          )}
-                          {p.status === "draft" && p.units > 0 && (
-                            <button
-                              className="primary full"
-                              disabled={busy}
-                              onClick={() =>
-                                act(async () => {
-                                  const r = await api<{ reprocessed: number }>(
-                                    `/api/plans/${p.id}/approve`,
-                                    "POST",
-                                  );
-                                  setNotice(
-                                    `Plan approved. ${r.reprocessed} requests reserved with providers.`,
-                                  );
-                                })
-                              }
-                            >
-                              Approve & activate <ArrowRight size={16} />
-                            </button>
-                          )}
-                        </article>
-                      ))}
-                      {!plans.length && (
-                        <div className="empty">
-                          <Wallet size={30} />
-                          <p>Your first plan starts with a budget.</p>
-                        </div>
-                      )}
-                    </div>
-                  </section>
-                </div>
-              )}
-
-              <footer>
-                <span>
-                  <i className="dot green-dot" />
-                  Real directory · simulated capacity · {day}
-                </span>
-                <div>
-                  <button
-                    disabled={busy}
-                    onClick={() => act(async () => {}, "Network refreshed")}
-                  >
-                    <RefreshCw size={13} />
-                    Refresh
-                  </button>
-                  <button disabled={busy} onClick={exportData}>
-                    <ArrowDownToLine size={14} />
-                    Export
-                  </button>
-                  {config?.demo_reset_enabled && (
-                    <button
-                      disabled={busy}
-                      onClick={() => setModal({ type: "reset" })}
-                    >
-                      Reset demo
-                    </button>
-                  )}
-                </div>
-              </footer>
-            </>
-          )}
-        </main>
-      </div>
-
-      {modal && (
-        <Dialog
-          title={
-            modal.type === "request"
-              ? "New care request"
-              : modal.type === "facility"
-                ? "Register provider"
-                : modal.type === "capacity"
-                  ? "Update service capacity"
-                  : modal.type === "reset"
-                    ? "Reset demo workspace"
-                    : "Choose a care provider"
-          }
-          close={() => {
-            if (!busy) setModal(null);
-          }}
-        >
-          {modal.type === "request" && (
-            <form onSubmit={submitRequest} className="dialog-form">
-              <p className="form-note">
-                Create a synthetic request for {day}. Choose the service after
-                reviewing any suggestions.
-              </p>
-              <label>
-                Describe the service (optional)
-                <div className="input-action">
-                  <input
-                    id="service-description"
-                    placeholder="e.g. blood test or kidney treatment"
-                  />
-                  <button
-                    type="button"
-                    className="secondary"
-                    disabled={busy}
-                    onClick={() =>
-                      act(async () => {
-                        const input = document.getElementById(
-                          "service-description",
-                        ) as HTMLInputElement;
-                        setMatches(
-                          await api("/api/services/match", "POST", {
-                            description: input.value,
-                          }),
-                        );
-                      })
-                    }
-                  >
-                    Suggest
-                  </button>
-                </div>
-              </label>
-              {matches.length > 0 && (
-                <div className="match-list">
-                  {matches.map((m) => (
-                    <button
-                      key={m.service_id}
-                      type="button"
-                      onClick={() => setServiceChoice(String(m.service_id))}
-                    >
-                      {m.name}
-                      <span>{m.score}% text match</span>
-                    </button>
-                  ))}
-                  <small>
-                    Suggestions require your review; scores are text similarity.
-                  </small>
-                </div>
-              )}
-              <label>
-                Service
-                <select
-                  name="service_id"
-                  value={serviceChoice}
-                  onChange={(e) => setServiceChoice(e.target.value)}
-                >
-                  {services.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="form-grid">
-                <label>Request zone{zoneSelect}</label>
-                <label>
-                  Priority
-                  <select name="priority">
-                    <option value="routine">Routine</option>
-                    <option value="urgent">Urgent</option>
-                  </select>
-                </label>
-              </div>
-              <button className="primary full" disabled={busy}>
-                Create request <ArrowRight size={16} />
-              </button>
-            </form>
-          )}
-          {modal.type === "facility" && (
-            <form
-              className="dialog-form"
-              onSubmit={(e) => {
-                const v = formValues(e);
-                act(async () => {
-                  await api("/api/facilities", "POST", {
-                    ...v,
-                    latitude: Number(v.latitude),
-                    longitude: Number(v.longitude),
-                  });
-                  setModal(null);
-                }, "Provider registered. Add service capacity to receive referrals.");
-              }}
-            >
-              <label>
-                Provider name
-                <input
-                  name="name"
-                  required
-                  minLength={3}
-                  maxLength={120}
-                  placeholder="e.g. City Care Clinic"
-                />
-              </label>
-              <div className="form-grid">
-                <label>Zone{zoneSelect}</label>
-                <label>
-                  Provider type
-                  <select name="kind">
-                    {[
-                      "Hospital",
-                      "Clinic",
-                      "Diagnostic center",
-                      "Community center",
-                    ].map((k) => (
-                      <option key={k}>{k}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <div className="form-grid">
-                <label>
-                  Latitude
-                  <input
-                    name="latitude"
-                    type="number"
-                    step="any"
-                    min="-90"
-                    max="90"
-                    placeholder="e.g. 33.702269"
-                    required
-                  />
-                </label>
-                <label>
-                  Longitude
-                  <input
-                    name="longitude"
-                    type="number"
-                    step="any"
-                    min="-180"
-                    max="180"
-                    placeholder="e.g. 73.052529"
-                    required
-                  />
-                </label>
-              </div>
-              <button className="primary full" disabled={busy}>
-                Register provider
-              </button>
-            </form>
-          )}
-          {modal.type === "capacity" && (
-            <form
-              className="dialog-form"
-              onSubmit={(e) => {
-                const v = formValues(e);
-                act(async () => {
-                  await api(`/api/facilities/${modal.id}/capacity`, "PUT", {
-                    service_id: Number(v.service_id),
-                    total: Number(v.total),
-                    day,
-                  });
-                  setModal(null);
-                }, "Provider capacity updated");
-              }}
-            >
-              <p className="form-note">
-                {facilities.find((f) => f.id === modal.id)?.name} · {day}
-              </p>
-              <label>Service{serviceSelect}</label>
-              <label>
-                Total service slots
-                <input
-                  name="total"
-                  type="number"
-                  min="0"
-                  max="10000"
-                  required
-                  placeholder="Enter daily total"
-                />
-              </label>
-              <p className="form-note">
-                Total includes available, reserved, and completed slots.
-              </p>
-              <button className="primary full" disabled={busy}>
-                Save capacity
-              </button>
-            </form>
-          )}
-          {modal.type === "recommend" && (
-            <div className="dialog-form">
-              <p className="form-note">
-                Local providers are listed first. A slot is reserved only after
-                you choose a provider.
-              </p>
-              {recommendations.map((r) => (
-                <button
-                  key={r.facility_id}
-                  className="recommendation"
-                  disabled={busy}
-                  onClick={() =>
-                    act(async () => {
-                      await api(`/api/requests/${modal.id}/reserve`, "POST", {
-                        facility_id: r.facility_id,
-                      });
-                      setModal(null);
-                    }, "Slot reserved. Confirm the referral with the provider.")
+              <div className="network-layout">
+                <Card
+                  title="Participating providers"
+                  aside={
+                    <span className="count">{state.facilities.length}</span>
                   }
                 >
-                  <span className="provider-icon">
-                    <Building2 size={21} />
-                  </span>
-                  <span>
-                    <strong>{r.name}</strong>
-                    <small>
-                      {r.zone} · {r.available} slots available{" "}
-                      {r.local ? "· Local provider" : ""}
-                    </small>
-                  </span>
-                  <ArrowRight size={17} />
-                </button>
-              ))}
-              {!recommendations.length && (
-                <div className="empty">
-                  <HeartPulse size={30} />
-                  <p>No slots available for this service and date.</p>
-                  <small>
-                    The request stays in unmet demand. A planner can fund
-                    additional capacity.
-                  </small>
-                  <button
-                    className="secondary"
-                    onClick={() => {
-                      setModal(null);
-                      setView("planner");
-                      setTab("Resources");
-                    }}
-                  >
-                    Open resources
-                  </button>
+                  <div className="provider-list">
+                    {state.facilities.map((f) => (
+                      <button
+                        key={f.id}
+                        className={
+                          facility?.id === f.id
+                            ? "provider selected"
+                            : "provider"
+                        }
+                        onClick={() => setSelected(f.id)}
+                      >
+                        <div className="provider-icon">
+                          <Building2 size={20} />
+                        </div>
+                        <div>
+                          <strong>{f.name}</strong>
+                          <span>
+                            {f.zone} · {f.ownership}
+                          </span>
+                          <small>
+                            {f.directory_context?.name ||
+                              "New demonstration provider"}
+                          </small>
+                        </div>
+                        <Badge value={f.capacities[0]?.status || "UNKNOWN"} />
+                      </button>
+                    ))}
+                  </div>
+                </Card>
+                <PilotMap
+                  state={state}
+                  selected={selected}
+                  onSelect={setSelected}
+                />
+              </div>
+              {facility && (
+                <Card
+                  title={facility.name}
+                  aside={<Badge value={facility.participation} />}
+                >
+                  <div className="profile-grid">
+                    <div>
+                      <p>{facility.address}</p>
+                      <p>
+                        Declared eligible zones:{" "}
+                        {facility.eligible_zones.join(", ") || "None yet"}
+                      </p>
+                      <p>
+                        {facility.latitude.toFixed(6)},{" "}
+                        {facility.longitude.toFixed(6)}
+                      </p>
+                      {facility.directory_context && (
+                        <div className="provenance">
+                          <strong>{facility.directory_context.name}</strong>
+                          <p>
+                            {facility.directory_context.label}. The name and
+                            campus point are public context; quotas, agreements
+                            and funding below are synthetic.
+                          </p>
+                          <a
+                            target="_blank"
+                            rel="noreferrer"
+                            href={
+                              facility.directory_context.profile
+                                .coordinate_source
+                            }
+                          >
+                            Coordinate source ↗
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      {facility.capacities.map((c) => (
+                        <div key={c.id} className="quota-detail">
+                          <Badge value={c.status} />
+                          <h3>
+                            {c.available ?? "Unknown"} available / {c.quota}{" "}
+                            declared
+                          </h3>
+                          <p>
+                            {c.held} held · {c.committed} committed ·{" "}
+                            {c.completed} completed · {c.forfeited} forfeited
+                          </p>
+                          <small>
+                            {c.date} · Updated{" "}
+                            {new Date(c.updated_at).toLocaleString("en-PK", {
+                              timeZone: "Asia/Karachi",
+                            })}{" "}
+                            PKT · {human(c.freshness)}
+                          </small>
+                        </div>
+                      ))}
+                      {!facility.capacities.length && (
+                        <p className="empty">
+                          No quota in your scope for this date.
+                        </p>
+                      )}
+                      {planner ? (
+                        <button
+                          disabled={busy}
+                          onClick={() =>
+                            run(() =>
+                              mutate(
+                                `facilities/${facility.id}/participation`,
+                                {
+                                  status:
+                                    facility.participation === "ACTIVE"
+                                      ? "SUSPENDED"
+                                      : "ACTIVE",
+                                  version: facility.version,
+                                  reason:
+                                    "Planner reviewed demonstration participation",
+                                },
+                              ),
+                            )
+                          }
+                        >
+                          {facility.participation === "ACTIVE"
+                            ? "Suspend participation"
+                            : "Activate participation"}
+                        </button>
+                      ) : (
+                        state.user.facility_ids.includes(facility.id) && (
+                          <Form
+                            key={
+                              facility.id +
+                              serviceDate +
+                              (facility.capacities[0]?.version || 0)
+                            }
+                            busy={busy}
+                            submit="Update dated quota"
+                            fields={[
+                              {
+                                name: "quota",
+                                label: "Declared network quota",
+                                type: "number",
+                                value: facility.capacities[0]?.quota || 0,
+                              },
+                            ]}
+                            onSubmit={(d) =>
+                              run(() =>
+                                mutate(
+                                  `facilities/${facility.id}/capacity/PRIMARY_CARE_OPD/${serviceDate}`,
+                                  {
+                                    quota: Number(d.quota),
+                                    version:
+                                      facility.capacities[0]?.version || 0,
+                                  },
+                                  "PUT",
+                                ),
+                              )
+                            }
+                          />
+                        )
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              )}
+              {!planner && (
+                <div className="two-col">
+                  <Card title="Register a demonstration provider">
+                    <Form
+                      fields={profileFields()}
+                      busy={busy}
+                      submit="Register for planner review"
+                      onSubmit={(d) =>
+                        run(() =>
+                          mutate("facilities", {
+                            ...d,
+                            latitude: Number(d.latitude),
+                            longitude: Number(d.longitude),
+                          }),
+                        )
+                      }
+                    />
+                  </Card>
+                  <Card title="Own provider settings">
+                    {own.map((f) => (
+                      <details key={f.id}>
+                        <summary>{f.name}</summary>
+                        <Form
+                          fields={profileFields(f)}
+                          busy={busy}
+                          submit="Update profile"
+                          onSubmit={(d) =>
+                            run(() =>
+                              mutate(
+                                `facilities/${f.id}`,
+                                {
+                                  ...d,
+                                  latitude: Number(d.latitude),
+                                  longitude: Number(d.longitude),
+                                  version: f.version,
+                                },
+                                "PATCH",
+                              ),
+                            )
+                          }
+                        />
+                        <Form
+                          key={f.id + f.version}
+                          fields={[
+                            {
+                              name: "zones",
+                              label: "Eligible zones (comma separated)",
+                              value: f.eligible_zones.join(", "),
+                            },
+                            {
+                              name: "subsidy",
+                              label:
+                                "Requires subsidy for funding-eligible requests",
+                              type: "checkbox",
+                              value: f.subsidy_required,
+                            },
+                          ]}
+                          busy={busy}
+                          submit="Confirm primary-care service"
+                          onSubmit={(d) =>
+                            run(() =>
+                              mutate(`facilities/${f.id}/services`, {
+                                service_id: "PRIMARY_CARE_OPD",
+                                eligible_zones: String(d.zones)
+                                  .split(",")
+                                  .map((z) => z.trim())
+                                  .filter(Boolean),
+                                reviewed: true,
+                                subsidy_required: d.subsidy,
+                                version: f.version,
+                              }),
+                            )
+                          }
+                        />
+                      </details>
+                    ))}
+                  </Card>
                 </div>
               )}
-            </div>
+            </>
           )}
-          {modal.type === "reset" && (
-            <div className="dialog-form">
-              <p>
-                Reset removes all demo requests, capacity changes, and plans,
-                then restores the synthetic dataset.
-              </p>
-              <button
-                className="primary full"
-                disabled={busy}
-                onClick={() =>
-                  act(async () => {
-                    await api(
-                      "/api/demo/reset?confirm=RESET_SYNTHETIC_DATA",
-                      "POST",
-                    );
-                    setModal(null);
-                    setDay(config?.today || day);
-                  }, "Demo restored")
+          {screen === "referrals" && (
+            <>
+              {!planner && (
+                <div className="two-col">
+                  <Card title="Register a synthetic request">
+                    <p>
+                      Review the service description before using it for
+                      referral eligibility.
+                    </p>
+                    <label className="standalone-label">
+                      Service description
+                      <input
+                        value={description}
+                        onChange={(e) => {
+                          setDescription(e.target.value);
+                          setReviewId("");
+                          setMatch(null);
+                        }}
+                      />
+                    </label>
+                    <button
+                      disabled={busy}
+                      onClick={() =>
+                        run(async () => {
+                          setMatchKind("service");
+                          setMatch(
+                            await api<Match>(
+                              "matching/services",
+                              token,
+                              "POST",
+                              { text: description },
+                            ),
+                          );
+                          setReviewId("");
+                        }, "Review the suggested category before creating the request.")
+                      }
+                    >
+                      Suggest service category
+                    </button>
+                    {match && matchKind === "service" && (
+                      <div className="matching">
+                        <Badge value={match.status} />
+                        {match.candidates.map((c) => (
+                          <button
+                            key={c.id}
+                            disabled={busy || !!reviewId}
+                            onClick={() =>
+                              run(async () => {
+                                const r = await api<{ id: string }>(
+                                  "matching/reviews",
+                                  token,
+                                  "POST",
+                                  {
+                                    match_id: match.id,
+                                    decision: "ACCEPT",
+                                    candidate_id: c.id,
+                                    reason:
+                                      "Operator reviewed primary-care description",
+                                  },
+                                );
+                                setReviewId(r.id);
+                              }, "Service review saved.")
+                            }
+                          >
+                            <Check size={14} />
+                            {c.name} · review suggestion
+                          </button>
+                        ))}
+                        <small>
+                          {reviewId
+                            ? "Human review recorded"
+                            : "Unsupported descriptions may be left unreviewed."}
+                        </small>
+                      </div>
+                    )}
+                    <Form
+                      busy={busy}
+                      submit="Register request"
+                      fields={[
+                        {
+                          name: "reference",
+                          label: "Synthetic reference",
+                          value: `DEMO-${state.requests.length + 1}`,
+                        },
+                        {
+                          name: "source_facility_id",
+                          label: "Originating provider",
+                          options: facilityOptions,
+                        },
+                        { name: "zone", label: "Pilot zone", options: zones },
+                        {
+                          name: "date_from",
+                          label: "From",
+                          type: "date",
+                          value: serviceDate,
+                        },
+                        {
+                          name: "date_to",
+                          label: "To",
+                          type: "date",
+                          value: serviceDate,
+                        },
+                        {
+                          name: "suitable",
+                          label:
+                            "Authorized staff established non-emergency primary-care suitability",
+                          type: "checkbox",
+                        },
+                        {
+                          name: "needs_funding",
+                          label: "Request needs funding support",
+                          type: "checkbox",
+                        },
+                        {
+                          name: "funding_eligible",
+                          label: "Operational funding eligibility confirmed",
+                          type: "checkbox",
+                        },
+                      ]}
+                      onSubmit={(d) =>
+                        run(() =>
+                          mutate("requests", {
+                            ...d,
+                            original_text: description,
+                            review_id: reviewId || null,
+                          }),
+                        )
+                      }
+                    />
+                  </Card>
+                  <Card
+                    title="Recommendations"
+                    aside={request && <Badge value={request.status} />}
+                  >
+                    <p>
+                      {request
+                        ? `${request.reference} · ${request.zone}`
+                        : "Select a request below to find eligible destinations."}
+                    </p>
+                    {reasons.map((r) => (
+                      <div className="empty" key={r}>
+                        {human(r)}
+                      </div>
+                    ))}
+                    {options.map((o) => (
+                      <div key={o.capacity_id} className="recommendation">
+                        <strong>{o.name}</strong>
+                        <p>{o.explanation}</p>
+                        <span>
+                          {o.date} · {o.available} units · Subsidy PKR{" "}
+                          {money(o.subsidy)}
+                        </span>
+                        <button
+                          className="primary"
+                          disabled={busy}
+                          onClick={() =>
+                            run(async () => {
+                              await mutate("referrals", {
+                                request_id: request!.id,
+                                capacity_id: o.capacity_id,
+                                capacity_version: o.capacity_version,
+                                facility_version: o.facility_version,
+                              });
+                              setOptions([]);
+                            }, "Temporary hold created. Partner acceptance and patient agreement are pending.")
+                          }
+                        >
+                          Approve & reserve
+                        </button>
+                      </div>
+                    ))}
+                  </Card>
+                </div>
+              )}
+              {!planner && (
+                <Card title="Request queue">
+                  <div className="table-scroll">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Request</th>
+                          <th>Service dates</th>
+                          <th>Zone</th>
+                          <th>Status / reason</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {state.requests.map((r) => (
+                          <tr key={r.id}>
+                            <td>
+                              <strong>{r.reference}</strong>
+                              <small>{r.original_text}</small>
+                            </td>
+                            <td>
+                              {r.date_from}
+                              <small>to {r.date_to}</small>
+                            </td>
+                            <td>{r.zone}</td>
+                            <td>
+                              <Badge value={r.status} />
+                              <small>{r.reasons.map(human).join(", ")}</small>
+                            </td>
+                            <td>
+                              {state.user.facility_ids.includes(
+                                r.source_facility_id,
+                              ) &&
+                                ![
+                                  "FULFILLED",
+                                  "CANCELLED",
+                                  "IN_PROGRESS",
+                                ].includes(r.status) && (
+                                  <>
+                                    <button
+                                      disabled={busy}
+                                      onClick={() => recommend(r)}
+                                    >
+                                      Find providers
+                                    </button>
+                                    <button
+                                      disabled={busy}
+                                      onClick={() =>
+                                        run(() =>
+                                          mutate(`requests/${r.id}/reprocess`, {
+                                            reason:
+                                              "Operator reviewed the request for another eligible option",
+                                          }),
+                                        )
+                                      }
+                                    >
+                                      Reprocess
+                                    </button>
+                                    <button
+                                      disabled={busy}
+                                      onClick={() =>
+                                        run(() =>
+                                          mutate(`requests/${r.id}/cancel`, {
+                                            reason:
+                                              "Operator cancelled synthetic request",
+                                          }),
+                                        )
+                                      }
+                                    >
+                                      Cancel
+                                    </button>
+                                  </>
+                                )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              )}
+              <Card
+                title={
+                  planner
+                    ? "Subsidy authorization queue"
+                    : "Incoming & outgoing referrals"
                 }
               >
-                Reset synthetic data
-              </button>
-            </div>
+                <div className="referral-list">
+                  {state.referrals
+                    .filter((a) =>
+                      planner
+                        ? a.status === "AWAITING_CONFIRMATIONS" && a.subsidy > 0
+                        : !["COMPLETED"].includes(a.status),
+                    )
+                    .map((a) => {
+                      const receive = state.user.facility_ids.includes(
+                        a.facility_id,
+                      );
+                      return (
+                        <div className="referral" key={a.id}>
+                          <div>
+                            <strong>
+                              {a.id} → {a.facility_id}
+                            </strong>
+                            <p>
+                              {a.request_id} · {a.date} · Subsidy PKR{" "}
+                              {money(a.subsidy)}
+                            </p>
+                            <Badge value={a.status} />
+                            <small>
+                              Partner{" "}
+                              {a.partner_accepted ? "accepted" : "pending"} ·
+                              Patient {a.patient_agreed ? "agreed" : "pending"}{" "}
+                              · Funding{" "}
+                              {a.funding_approved ? "authorized" : "pending"}
+                            </small>
+                            {a.status === "AWAITING_CONFIRMATIONS" && (
+                              <small>
+                                Response deadline{" "}
+                                {new Date(a.expires_at).toLocaleString(
+                                  "en-PK",
+                                  { timeZone: "Asia/Karachi" },
+                                )}{" "}
+                                PKT
+                              </small>
+                            )}
+                            {a.reason && <small>{a.reason}</small>}
+                          </div>
+                          <div className="action-buttons">
+                            {a.status === "AWAITING_CONFIRMATIONS" &&
+                              (planner ? (
+                                <button
+                                  disabled={busy || a.funding_approved}
+                                  onClick={() =>
+                                    run(() =>
+                                      mutate(
+                                        `referrals/${a.id}/funding-approval`,
+                                        { accepted: true },
+                                      ),
+                                    )
+                                  }
+                                >
+                                  Authorize funding
+                                </button>
+                              ) : (
+                                <>
+                                  {receive && (
+                                    <>
+                                      <button
+                                        disabled={busy || a.partner_accepted}
+                                        onClick={() =>
+                                          run(() =>
+                                            mutate(
+                                              `referrals/${a.id}/partner-response`,
+                                              { accepted: true },
+                                            ),
+                                          )
+                                        }
+                                      >
+                                        Accept referral
+                                      </button>
+                                      <button
+                                        disabled={busy}
+                                        onClick={() =>
+                                          run(() =>
+                                            mutate(
+                                              `referrals/${a.id}/partner-response`,
+                                              {
+                                                accepted: false,
+                                                reason:
+                                                  "Receiving operator declined the demonstration referral",
+                                              },
+                                            ),
+                                          )
+                                        }
+                                      >
+                                        Reject
+                                      </button>
+                                    </>
+                                  )}
+                                  <button
+                                    disabled={busy || a.patient_agreed}
+                                    onClick={() =>
+                                      run(() =>
+                                        mutate(
+                                          `referrals/${a.id}/patient-agreement`,
+                                          { accepted: true },
+                                        ),
+                                      )
+                                    }
+                                  >
+                                    Record patient agreement
+                                  </button>
+                                  <button
+                                    disabled={busy}
+                                    onClick={() =>
+                                      run(() =>
+                                        mutate(
+                                          `referrals/${a.id}/patient-agreement`,
+                                          {
+                                            accepted: false,
+                                            reason:
+                                              "Patient declined this option",
+                                          },
+                                        ),
+                                      )
+                                    }
+                                  >
+                                    Patient declined
+                                  </button>
+                                </>
+                              ))}
+                            {!planner &&
+                              receive &&
+                              a.status === "CONFIRMED" && (
+                                <>
+                                  <button
+                                    disabled={busy}
+                                    onClick={() =>
+                                      run(() =>
+                                        mutate(`referrals/${a.id}/arrival`),
+                                      )
+                                    }
+                                  >
+                                    Record arrival
+                                  </button>
+                                  <button
+                                    disabled={busy}
+                                    onClick={() =>
+                                      run(() =>
+                                        mutate(`referrals/${a.id}/no-show`, {
+                                          reason:
+                                            "Did not attend the declared service date",
+                                        }),
+                                      )
+                                    }
+                                  >
+                                    No-show
+                                  </button>
+                                </>
+                              )}
+                            {!planner && receive && a.status === "ARRIVED" && (
+                              <button
+                                className="primary"
+                                disabled={busy}
+                                onClick={() =>
+                                  run(() =>
+                                    mutate(`referrals/${a.id}/completion`),
+                                  )
+                                }
+                              >
+                                Complete service
+                              </button>
+                            )}
+                            {!planner &&
+                              [
+                                "AWAITING_CONFIRMATIONS",
+                                "CONFIRMED",
+                                "ARRIVED",
+                              ].includes(a.status) && (
+                                <button
+                                  disabled={busy}
+                                  onClick={() =>
+                                    run(() =>
+                                      mutate(`referrals/${a.id}/cancel`, {
+                                        reason:
+                                          "Operator cancelled synthetic referral",
+                                      }),
+                                    )
+                                  }
+                                >
+                                  Cancel referral
+                                </button>
+                              )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  {!state.referrals.some((a) =>
+                    planner
+                      ? a.status === "AWAITING_CONFIRMATIONS" && a.subsidy > 0
+                      : a.status !== "COMPLETED",
+                  ) && (
+                    <p className="empty">
+                      No referrals need action in this view.
+                    </p>
+                  )}
+                </div>
+              </Card>
+            </>
           )}
-          {busy && (
-            <p className="dialog-status" role="status">
-              Saving changes…
-            </p>
+          {screen === "intelligence" && (
+            <>
+              {planner && state.summary ? (
+                <>
+                  <div className="two-col">
+                    <Card title="Unresolved platform requests">
+                      <p>
+                        Unique request units in {planningMonth}. Failed attempts
+                        are not counted as additional demand.
+                      </p>
+                      {state.summary.zones.map((z) => (
+                        <div className="zone-row" key={z.zone}>
+                          <div>
+                            <strong>{z.zone}</strong>
+                            <small>
+                              {Object.entries(z.reasons)
+                                .map(([r, n]) => `${human(r)}: ${n}`)
+                                .join(" · ") || "No unresolved requests"}
+                            </small>
+                          </div>
+                          <b>{z.count}</b>
+                        </div>
+                      ))}
+                    </Card>
+                    <Card title="Resolution funnel">
+                      <div className="funnel">
+                        {[
+                          ["Registered", state.summary.registered],
+                          ["Confirmed", state.summary.confirmed],
+                          ["Arrived", state.summary.arrived],
+                          ["Completed", state.summary.completed],
+                        ].map(([l, n]) => (
+                          <div key={l}>
+                            <span>{l}</span>
+                            <strong>{n}</strong>
+                          </div>
+                        ))}
+                      </div>
+                      <p>
+                        These are recorded platform outcomes, not estimates of
+                        all healthcare need. Pending referrals remain in the
+                        confirmation denominator.
+                      </p>
+                    </Card>
+                  </div>
+                  <Card title="Record matching & canonical identity review">
+                    <MatchingTools />
+                  </Card>
+                </>
+              ) : (
+                <Card title="Semantic record and service review">
+                  <MatchingTools />
+                </Card>
+              )}
+              <Card title="Review history">
+                {state.reviews.length ? (
+                  state.reviews
+                    .slice(-10)
+                    .reverse()
+                    .map((r) => (
+                      <div key={r.id} className="history">
+                        <strong>{r.input_text}</strong>
+                        <Badge value={r.decision} />
+                        <small>
+                          {r.candidate_id || "No supported match"} · {r.actor}
+                        </small>
+                      </div>
+                    ))
+                ) : (
+                  <p className="empty">No human reviews recorded yet.</p>
+                )}
+              </Card>
+            </>
           )}
-          {error && (
-            <p className="dialog-error" role="alert">
-              {error}
-            </p>
+          {screen === "planning" && (
+            <>
+              {planner ? (
+                <>
+                  <div className="two-col">
+                    <Card title="Monthly resource budget">
+                      <Form
+                        key={
+                          planningMonth +
+                          state.budgets.find((b) => b.month === planningMonth)
+                            ?.version
+                        }
+                        busy={busy}
+                        submit="Authorize monthly budget"
+                        fields={[
+                          {
+                            name: "authorized",
+                            label: "Budget in integer PKR",
+                            type: "number",
+                            value:
+                              state.budgets.find(
+                                (b) => b.month === planningMonth,
+                              )?.authorized || 25000,
+                          },
+                        ]}
+                        onSubmit={(d) =>
+                          run(() =>
+                            mutate("budgets", {
+                              month: planningMonth,
+                              authorized: Number(d.authorized),
+                              version:
+                                state.budgets.find(
+                                  (b) => b.month === planningMonth,
+                                )?.version || 0,
+                            }),
+                          )
+                        }
+                      />
+                      {state.budgets
+                        .filter((b) => b.month === planningMonth)
+                        .map((b) => (
+                          <div className="ledger-totals" key={b.month}>
+                            {(
+                              [
+                                "HELD",
+                                "COMMITTED",
+                                "SETTLED",
+                                "remaining",
+                              ] as const
+                            ).map((k) => (
+                              <div key={k}>
+                                <span>{human(k)}</span>
+                                <strong>PKR {money(b[k])}</strong>
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      <details>
+                        <summary>Fixed subsidy schedule</summary>
+                        <Form
+                          busy={busy}
+                          fields={[
+                            {
+                              name: "amount",
+                              label: "Contribution per eligible service (PKR)",
+                              type: "number",
+                              value: state.subsidy_rule?.amount || 0,
+                            },
+                          ]}
+                          onSubmit={(d) =>
+                            run(() =>
+                              mutate("subsidy-rules", {
+                                month: planningMonth,
+                                amount: Number(d.amount),
+                                version: state.subsidy_rule!.version,
+                              }),
+                            )
+                          }
+                        />
+                      </details>
+                    </Card>
+                    <Card title="Compute an allocation">
+                      <span className="eyebrow">
+                        SUBSIDY + PARTNER QUOTA + MOBILE CLINIC
+                      </span>
+                      <h3>Current requests. Dated resources. One budget.</h3>
+                      <p>
+                        Freeze the current unresolved demand, then compute a
+                        feasible monthly allocation. Approval and operator
+                        activation follow separately.
+                      </p>
+                      <button
+                        className="primary"
+                        disabled={busy}
+                        onClick={() =>
+                          run(async () => {
+                            const snap = await api<{ id: string }>(
+                              "intelligence/snapshots",
+                              token,
+                              "POST",
+                              { month: planningMonth },
+                            );
+                            const p = await api<Plan>(
+                              "plans/optimize",
+                              token,
+                              "POST",
+                              { snapshot_id: snap.id },
+                            );
+                            setPlan(p);
+                          }, "Draft computed from an immutable demand snapshot.")
+                        }
+                      >
+                        {busy ? "Computing…" : "Create snapshot & optimize"}
+                        <ArrowRight size={16} />
+                      </button>
+                      <small>
+                        No future demand is forecast. Budget excludes active
+                        holds, commitments and settled costs.
+                      </small>
+                    </Card>
+                  </div>
+                </>
+              ) : (
+                <div className="two-col">
+                  <Card title="Offer additional partner quota">
+                    <OfferForm kind="QUOTA" />
+                  </Card>
+                  <Card title="Offer a mobile-clinic deployment">
+                    <OfferForm kind="MOBILE" />
+                  </Card>
+                </div>
+              )}
+              <Card title="Offered resources">
+                <div className="table-scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Offer</th>
+                        <th>Provider / date</th>
+                        <th>Units</th>
+                        <th>Fixed cost</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {state.offers.map((o) => (
+                        <tr key={o.id}>
+                          <td>
+                            {o.id}
+                            <small>
+                              {human(o.kind)} {o.site}
+                            </small>
+                          </td>
+                          <td>
+                            {o.facility_id}
+                            <small>{o.date}</small>
+                          </td>
+                          <td>{o.units}</td>
+                          <td>PKR {money(o.cost)}</td>
+                          <td>
+                            <Badge value={o.status} />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+              {state.plans.length > 0 && (
+                <Card title="Saved plans">
+                  <div className="plan-tabs">
+                    {state.plans
+                      .slice()
+                      .reverse()
+                      .map((p) => (
+                        <button
+                          key={p.id}
+                          className={plan?.id === p.id ? "selected" : ""}
+                          onClick={() => setPlan(p)}
+                        >
+                          {p.id} · {human(p.status)} · PKR {money(p.cost)}
+                        </button>
+                      ))}
+                  </div>
+                </Card>
+              )}
+              {plan && (
+                <Card
+                  title={`Plan ${plan.id}`}
+                  aside={<Badge value={plan.status} />}
+                >
+                  <div className="plan-metrics">
+                    <div>
+                      <span>Projected additional accommodation</span>
+                      <strong>{plan.additional}</strong>
+                    </div>
+                    <div>
+                      <span>Baseline feasible units</span>
+                      <strong>{plan.baseline}</strong>
+                    </div>
+                    <div>
+                      <span>Incremental cost</span>
+                      <strong>PKR {money(plan.cost)}</strong>
+                    </div>
+                    <div>
+                      <span>Solver result</span>
+                      <strong>{human(plan.solver_status)}</strong>
+                    </div>
+                  </div>
+                  <p>
+                    {plan.unresolved_remaining} eligible units remain
+                    unresolved.{" "}
+                    {plan.assignments.filter((a) => a.subsidy > 0).length}{" "}
+                    subsidy assignments · subsidy total PKR{" "}
+                    {money(plan.subsidy_cost)}.
+                  </p>
+                  <div className="plan-actions">
+                    {plan.actions.map((a) => (
+                      <div key={a.id}>
+                        <div>
+                          <strong>
+                            {a.offer_id} · {human(a.kind)}
+                          </strong>
+                          <p>PKR {money(a.cost)}</p>
+                          <Badge value={a.status} />
+                        </div>
+                        {!planner && a.status === "PENDING_ACTIVATION" && (
+                          <div className="action-buttons">
+                            <button
+                              className="primary"
+                              disabled={busy}
+                              onClick={() =>
+                                run(
+                                  () =>
+                                    mutate(
+                                      `plans/${plan.id}/actions/${a.id}/activate`,
+                                    ),
+                                  "Resource activated; dated capacity and the ledger have been updated.",
+                                )
+                              }
+                            >
+                              Confirm & activate offered resource
+                            </button>
+                            <button
+                              disabled={busy}
+                              onClick={() =>
+                                run(() =>
+                                  mutate(
+                                    `plans/${plan.id}/actions/${a.id}/reject`,
+                                    {
+                                      reason:
+                                        "Offered resource is no longer available",
+                                    },
+                                  ),
+                                )
+                              }
+                            >
+                              Reject offered resource
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <details>
+                    <summary>Assumptions and excluded demand</summary>
+                    {plan.assumptions.map((a) => (
+                      <p key={a}>{a}</p>
+                    ))}
+                    <p>
+                      {Object.entries(plan.excluded)
+                        .map(([k, n]) => `${human(k)}: ${n}`)
+                        .join(" · ") || "No excluded units"}
+                    </p>
+                  </details>
+                  {planner && (
+                    <div className="action-buttons">
+                      {plan.status === "DRAFT" && (
+                        <button
+                          className="primary"
+                          disabled={busy}
+                          onClick={() =>
+                            run(
+                              () => mutate(`plans/${plan.id}/approve`),
+                              "Plan approved. Funds and offers reserved; partner/mobile actions await their operators.",
+                            )
+                          }
+                        >
+                          Approve plan
+                        </button>
+                      )}
+                      {["DRAFT", "APPROVED", "ACTIVE"].includes(
+                        plan.status,
+                      ) && (
+                        <button
+                          disabled={busy}
+                          onClick={() =>
+                            run(() =>
+                              mutate(`plans/${plan.id}/cancel`, {
+                                reason:
+                                  "Planner closed remaining unactivated commitments",
+                              }),
+                            )
+                          }
+                        >
+                          Close & release unspent commitments
+                        </button>
+                      )}
+                      <button
+                        disabled={busy}
+                        onClick={() => exportPlan(plan, "json")}
+                      >
+                        <Download size={15} /> JSON summary
+                      </button>
+                      <button
+                        disabled={busy}
+                        onClick={() => exportPlan(plan, "csv")}
+                      >
+                        <Download size={15} /> CSV summary
+                      </button>
+                    </div>
+                  )}
+                </Card>
+              )}
+              {planner && state.summary && (
+                <Card title="Projected versus recorded outcomes">
+                  <div className="funnel">
+                    <div>
+                      <span>Current projected additional</span>
+                      <strong>{state.summary.projected_additional}</strong>
+                    </div>
+                    <div>
+                      <span>Post-activation confirmed</span>
+                      <strong>{state.summary.post_activation_confirmed}</strong>
+                    </div>
+                    <div>
+                      <span>Post-activation completed</span>
+                      <strong>{state.summary.post_activation_completed}</strong>
+                    </div>
+                  </div>
+                  <p>
+                    Activating resources does not complete requests. Operators
+                    must still record confirmation, arrival and service
+                    completion.
+                  </p>
+                </Card>
+              )}
+            </>
           )}
-        </Dialog>
-      )}
+          <details className="audit-panel">
+            <summary>Audit trail · {state.audit.length} recent events</summary>
+            {state.audit
+              .slice()
+              .reverse()
+              .map((a) => (
+                <div key={a.id}>
+                  <strong>{human(a.action)}</strong>
+                  <span>
+                    {a.actor} · {a.object_id}
+                  </span>
+                  <small>
+                    {new Date(a.timestamp).toLocaleString("en-PK", {
+                      timeZone: "Asia/Karachi",
+                    })}{" "}
+                    PKT {a.reason && `· ${a.reason}`}
+                  </small>
+                </div>
+              ))}
+          </details>
+          <footer>
+            SEHAT GRID · Scope v1.0 · Synthetic operational data · Geography is
+            demonstration context, not a confirmed provider agreement.
+          </footer>
+        </main>
+      </div>
     </div>
   );
+  function MatchingTools() {
+    return (
+      <>
+        <Form
+          busy={busy}
+          submit="Suggest matching records"
+          fields={[
+            {
+              name: "kind",
+              label: "Record type",
+              options: [
+                { value: "facility", label: "Facility identity" },
+                { value: "service", label: "Primary-care service description" },
+              ],
+            },
+            {
+              name: "text",
+              label: "Original text",
+              value: "family doctor outpatient visit",
+            },
+            {
+              name: "zone",
+              label: "Locality evidence",
+              options: [{ value: "", label: "Unknown" }, ...zones],
+              required: false,
+            },
+          ]}
+          onSubmit={(d) =>
+            run(async () => {
+              setMatchKind(d.kind as "facility" | "service");
+              setMatch(
+                await api<Match>(
+                  `matching/${d.kind === "facility" ? "facilities" : "services"}`,
+                  token,
+                  "POST",
+                  { text: d.text, zone: d.zone || null },
+                ),
+              );
+            }, "Candidates are suggestions. A human decision is required.")
+          }
+        />
+        {match && (
+          <div className="matching">
+            <Badge value={match.status} />
+            <small>{match.model_version}</small>
+            <Form
+              key={match.id}
+              busy={busy}
+              submit="Record review"
+              fields={[
+                {
+                  name: "candidate_id",
+                  label: "Canonical candidate",
+                  options: [
+                    { value: "", label: "No supported match" },
+                    ...match.candidates.map((c) => ({
+                      value: c.id,
+                      label: `${c.name} · similarity ${c.score.toFixed(2)}`,
+                    })),
+                  ],
+                  required: false,
+                },
+                {
+                  name: "decision",
+                  label: "Human decision",
+                  options: [
+                    { value: "ACCEPT", label: "Accept suggestion" },
+                    { value: "CORRECT", label: "Correct category / identity" },
+                    { value: "DECLINE", label: "Decline suggestion" },
+                  ],
+                },
+                {
+                  name: "record_id",
+                  label:
+                    matchKind === "facility"
+                      ? "Original facility ID to link (planner only; optional)"
+                      : "Existing request ID to review (optional)",
+                  required: false,
+                },
+                {
+                  name: "reason",
+                  label: "Review reason",
+                  value:
+                    "Reviewed source text and supported primary-care scope",
+                },
+              ]}
+              onSubmit={(d) =>
+                run(() =>
+                  mutate("matching/reviews", {
+                    ...d,
+                    match_id: match.id,
+                    candidate_id: d.candidate_id || null,
+                    record_id: d.record_id || null,
+                  }),
+                )
+              }
+            />
+            <p>
+              Identity links retain original records. No request, quota or
+              reservation is moved by a match.
+            </p>
+          </div>
+        )}
+      </>
+    );
+  }
+  function OfferForm({ kind }: { kind: "QUOTA" | "MOBILE" }) {
+    return (
+      <Form
+        busy={busy}
+        submit="Record dated offer"
+        fields={[
+          {
+            name: "facility_id",
+            label: "Responsible provider",
+            options: facilityOptions,
+          },
+          {
+            name: "date",
+            label: "Operating date",
+            type: "date",
+            value: serviceDate,
+          },
+          { name: "zone", label: "Eligible pilot zone", options: zones },
+          { name: "units", label: "Offered units", type: "number", value: 5 },
+          {
+            name: "cost",
+            label: "Fixed package cost (PKR)",
+            type: "number",
+            value: 5000,
+          },
+          {
+            name: "funding_included",
+            label: "Package cost includes service funding",
+            type: "checkbox",
+            value: true,
+          },
+          ...(kind === "QUOTA"
+            ? [
+                {
+                  name: "spare_group",
+                  label: "Shared spare-capacity group",
+                  value: "SPARE-NEW",
+                },
+              ]
+            : [
+                {
+                  name: "mobile_unit",
+                  label: "Mobile unit ID",
+                  value: "MOBILE-02",
+                },
+                {
+                  name: "site",
+                  label: "Predeclared site name",
+                  value: "Reviewed pilot site",
+                },
+              ]),
+          { name: "latitude", label: "Site latitude", value: 33.746 },
+          { name: "longitude", label: "Site longitude", value: 73.03 },
+        ]}
+        onSubmit={(d) =>
+          run(() =>
+            mutate(
+              kind === "QUOTA" ? "partner-quota-offers" : "mobile-offers",
+              {
+                facility_id: d.facility_id,
+                date: d.date,
+                eligible_zones: [d.zone],
+                units: Number(d.units),
+                cost: Number(d.cost),
+                funding_included: d.funding_included,
+                spare_group: d.spare_group || null,
+                mobile_unit: d.mobile_unit || null,
+                site: d.site || null,
+                latitude: Number(d.latitude),
+                longitude: Number(d.longitude),
+              },
+            ),
+          )
+        }
+      />
+    );
+  }
 }

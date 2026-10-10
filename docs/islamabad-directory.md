@@ -1,6 +1,6 @@
 # Islamabad hospital directory research
 
-Sources checked: **10 October 2026**. This is a curated initial directory of 12 hospitals, not an exhaustive city census. Only facilities with a sourced identity/address and a defensible coordinate are plotted.
+Sources checked: **10 October 2026**. This is a curated initial directory of 12 hospitals, not an exhaustive city census. The scoped MVP uses the first eight records as labelled public location context for synthetic partners; the full 12-record research register remains here for provenance.
 
 ## Method and accuracy
 
@@ -42,8 +42,8 @@ The cardinal Central/East/South/West/North fields are five **demonstration plann
 
 ## Maintenance, licensing and integration
 
-The versioned dataset is `backend/app/data/islamabad_hospitals.json`. Each record contains its stable source key, coordinates, source URLs, check date, address, public/private classification and uncertainty notes. On startup with `SEED_ON_START=true`, the API syncs directory facts without resetting workflow data. The original six synthetic facility IDs are retained when upgrading their names and coordinates. Stored allocation history retains its original snapshots.
+The versioned dataset is `backend/app/data/islamabad_hospitals.json`. Each record contains its stable source key, coordinates, source URLs, check date, address, public/private classification and uncertainty notes. Scope-v1 reset creates eight synthetic partners using these sourced campus points. Public names/coordinates do not imply partnership. Legacy workflow tables remain historical; the new scoped state is separate.
 
 Research is cached during development; there is no runtime geocoding or repeated Nominatim search on each visit. OpenStreetMap-derived locations and base map are credited to [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), with underlying OSM data subject to ODbL. Hospital source links identify the origin of contact/service facts. Preserve attribution and source provenance in exports and derivative datasets.
 
-The demo uses standard raster tiles and visible attribution, ordinary browser HTTP caching, and no offline/bulk tile downloads. Configure another provider for production traffic according to the [OSM tile policy](https://operations.osmfoundation.org/policies/tiles/). The map requires WebGL; if tiles or rendering fail, directory details and external coordinate links remain available.
+The default demo uses a bundled coordinate layer with no tile download. Optional street context uses standard raster tiles and visible attribution, ordinary browser HTTP caching, and no offline/bulk tile downloads. Configure another provider for production traffic according to the [OSM tile policy](https://operations.osmfoundation.org/policies/tiles/). The interactive map uses WebGL; an SVG coordinate-pin fallback and source links remain available if rendering fails.

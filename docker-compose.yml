@@ -4,9 +4,7 @@ services:
     environment:
       POSTGRES_DB: sehat_grid
       POSTGRES_USER: sehat_grid
-      POSTGRES_PASSWORD: local_demo_only
-    ports:
-      - "127.0.0.1:5432:5432"
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in your local root .env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -14,18 +12,20 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-  backend:
-    build: ./backend
+  app:
+    build: .
     environment:
-      DATABASE_URL: postgresql+psycopg://sehat_grid:local_demo_only@db:5432/sehat_grid
-      CORS_ORIGINS: http://localhost:3000
+      DATABASE_URL: postgresql+psycopg://sehat_grid:${POSTGRES_PASSWORD}@db:5432/sehat_grid
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:?Set DEMO_PASSWORD}
       APP_TIMEZONE: Asia/Karachi
+      CORS_ORIGINS: http://localhost:3000
       SEED_ON_START: "true"
-      ENABLE_DEMO_RESET: "false"
+      PORT: "3000"
     depends_on:
       db:
         condition: service_healthy
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:3000:3000"
 volumes:
   postgres_data:

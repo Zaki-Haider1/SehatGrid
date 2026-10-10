@@ -4,7 +4,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 export const metadata: Metadata = {
   title: "Sehat Grid · Care, connected",
   description:
-    "An Islamabad hospital map and directory with simulated capacity, referral, and resource planning workflows.",
+    "A synthetic Islamabad primary-care network for hospital operators and monthly resource planners.",
 };
 export default function RootLayout({
   children,

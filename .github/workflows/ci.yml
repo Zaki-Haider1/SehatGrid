@@ -1,4 +1,4 @@
-name: Validate MVP
+name: Validate scoped MVP
 on: [push, pull_request]
 jobs:
   backend:
@@ -17,6 +17,8 @@ jobs:
     env:
       TEST_DATABASE_URL: postgresql+psycopg://test:test@localhost:5432/sehat_grid_test
       DATABASE_URL: postgresql+psycopg://test:test@localhost:5432/sehat_grid_test
+      JWT_SECRET: isolated-ci-only-signing-key-at-least-32-characters
+      DEMO_PASSWORD: isolated-ci-demo-password
       SEED_ON_START: "false"
     defaults:
       run:
@@ -29,25 +31,36 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements-dev.txt
       - run: pip install -r requirements-dev.txt
+      - uses: actions/cache@v4
+        with:
+          path: backend/models
+          key: minilm-1110a243fdf4706b3f48f1d95db1a4f5529b4d41
+      - run: python scripts/preload_model.py
       - run: ruff check .
       - run: alembic upgrade head
       - run: alembic check
       - run: pytest -q
-      - name: Build deployment container
+      - run: python scripts/evaluate_matching.py
+      - run: python scripts/evaluate_allocation.py
+      - name: Build backend deployment container
         run: docker build -t sehat-grid-api .
-      - name: Boot deployment container against PostgreSQL
+      - name: Boot without model or data downloads
         run: |
-          docker run -d --name sehat-grid-api --network host -e DATABASE_URL -e SEED_ON_START=true sehat-grid-api
+          docker run -d --name sehat-grid-api --network host -e DATABASE_URL -e JWT_SECRET -e DEMO_PASSWORD -e SEED_ON_START=true sehat-grid-api
           for attempt in $(seq 1 30); do
             if curl --fail --silent http://localhost:8000/health; then
-              curl --fail --silent http://localhost:8000/api/dashboard
               exit 0
             fi
             sleep 2
           done
           docker logs sehat-grid-api
           exit 1
-      - name: Stop deployment container
+      - name: Save evaluation evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: evaluation-results
+          path: outputs/*-results.json
+      - name: Stop backend test container
         if: always()
         run: docker rm -f sehat-grid-api || true
   frontend:
@@ -66,3 +79,24 @@ jobs:
       - run: npm run typecheck
       - run: npm run format:check
       - run: npm run build
+  combined-container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build complete application
+        run: docker build -t sehat-grid .
+      - name: Cold-start with network disabled
+        run: |
+          docker run -d --name sehat-grid-offline --network none -e JWT_SECRET=isolated-ci-only-signing-key-at-least-32-characters -e DEMO_PASSWORD=isolated-ci-demo-password sehat-grid
+          for attempt in $(seq 1 45); do
+            if docker exec sehat-grid-offline python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:3000/health').read())"; then
+              docker exec sehat-grid-offline python -c "import urllib.request; assert b'Sign in to the pilot' in urllib.request.urlopen('http://localhost:3000').read()"
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs sehat-grid-offline
+          exit 1
+      - name: Stop offline container
+        if: always()
+        run: docker rm -f sehat-grid-offline || true

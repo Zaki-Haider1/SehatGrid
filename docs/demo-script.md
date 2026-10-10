@@ -1,0 +1,14 @@
+# Five-minute demonstration
+
+Prepare once: install pinned dependencies, preload the model, migrate and seed/reset. Start API and frontend. Confirm `/health` and sign in. The default coordinate map works with internet disconnected. All dates below use the date displayed in the app, not a hardcoded calendar fixture.
+
+1. **0:00 — planner:** Network overview shows eight demo providers, fresh/exhausted/unknown quota, sourced Islamabad campus coordinates and synthetic labels. Explain the two roles and the narrow service.
+2. **0:35 — operator P03:** In Referral coordination enter `a routine visit with a family physician`, obtain a semantic suggestion, review it, and register a separate synthetic East-zone request with staff suitability checked. Choose P03, reserve, record partner acceptance and patient agreement, then arrival and completion. This separate example changes registered/completed totals but leaves the worked 20 unresolved units intact.
+3. **2:00 — planner:** Unresolved demand shows eight South affordability units, seven Central exhausted-quota units and five North no-eligible-partner units. The count is unique requests, not failed attempts or the city's population.
+4. **2:40 — planner:** Monthly planner → Create snapshot & optimize. Verify 8 subsidies costing PKR 8,000, QUOTA-7 costing 7,000, MOBILE-5 costing 10,000, baseline 0 and projected additional 20. Inspect assumptions and actual solver status.
+5. **3:40 — planner:** Approve plan. Funds move to commitments; quota/mobile resources remain pending.
+6. **4:00 — operator P02:** Offers & activation → select the approved plan → activate QUOTA-7. Operator P08 similarly activates MOBILE-5; a separate synthetic site appears.
+7. **4:30 — operator P01:** Find providers for B-01 and reserve the activated quota. Record patient agreement. Operator P02 accepts, records arrival and completes it. These are synthetic demonstration events.
+8. **4:50 — planner:** Compare projected additional accommodation with post-activation confirmed/completed counts. Download JSON/CSV and show the immutable snapshot hash and cost breakdown.
+
+Use the README reset command to rehearse again. Reset is a deliberate local/CLI maintenance operation; there is no unauthenticated destructive reset route. Restarting without reset preserves records and does not fake fresh capacity.
