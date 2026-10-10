@@ -44,7 +44,11 @@ def intelligence(s, month):
     for r in s["requests"].values():
         refresh_request(s, r)
     requests = [r for r in s["requests"].values() if r["date_from"][:7] <= month <= r["date_to"][:7]]
-    active = {a["request_id"] for a in s["referrals"].values() if a["status"] in ACTIVE}
+    active = {
+        a["request_id"]
+        for a in s["referrals"].values()
+        if a["status"] in ACTIVE and a["status"] != "PROPOSED"
+    }
     unresolved = [
         r for r in requests if r["id"] not in active and r["status"] not in ["FULFILLED", "CANCELLED"]
     ]

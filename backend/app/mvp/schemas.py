@@ -81,6 +81,10 @@ class ReserveInput(Input):
     facility_version: int = Field(ge=1)
 
 
+class ReferralProposalInput(ReserveInput):
+    pass
+
+
 class ResponseInput(Input):
     accepted: bool = True
     reason: str | None = Field(default=None, max_length=500)

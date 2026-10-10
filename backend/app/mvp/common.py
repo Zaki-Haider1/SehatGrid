@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from ..config import get_settings
 
 SERVICE = "PRIMARY_CARE_OPD"
-ACTIVE = {"AWAITING_CONFIRMATIONS", "CONFIRMED", "ARRIVED"}
+ACTIVE = {"PROPOSED", "AWAITING_CONFIRMATIONS", "CONFIRMED", "ARRIVED"}
 
 
 def now():

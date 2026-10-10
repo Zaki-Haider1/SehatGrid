@@ -32,7 +32,16 @@ from .common import (
 )
 from .auth import authenticate, issue, password_valid, public_user
 from .matching import matcher, review
-from .referrals import expire, recommendations, reserve, transition, refresh_request
+from .referrals import (
+    active_attempt,
+    expire,
+    recommendations,
+    reserve,
+    reserve_proposal,
+    propose,
+    transition,
+    refresh_request,
+)
 from .intelligence import intelligence, snapshot
 from .planning import optimize, approve, activate, cancel_plan, reject_action
 from . import schemas
@@ -322,7 +331,7 @@ def mutate(s, u, path, method, body):
         operator(u, r["source_facility_id"])
         d = validate(schemas.ReasonInput, body)
         require(
-            r["status"] not in ["FULFILLED", "IN_PROGRESS"],
+            r["status"] != "FULFILLED" and not active_attempt(s, r["id"]),
             "INVALID_TRANSITION",
             "Close the active referral before changing this request",
         )
@@ -336,7 +345,12 @@ def mutate(s, u, path, method, body):
         return r
     if path == "referrals":
         return reserve(s, u, validate(schemas.ReserveInput, body))
+    if path == "referrals/proposals":
+        return propose(s, u, validate(schemas.ReferralProposalInput, body))
     if parts[0] == "referrals" and len(parts) == 3:
+        if parts[2] == "reserve":
+            validate(schemas.Empty, body)
+            return reserve_proposal(s, u, parts[1])
         return transition(
             s,
             u,

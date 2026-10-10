@@ -61,14 +61,16 @@ def entitlement(s, rid, fid, day):
     return None, None
 
 
-def recommendations(s, r):
+def recommendations(s, r, allow_attempt=None):
     ranking_policy = s["ranking_policy"]
     if not r["suitable"]:
         return {"candidates": [], "reasons": ["OUT_OF_SCOPE"]}
     if not r["service_reviewed"] or r["service_id"] != SERVICE:
         return {"candidates": [], "reasons": ["SERVICE_UNREVIEWED"]}
-    if active_attempt(s, r["id"]) or r["status"] in ["FULFILLED", "CANCELLED"]:
-        return {"candidates": [], "reasons": ["ALREADY_ACCOMMODATED"]}
+    active = active_attempt(s, r["id"])
+    if (active and active["id"] != allow_attempt) or r["status"] in ["FULFILLED", "CANCELLED"]:
+        reason = "REFERRAL_PROPOSED" if active and active["status"] == "PROPOSED" else "ALREADY_ACCOMMODATED"
+        return {"candidates": [], "reasons": [reason]}
     options = []
     reasons = set()
     eligible = False
@@ -160,8 +162,8 @@ def refresh_request(s, r):
         return
     active = active_attempt(s, r["id"])
     if active:
-        r["status"] = "IN_PROGRESS"
-        r["reasons"] = []
+        r["status"] = "OPEN" if active["status"] == "PROPOSED" else "IN_PROGRESS"
+        r["reasons"] = ["REFERRAL_PROPOSED"] if active["status"] == "PROPOSED" else []
     elif not r["suitable"]:
         r["status"] = "OUT_OF_SCOPE"
         r["reasons"] = ["OUT_OF_SCOPE"]
@@ -173,26 +175,29 @@ def refresh_request(s, r):
 
 
 def release(s, a, status, reason, actor):
-    c = get(s, "capacities", a["capacity_id"])
     was = a["status"]
-    if was == "AWAITING_CONFIRMATIONS":
-        c["held"] -= 1
-        reservation_state = "RELEASED"
-    else:
-        c["committed"] -= 1
-        cutoff = datetime.fromisoformat(a["date"] + "T" + get_settings().cancellation_cutoff_local).replace(
-            tzinfo=ZoneInfo("Asia/Karachi")
-        )
-        forfeited = status == "NO_SHOW" or now() >= cutoff
-        if forfeited:
-            c["forfeited"] += 1
-        reservation_state = "FORFEITED" if forfeited else "RELEASED"
-    if a.get("package_funded") and reservation_state == "RELEASED":
-        c["funding_included_available"] = c.get("funding_included_available", 0) + 1
-    c["version"] += 1
-    ledger_state(s, a.get("ledger_id"), "RELEASED")
+    reservation_state = None
+    if was != "PROPOSED":
+        c = get(s, "capacities", a["capacity_id"])
+        if was == "AWAITING_CONFIRMATIONS":
+            c["held"] -= 1
+            reservation_state = "RELEASED"
+        else:
+            c["committed"] -= 1
+            cutoff = datetime.fromisoformat(a["date"] + "T" + get_settings().cancellation_cutoff_local).replace(
+                tzinfo=ZoneInfo("Asia/Karachi")
+            )
+            forfeited = status == "NO_SHOW" or now() >= cutoff
+            if forfeited:
+                c["forfeited"] += 1
+            reservation_state = "FORFEITED" if forfeited else "RELEASED"
+        if a.get("package_funded") and reservation_state == "RELEASED":
+            c["funding_included_available"] = c.get("funding_included_available", 0) + 1
+        c["version"] += 1
+        ledger_state(s, a.get("ledger_id"), "RELEASED")
     a.update(status=status, reason=reason, updated_at=stamp(), version=a["version"] + 1)
-    s["reservations"][a["id"]]["state"] = reservation_state
+    if reservation_state is not None:
+        s["reservations"][a["id"]]["state"] = reservation_state
     if a.get("plan_id"):
         for assignment in s["plans"][a["plan_id"]]["assignments"]:
             if assignment.get("referral_id") == a["id"]:
@@ -221,7 +226,7 @@ def expire(s):
             release(s, a, "EXPIRED", "Response deadline elapsed", {"id": "system"})
 
 
-def reserve(s, u, data):
+def propose(s, u, data):
     r = get(s, "requests", data["request_id"])
     operator(u, r["source_facility_id"])
     require(
@@ -230,9 +235,69 @@ def reserve(s, u, data):
         "Record a new agreement through reprocessing before retrying",
     )
     require(
-        not active_attempt(s, r["id"]), "CAPACITY_CONFLICT", "This request already has an active reservation"
+        not active_attempt(s, r["id"]), "CAPACITY_CONFLICT", "This request already has an active referral attempt"
     )
-    options = recommendations(s, r)["candidates"]
+    option = next(
+        (x for x in recommendations(s, r)["candidates"] if x["capacity_id"] == data["capacity_id"]), None
+    )
+    require(option, "CAPACITY_CONFLICT", "The selected resource is no longer eligible; refresh recommendations")
+    require(
+        option["capacity_version"] == data["capacity_version"],
+        "STALE_INPUT",
+        "Quota changed; refresh recommendations",
+    )
+    require(
+        option["facility_version"] == data["facility_version"],
+        "STALE_INPUT",
+        "Participation or service eligibility changed",
+    )
+    a = add(
+        s,
+        "referrals",
+        {
+            "request_id": r["id"],
+            "facility_id": option["facility_id"],
+            "capacity_id": option["capacity_id"],
+            "date": option["date"],
+            "status": "PROPOSED",
+            "partner_accepted": False,
+            "patient_agreed": False,
+            "funding_approved": not option["subsidy"],
+            "subsidy": option["subsidy"],
+            "package_funded": option["package_funded"],
+            "ledger_id": None,
+            "plan_id": option["plan_id"],
+            "created_at": stamp(),
+            "version": 1,
+            "policy_version": s["policy_version"],
+            "ranking_policy_version": option["ranking_policy_version"],
+            "capacity_version_at_proposal": option["capacity_version"],
+            "facility_version_at_proposal": option["facility_version"],
+            "proposed_by": u["id"],
+        },
+    )
+    r["status"] = "OPEN"
+    r["reasons"] = ["REFERRAL_PROPOSED"]
+    r["version"] += 1
+    audit(s, u, "REFERRAL_PROPOSED", a["id"], after=deepcopy(a))
+    return a
+
+
+def reserve(s, u, data, attempt=None):
+    r = get(s, "requests", data["request_id"])
+    operator(u, r["source_facility_id"])
+    require(
+        not r.get("blocked_reasons"),
+        "PATIENT_DECLINED",
+        "Record a new agreement through reprocessing before retrying",
+    )
+    active = active_attempt(s, r["id"])
+    require(
+        not active or (attempt and active["id"] == attempt["id"]),
+        "CAPACITY_CONFLICT",
+        "This request already has an active reservation",
+    )
+    options = recommendations(s, r, allow_attempt=attempt["id"] if attempt else None)["candidates"]
     option = next((x for x in options if x["capacity_id"] == data["capacity_id"]), None)
     require(
         option, "CAPACITY_CONFLICT", "The selected resource is no longer eligible; refresh recommendations"
@@ -245,30 +310,44 @@ def reserve(s, u, data):
         "STALE_INPUT",
         "Participation or service eligibility changed",
     )
-    a = add(
-        s,
-        "referrals",
-        {
-            "request_id": r["id"],
-            "facility_id": f["id"],
-            "capacity_id": c["id"],
-            "date": c["date"],
-            "status": "AWAITING_CONFIRMATIONS",
-            "partner_accepted": False,
-            "patient_agreed": False,
-            "funding_approved": not option["subsidy"],
-            "subsidy": option["subsidy"],
-            "package_funded": option["package_funded"],
-            "ledger_id": None,
-            "plan_id": option["plan_id"],
-            "created_at": stamp(),
-            "version": 1,
-            "expires_at": (now() + timedelta(minutes=get_settings().referral_hold_minutes)).isoformat(),
-            "policy_version": s["policy_version"],
-            "capacity_version_at_hold": c["version"],
-            "facility_version_at_hold": f["version"],
-        },
-    )
+    if attempt:
+        a = attempt
+        a.update(
+            status="AWAITING_CONFIRMATIONS",
+            expires_at=(now() + timedelta(minutes=get_settings().referral_hold_minutes)).isoformat(),
+            subsidy=option["subsidy"],
+            package_funded=option["package_funded"],
+            funding_approved=not option["subsidy"],
+            plan_id=option["plan_id"],
+            capacity_version_at_hold=c["version"],
+            facility_version_at_hold=f["version"],
+            version=a["version"] + 1,
+        )
+    else:
+        a = add(
+            s,
+            "referrals",
+            {
+                "request_id": r["id"],
+                "facility_id": f["id"],
+                "capacity_id": c["id"],
+                "date": c["date"],
+                "status": "AWAITING_CONFIRMATIONS",
+                "partner_accepted": False,
+                "patient_agreed": False,
+                "funding_approved": not option["subsidy"],
+                "subsidy": option["subsidy"],
+                "package_funded": option["package_funded"],
+                "ledger_id": None,
+                "plan_id": option["plan_id"],
+                "created_at": stamp(),
+                "version": 1,
+                "expires_at": (now() + timedelta(minutes=get_settings().referral_hold_minutes)).isoformat(),
+                "policy_version": s["policy_version"],
+                "capacity_version_at_hold": c["version"],
+                "facility_version_at_hold": f["version"],
+            },
+        )
     p, assignment = entitlement(s, r["id"], f["id"], c["date"])
     if a["subsidy"]:
         if assignment and assignment.get("subsidy"):
@@ -305,6 +384,24 @@ def reserve(s, u, data):
     r["version"] += 1
     audit(s, u, "SENDING_APPROVAL", a["id"], after=deepcopy(a))
     return a
+
+
+def reserve_proposal(s, u, aid):
+    a = get(s, "referrals", aid)
+    require(a["status"] == "PROPOSED", "INVALID_TRANSITION", "Referral is not proposed")
+    r = get(s, "requests", a["request_id"])
+    operator(u, r["source_facility_id"])
+    return reserve(
+        s,
+        u,
+        {
+            "request_id": r["id"],
+            "capacity_id": a["capacity_id"],
+            "capacity_version": a["capacity_version_at_proposal"],
+            "facility_version": a["facility_version_at_proposal"],
+        },
+        attempt=a,
+    )
 
 
 def confirm_if_ready(s, a):

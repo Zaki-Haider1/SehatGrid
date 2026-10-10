@@ -57,6 +57,135 @@ def test_planner_can_configure_referral_ranking(pilot):
     assert result["ranking_policy_version"] == updated["policy_version"]
     assert p.call("referral-ranking", {"criteria": ["same_zone", "subsidy", "available"], "version": 1, "reason": "Operator cannot change planner policy"}, "operator-p01", "PUT").status_code == 403
 
+    stale = p.call(
+        "referral-ranking",
+        {"criteria": policy["criteria"], "version": policy["version"], "reason": "Stale update"},
+        "planner",
+        "PUT",
+    )
+    assert stale.status_code == 409
+
+
+def test_ranking_never_selects_an_ineligible_provider(pilot):
+    p = pilot
+    p.ok(
+        "referral-ranking",
+        {"criteria": ["available", "subsidy", "same_zone"], "version": 1, "reason": "Prefer more capacity"},
+        method="PUT",
+    )
+    p.edit(lambda s: s["facilities"]["P02"].update(participation="SUSPENDED"))
+    result = p.ok("requests/A-01/recommendations", user="operator-p01")
+    assert result["candidates"]
+    assert all(candidate["facility_id"] != "P02" for candidate in result["candidates"])
+
+
+def test_proposed_referral_persists_without_holding_capacity_or_funds(pilot):
+    p = pilot
+    choice = p.ok("requests/A-01/recommendations", user="operator-p01")["candidates"][0]
+    payload = {key: choice[key] for key in ["capacity_id", "capacity_version", "facility_version"]} | {
+        "request_id": "A-01"
+    }
+    before = p.edit(lambda s: deepcopy(s))
+    proposal = p.ok("referrals/proposals", payload, "operator-p01", key="proposal-a01")
+    assert proposal["status"] == "PROPOSED"
+    assert p.ok("referrals/proposals", payload, "operator-p01", key="proposal-a01") == proposal
+    after = p.edit(lambda s: deepcopy(s))
+    persisted = after["referrals"][proposal["id"]]
+    assert persisted == proposal
+    assert after["budgets"] == before["budgets"]
+    assert after["ledger"] == before["ledger"]
+    assert after["facilities"] == before["facilities"]
+    assert after["capacities"] == before["capacities"]
+    assert after["reservations"] == before["reservations"]
+    assert after["requests"] != before["requests"]
+    assert p.ok("intelligence/summary")["unresolved"] == 20
+    assert p.ok("requests/A-01/recommendations", user="operator-p01")["candidates"] == []
+    assert p.call(
+        "requests/A-01/reprocess", {"reason": "Try another service date"}, "operator-p01"
+    ).status_code == 409
+    assert p.call(f"referrals/{proposal['id']}/reserve", {}, "operator-p02").status_code == 403
+    assert p.call("referrals/proposals", payload, "operator-p01", key="proposal-a01-duplicate").status_code == 409
+
+    reserved = p.ok(f"referrals/{proposal['id']}/reserve", {}, "operator-p01", key="reserve-a01")
+    assert reserved["id"] == proposal["id"]
+    assert reserved["status"] == "AWAITING_CONFIRMATIONS"
+    aggregate = p.edit(lambda s: deepcopy(s))
+    assert aggregate["capacities"][choice["capacity_id"]]["held"] == 1
+
+
+def test_proposed_referral_cancel_has_no_resource_effect(pilot):
+    p = pilot
+    choice = p.ok("requests/A-01/recommendations", user="operator-p01")["candidates"][0]
+    proposal = p.ok(
+        "referrals/proposals",
+        {key: choice[key] for key in ["capacity_id", "capacity_version", "facility_version"]}
+        | {"request_id": "A-01"},
+        "operator-p01",
+    )
+    before = p.edit(lambda s: deepcopy(s))
+    cancelled = p.ok(
+        f"referrals/{proposal['id']}/cancel", {"reason": "Sender chose another provider"}, "operator-p01"
+    )
+    assert cancelled["status"] == "CANCELLED"
+    after = p.edit(lambda s: deepcopy(s))
+    assert after["ledger"] == before["ledger"]
+    assert after["budgets"] == before["budgets"]
+    assert after["facilities"] == before["facilities"]
+    assert after["capacities"] == before["capacities"]
+    assert after["reservations"] == before["reservations"]
+
+
+def test_proposed_referral_rechecks_capacity_before_reserving(pilot):
+    p = pilot
+    choice = p.ok("requests/A-01/recommendations", user="operator-p01")["candidates"][0]
+    proposal = p.ok(
+        "referrals/proposals",
+        {key: choice[key] for key in ["capacity_id", "capacity_version", "facility_version"]}
+        | {"request_id": "A-01"},
+        "operator-p01",
+    )
+    ledger_before = p.edit(lambda s: deepcopy(s["ledger"]))
+    p.edit(lambda s: s["capacities"][choice["capacity_id"]].update(version=choice["capacity_version"] + 1))
+    stale = p.call(f"referrals/{proposal['id']}/reserve", {}, "operator-p01")
+    assert stale.status_code == 409
+    assert stale.json()["detail"]["code"] == "STALE_INPUT"
+    persisted = p.edit(lambda s: deepcopy(s))
+    assert persisted["referrals"][proposal["id"]]["status"] == "PROPOSED"
+    assert persisted["ledger"] == ledger_before
+
+
+def test_proposed_referral_uses_current_subsidy_policy_when_reserved(pilot):
+    p = pilot
+    choices = p.ok("requests/A-01/recommendations", user="operator-p01")["candidates"]
+    choice = next(candidate for candidate in choices if candidate["subsidy"])
+    proposal = p.ok(
+        "referrals/proposals",
+        {key: choice[key] for key in ["capacity_id", "capacity_version", "facility_version"]}
+        | {"request_id": "A-01"},
+        "operator-p01",
+    )
+    p.ok(
+        "subsidy-rules",
+        {"month": choice["date"][:7], "amount": choice["subsidy"] + 300, "version": 1},
+        "planner",
+    )
+    reserved = p.ok(f"referrals/{proposal['id']}/reserve", {}, "operator-p01")
+    aggregate = p.edit(lambda s: deepcopy(s))
+    assert reserved["status"] == "AWAITING_CONFIRMATIONS"
+    assert reserved["subsidy"] == choice["subsidy"] + 300
+    assert not reserved["funding_approved"]
+    assert aggregate["ledger"][reserved["ledger_id"]]["amount"] == reserved["subsidy"]
+
+
+def test_legacy_direct_reservation_still_holds_capacity(pilot):
+    p = pilot
+    choice = p.ok("requests/A-01/recommendations", user="operator-p01")["candidates"][0]
+    referral = reserve(p, "A-01")
+    aggregate = p.edit(lambda s: deepcopy(s))
+    assert referral["status"] == "AWAITING_CONFIRMATIONS"
+    assert aggregate["capacities"][choice["capacity_id"]]["held"] == 1
+    assert aggregate["reservations"][referral["id"]]["state"] == "HELD"
+
 
 def test_worked_example_and_closed_loop(pilot):
     p = pilot

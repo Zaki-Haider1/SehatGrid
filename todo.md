@@ -33,25 +33,27 @@ Dev 3 owns `frontend/app/page.tsx` and `frontend/lib/api.ts` during parallel wor
 
 ### R1 — Planner-configurable referral ranking
 
-**Owner:** Dev 1 (claim: unassigned). **Status:** Backend API complete in `69f2110`; planner UI and remaining acceptance checks are open.
+**Owner:** Dev 1. **Status:** Backend policy, stale-version/recheck coverage, and contract examples are complete on `dev1/referral-ranking-proposals`; planner UI remains open for Dev 3.
 
 - [x] Define allowed ordering controls in `docs/api-contracts.md` without allowing a policy to bypass service, suitability, zone, date, freshness, capacity or funding eligibility.
 - [x] Persist a versioned planner policy; expose planner-only read/update API and include the applied version in recommendations. Keep deterministic stable-ID tie breaking.
-- [ ] Test default behavior, changed ranking, unauthorized update, stale version and recommendation/reservation recheck. Add a planner control through Dev 3's UI lane.
+- [x] Test default behavior, changed ranking, unauthorized update, stale policy version, eligibility filtering and reservation recheck.
+- [ ] Add the planner control through Dev 3's UI lane using the versioned contract example in `docs/api-contracts.md`.
 
-**Backend evidence:** `backend/tests/test_mvp.py::test_planner_can_configure_referral_ranking`; backend suite: 74 passed; Ruff passed. Stale-version and reservation-recheck cases and Dev 3's planner UI remain to be completed.
+**Backend evidence:** `uv run --with-requirements requirements-dev.txt python -m pytest -q tests/test_mvp.py -k "planner_can_configure_referral_ranking or ranking_never_selects_an_ineligible_provider or proposed_referral or legacy_direct_reservation"` passed (7 tests); `uv run --with-requirements requirements-dev.txt ruff check .` passed. Full local backend suite: 58 passed, 21 failed because the pinned matcher artifact `backend/models/all-MiniLM-L6-v2/manifest.json` is absent; no browser or deployment acceptance is claimed.
 
 **Done when:** A planner can change ranking, operators see the new order and version, and ineligible providers never appear. Record test command and PR.
 
 ### R2 — Explicit referral `PROPOSED` stage
 
-**Owner:** Dev 1 (claim: unassigned). **Status:** OPEN. **Can start after R1 on the same lane.**
+**Owner:** Dev 1. **Status:** Backend implementation, focused lifecycle checks, and request/response examples are complete on `dev1/referral-ranking-proposals`; operator UI and browser acceptance remain open for Dev 3.
 
-- [ ] Add a separately persisted proposed attempt before the sender's reservation/hold action, with permitted transition and cancellation semantics matching the scope state table.
-- [ ] Keep one active attempt per request, preserve attempt history, and ensure proposal alone consumes no quota or funds. Define idempotent retries and stale capacity handling.
-- [ ] Update API contract, operator UI through Dev 3 and lifecycle/concurrency tests.
+- [x] Add a separately persisted proposed attempt before the sender's reservation/hold action, with permitted transition and cancellation semantics matching the scope state table.
+- [x] Keep one active attempt per request, preserve attempt history, and ensure proposal alone consumes no quota or funds. Define idempotent retries and stale capacity/funding handling.
+- [x] Update API contract and focused lifecycle tests; provide final DTO examples for Dev 3.
+- [ ] Update operator UI through Dev 3 and complete lifecycle/browser acceptance.
 
-**Done when:** A proposal survives reload, can be approved into the existing confirmation flow or cancelled, and never changes ledger/quota before reservation.
+**Done when:** A proposal survives reload, can be approved into the existing confirmation flow or cancelled, and never changes ledger/quota before reservation. Backend portion is implemented; browser/operator UI proof remains open.
 
 ### P1 — Manual draft-plan revision with reason
 
