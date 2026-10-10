@@ -94,7 +94,7 @@ For each card, fill **Claim: name / branch / PR** and append **Evidence: command
 
 ### T00 — Agree contracts and remove shared-file collisions
 
-**Owner:** D1, with D2/D3 review. **Status:** REVIEW. **Depends:** none. **Claim:** Codex / `feat/backend-t00-t03` / PR pending.
+**Owner:** D1, with D2/D3 review. **Status:** DONE. **Depends:** none. **Claim:** Codex / `feat/backend-t00-t03` / review approved.
 
 **Files:** new `docs/api-contracts.md`, `docs/assumptions.md`, `data/contracts/*.json`; backend extraction from `backend/app/workflows.py`, `main.py`. Frontend extraction and client changes are owned by D3 under T14; they do not block this backend handoff.
 
@@ -110,9 +110,11 @@ JSON fixtures parsed; `git diff --check` — clean. Full notes:
 
 **Accept:** All three lanes can identify exact input/output fixtures for their first task; current regression checks still pass after extraction. No new behavior is implemented merely to satisfy this coordination task.
 
+**Review:** Independent task review approved after fixture/accounting and multi-facility identity corrections; task commits `dada13f`, `a15e62c`, `c878a16`. Future D2/D3 assignee acceptance remains separate; backend handoff is ready.
+
 ### T01 — Shared entities, migrations and narrow synthetic seed
 
-**Owner:** D1. **Status:** WAIT(T00). **Claim:** Unclaimed.
+**Owner:** D1. **Status:** ACTIVE. **Claim:** Codex + GPT-6 Luna / `feat/backend-t00-t03` / implementation in progress.
 
 **Files:** `backend/app/models.py`, `schemas.py`, `seed.py`, `seed_cli.py`, new additive migrations; new `data/seed/` fixtures; `backend/tests/conftest.py`, new `tests/test_migrations.py`, `tests/test_seed.py`.
 
