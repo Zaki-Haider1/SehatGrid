@@ -13,10 +13,17 @@
   rulings. The target zones remain the synthetic `Central`, `East`, `South`,
   `West`, and `North` labels; they do not assert official boundaries. Target
   public IDs are opaque strings while integer database keys can remain in place.
-- Added five target JSON fixtures: capacity, matching, eligibility, immutable
-  snapshot, and solver. The monthly planning fixture has disjoint cohorts of 8,
-  7, and 5 synthetic requests, and PKR 25,000 across subsidy, quota, and mobile
-  actions.
+- Added six target JSON fixtures: capacity, matching, eligibility, immutable
+  snapshot, solver, and `routes-v1.json`. The route fixture has exact request/
+  response examples for login identity, facility list/register/profile,
+  participation, services, capacity, and audit. Later route owners have named
+  fixture artifacts and publish-before-consumption gates in the index.
+- The monthly planning example has disjoint cohorts of 8, 7, and 5 synthetic
+  requests, with PKR 25,000 across subsidy, quota, and mobile actions. Cohort A
+  has 8 physically available units but zero usable baseline because its
+  PKR 1,000/unit subsidy has no prior authorization. Cohorts B/C have no usable
+  base capacity. Snapshot exclusions are carried separately into the solver
+  example; its status is illustrative only and runtime is null.
 - Extracted current behavior into `services/capacity.py`,
   `services/eligibility.py`, `services/referrals.py`,
   `optimization/allocation.py`, and `services/plans.py`. `workflows.py` remains
@@ -34,19 +41,35 @@
 - Full backend suite with the disposable PostgreSQL `TEST_DATABASE_URL`:
   `python -m pytest -q` — **36 passed** across SQLite and PostgreSQL.
 - Lint: `ruff check app tests` — **passed**.
-- Parsed every `data/contracts/*.json` fixture — **5 valid JSON files**.
+- Initial implementation pass parsed all then-existing fixtures — **5 valid JSON files**.
 - `git diff --check` — **clean**.
 
 Pytest reported one existing Starlette/httpx deprecation warning from
 `fastapi.testclient`; no dependency changes were made.
 
+## Review follow-up verification
+
+After the review fixes, a Python 3.12 JSON cross-consistency check parsed all
+six contract fixtures and verified: the snapshot digest against the documented
+canonical encoding; 20 unique cohort request IDs and unit counts; zero-baseline
+funding facts; exact transfer of snapshot exclusions into the solver result;
+solver assignments against action/cohort units; PKR 25,000 total cost/budget;
+the example-only/null-runtime markers; and all nine required T01–T03 route
+examples with request/response bodies where applicable. Result: **PASS**. The
+verified digest is `sha256:89200f5f36a37270b221297cb423cc2d58194c85d2684a55ee342ba34785f437`.
+Command: `@' <Python assertions for these checks> '@ | .\\.venv\\Scripts\\python.exe -`
+from the repository root. This was a fixture consistency check, not a solver
+execution or application test. The legacy test suite and Ruff were not rerun
+because these follow-up changes only alter JSON fixtures and docs.
+
 ## Limits
 
 The contracts are target specifications, not implemented endpoints or
-validated operational policy. T00 did not change models, migrations, seed,
-auth, freshness enforcement, referral states, budget behavior, snapshots,
-target solver behavior, or frontend files. The current `/api` behavior remains
-legacy behavior. T02/T03/T04/T05/T07–T12 and T14 own those later changes as
-indexed in the contracts. Matching model and threshold selection remains with
-T07, and the numeric demo defaults are configuration assumptions rather than
-clinical or operational validation. D2/D3 review and integration are pending.
+validated operational policy. D2/D3 assignment and contract review remain
+pending; no agreement from those lanes is claimed. T00 did not change models,
+migrations, seed, auth, freshness enforcement, referral states, budget
+behavior, snapshots, target solver behavior, or frontend files. The current
+`/api` behavior remains legacy behavior. Later routes and behaviors remain with
+their indexed owning tasks. Matching model and threshold selection remains
+with T07, and the numeric demo defaults are configuration assumptions rather
+than clinical or operational validation.

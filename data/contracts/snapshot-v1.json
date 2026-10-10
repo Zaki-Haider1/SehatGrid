@@ -8,52 +8,132 @@
     "service_date_to": "2026-10-31",
     "timezone": "Asia/Karachi"
   },
-  "input_hash": "sha256:demo-fixture-hash",
+  "input_hash": "sha256:89200f5f36a37270b221297cb423cc2d58194c85d2684a55ee342ba34785f437",
   "request_ids": [
-    "REQ-A-001", "REQ-A-002", "REQ-A-003", "REQ-A-004", "REQ-A-005", "REQ-A-006", "REQ-A-007", "REQ-A-008",
-    "REQ-B-001", "REQ-B-002", "REQ-B-003", "REQ-B-004", "REQ-B-005", "REQ-B-006", "REQ-B-007",
-    "REQ-C-001", "REQ-C-002", "REQ-C-003", "REQ-C-004", "REQ-C-005"
+    "REQ-A-001",
+    "REQ-A-002",
+    "REQ-A-003",
+    "REQ-A-004",
+    "REQ-A-005",
+    "REQ-A-006",
+    "REQ-A-007",
+    "REQ-A-008",
+    "REQ-B-001",
+    "REQ-B-002",
+    "REQ-B-003",
+    "REQ-B-004",
+    "REQ-B-005",
+    "REQ-B-006",
+    "REQ-B-007",
+    "REQ-C-001",
+    "REQ-C-002",
+    "REQ-C-003",
+    "REQ-C-004",
+    "REQ-C-005"
   ],
   "cohorts": [
     {
       "cohort_id": "COHORT-A",
-      "request_ids": ["REQ-A-001", "REQ-A-002", "REQ-A-003", "REQ-A-004", "REQ-A-005", "REQ-A-006", "REQ-A-007", "REQ-A-008"],
+      "request_ids": [
+        "REQ-A-001",
+        "REQ-A-002",
+        "REQ-A-003",
+        "REQ-A-004",
+        "REQ-A-005",
+        "REQ-A-006",
+        "REQ-A-007",
+        "REQ-A-008"
+      ],
       "service_id": "PRIMARY_CARE_OPD",
       "zone_id": "Central",
-      "service_dates": ["2026-10-12"],
+      "service_dates": [
+        "2026-10-12"
+      ],
       "suitability_requirement": "STAFF_RECORDED",
-      "funding_requirement": "SUBSIDY_MAY_BE_REQUIRED",
+      "funding_requirement": "SUBSIDY_REQUIRED",
+      "funding_facts": {
+        "subsidy_required_pkr_per_unit": 1000,
+        "existing_subsidy_authorized_pkr": 0,
+        "available_base_capacity_units": 8,
+        "usable_baseline_units": 0,
+        "baseline_exclusion_reason": "SUBSIDY_NOT_AUTHORIZED"
+      },
       "units": 8
     },
     {
       "cohort_id": "COHORT-B",
-      "request_ids": ["REQ-B-001", "REQ-B-002", "REQ-B-003", "REQ-B-004", "REQ-B-005", "REQ-B-006", "REQ-B-007"],
+      "request_ids": [
+        "REQ-B-001",
+        "REQ-B-002",
+        "REQ-B-003",
+        "REQ-B-004",
+        "REQ-B-005",
+        "REQ-B-006",
+        "REQ-B-007"
+      ],
       "service_id": "PRIMARY_CARE_OPD",
       "zone_id": "East",
-      "service_dates": ["2026-10-12"],
+      "service_dates": [
+        "2026-10-12"
+      ],
       "suitability_requirement": "STAFF_RECORDED",
       "funding_requirement": "FUNDING_INCLUDED_OFFER_REQUIRED",
+      "funding_facts": {
+        "eligible_fixed_provider_count": 0,
+        "available_base_capacity_units": 0,
+        "usable_baseline_units": 0,
+        "baseline_exclusion_reason": "NO_ELIGIBLE_BASE_CAPACITY"
+      },
       "units": 7
     },
     {
       "cohort_id": "COHORT-C",
-      "request_ids": ["REQ-C-001", "REQ-C-002", "REQ-C-003", "REQ-C-004", "REQ-C-005"],
+      "request_ids": [
+        "REQ-C-001",
+        "REQ-C-002",
+        "REQ-C-003",
+        "REQ-C-004",
+        "REQ-C-005"
+      ],
       "service_id": "PRIMARY_CARE_OPD",
       "zone_id": "North",
-      "service_dates": ["2026-10-12"],
+      "service_dates": [
+        "2026-10-12"
+      ],
       "suitability_requirement": "STAFF_RECORDED",
       "funding_requirement": "FUNDING_INCLUDED_OFFER_REQUIRED",
+      "funding_facts": {
+        "eligible_fixed_provider_count": 0,
+        "available_base_capacity_units": 0,
+        "usable_baseline_units": 0,
+        "baseline_exclusion_reason": "NO_ELIGIBLE_FIXED_PARTNER"
+      },
       "units": 5
     }
   ],
   "excluded_requests": [
-    {"request_id": "REQ-UNKNOWN-001", "reason_code": "UNKNOWN_ZONE_REVIEW_REQUIRED"},
-    {"request_id": "REQ-STALE-001", "reason_code": "CAPACITY_DATA_STALE"}
+    {
+      "request_id": "REQ-UNKNOWN-001",
+      "reason_code": "UNKNOWN_ZONE_REVIEW_REQUIRED"
+    },
+    {
+      "request_id": "REQ-STALE-001",
+      "reason_code": "CAPACITY_DATA_STALE"
+    }
   ],
   "versions": {
-    "capacity": {"FAC-P03:PRIMARY_CARE_OPD:2026-10-12": 4},
-    "offers": {"OFFER-QUOTA-01": 2, "OFFER-MOBILE-01": 1},
-    "rules": {"eligibility": "eligibility-policy-1", "subsidy": "subsidy-rules-1"}
+    "capacity": {
+      "FAC-P03:PRIMARY_CARE_OPD:2026-10-12": 4
+    },
+    "offers": {
+      "OFFER-QUOTA-01": 2,
+      "OFFER-MOBILE-01": 1
+    },
+    "rules": {
+      "eligibility": "eligibility-policy-1",
+      "subsidy": "subsidy-rules-1"
+    }
   },
-  "immutability": "Creating a corrected snapshot produces a new ID and input hash."
+  "immutability": "Creating a corrected snapshot produces a new ID and input hash.",
+  "hash_method": "SHA-256 over this snapshot JSON object excluding input_hash, encoded as UTF-8 compact JSON with recursively sorted object keys, no insignificant whitespace, and non-ASCII characters left unescaped. Fixture values use integer numbers and strings only."
 }

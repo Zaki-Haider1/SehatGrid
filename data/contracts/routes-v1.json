@@ -1,0 +1,154 @@
+{
+  "contract_version": "1.0",
+  "fixture_kind": "target_route_examples_not_implemented_behavior",
+  "examples": {
+    "auth_login": {
+      "route": "POST /api/v1/auth/login",
+      "request": {"username": "operator.p03", "password": "synthetic-demo-secret"},
+      "response": {
+        "access_token": "example-token-not-valid",
+        "token_type": "bearer",
+        "expires_at": "2026-10-10T17:00:00Z",
+        "actor": {"actor_id": "USR-OPERATOR-P03", "role": "OPERATOR", "facility_id": "FAC-P03"}
+      }
+    },
+    "facilities_list": {
+      "route": "GET /api/v1/facilities?zone_id=Central",
+      "response": [
+        {
+          "facility_id": "FAC-P03",
+          "display_name": "Demo Public Provider P03",
+          "ownership": "PUBLIC",
+          "zone_id": "Central",
+          "latitude": 33.704,
+          "longitude": 73.055,
+          "participation_status": "ACTIVE",
+          "version": 4,
+          "provenance": {"origin_type": "synthetic", "source_url": null, "retrieved_at": null, "review_status": "SYNTHETIC"}
+        }
+      ]
+    },
+    "facility_register": {
+      "route": "POST /api/v1/facilities",
+      "request": {
+        "display_name": "Demo Private Provider P08",
+        "ownership": "PRIVATE",
+        "zone_id": "East",
+        "latitude": 33.711,
+        "longitude": 73.081,
+        "origin_type": "synthetic"
+      },
+      "response": {
+        "facility_id": "FAC-P08",
+        "display_name": "Demo Private Provider P08",
+        "ownership": "PRIVATE",
+        "zone_id": "East",
+        "latitude": 33.711,
+        "longitude": 73.081,
+        "participation_status": "PENDING",
+        "version": 1,
+        "provenance": {"origin_type": "synthetic", "source_url": null, "retrieved_at": null, "review_status": "SYNTHETIC"}
+      }
+    },
+    "facility_profile_patch": {
+      "route": "PATCH /api/v1/facilities/FAC-P03",
+      "request": {"display_name": "Demo Public Provider P03 Annex", "expected_version": 4},
+      "response": {
+        "facility_id": "FAC-P03",
+        "display_name": "Demo Public Provider P03 Annex",
+        "ownership": "PUBLIC",
+        "zone_id": "Central",
+        "latitude": 33.704,
+        "longitude": 73.055,
+        "participation_status": "ACTIVE",
+        "version": 5,
+        "updated_by": "USR-OPERATOR-P03",
+        "updated_at": "2026-10-10T09:05:00Z",
+        "provenance": {"origin_type": "synthetic", "source_url": null, "retrieved_at": null, "review_status": "SYNTHETIC"}
+      }
+    },
+    "facility_participation": {
+      "route": "POST /api/v1/facilities/FAC-P03/participation",
+      "request": {"status": "SUSPENDED", "expected_version": 4, "reason": "Synthetic demo pause"},
+      "response": {"facility_id": "FAC-P03", "status": "SUSPENDED", "version": 5, "updated_by": "USR-PLANNER-01", "updated_at": "2026-10-10T09:06:00Z"}
+    },
+    "facility_services_list": {
+      "route": "GET /api/v1/facilities/FAC-P03/services",
+      "response": [
+        {
+          "facility_id": "FAC-P03",
+          "service_id": "PRIMARY_CARE_OPD",
+          "active": true,
+          "eligible_zone_ids": ["Central", "East"],
+          "suitability_restrictions": [],
+          "review_id": "SERVICE-REV-0003",
+          "version": 2,
+          "updated_by": "USR-OPERATOR-P03",
+          "updated_at": "2026-10-10T09:00:00Z"
+        }
+      ]
+    },
+    "facility_service_create": {
+      "route": "POST /api/v1/facilities/FAC-P08/services",
+      "request": {
+        "service_id": "PRIMARY_CARE_OPD",
+        "active": true,
+        "eligible_zone_ids": ["East"],
+        "suitability_restrictions": [],
+        "review_id": "SERVICE-REV-0008"
+      },
+      "response": {
+        "facility_id": "FAC-P08",
+        "service_id": "PRIMARY_CARE_OPD",
+        "active": true,
+        "eligible_zone_ids": ["East"],
+        "suitability_restrictions": [],
+        "review_id": "SERVICE-REV-0008",
+        "version": 1,
+        "updated_by": "USR-OPERATOR-P08",
+        "updated_at": "2026-10-10T09:10:00Z"
+      }
+    },
+    "capacity_update": {
+      "route": "PUT /api/v1/facilities/FAC-P03/capacity/PRIMARY_CARE_OPD/2026-10-12",
+      "request": {"declared_network_quota": 15, "expected_version": 3, "origin_type": "synthetic"},
+      "response": {
+        "facility_id": "FAC-P03",
+        "service_id": "PRIMARY_CARE_OPD",
+        "service_date": "2026-10-12",
+        "declared_network_quota": 15,
+        "held_units": 2,
+        "committed_units": 3,
+        "completed_units": 2,
+        "forfeited_units": 0,
+        "available_units": 8,
+        "updated_by": "USR-OPERATOR-P03",
+        "updated_at": "2026-10-10T09:00:00Z",
+        "freshness_status": "CURRENT",
+        "version": 4,
+        "origin_type": "synthetic"
+      }
+    },
+    "audit_list": {
+      "route": "GET /api/v1/audit?facility_id=FAC-P03&limit=20",
+      "response": {
+        "items": [
+          {
+            "event_id": "AUDIT-000123",
+            "actor_id": "USR-OPERATOR-P03",
+            "actor_role": "OPERATOR",
+            "facility_id": "FAC-P03",
+            "action": "CAPACITY_UPDATED",
+            "object_type": "CAPACITY",
+            "object_id": "FAC-P03:PRIMARY_CARE_OPD:2026-10-12",
+            "occurred_at": "2026-10-10T09:00:00Z",
+            "reason": "Synthetic demo update",
+            "before": {"declared_network_quota": 12, "version": 3},
+            "after": {"declared_network_quota": 15, "version": 4}
+          }
+        ],
+        "next_cursor": null
+      }
+    }
+  }
+}

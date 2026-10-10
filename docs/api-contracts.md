@@ -1,9 +1,9 @@
 # SEHAT GRID API contracts (target v1)
 
-**Status:** agreed target contract for backend lanes; this is not a claim that
-these routes, DTOs, policies, or workflows are implemented. Existing behavior
-remains available under `/api` while clients migrate. `/api/v1` is the sole
-target prefix for new clients and fixtures.
+**Status:** T00 target handoff for review; D2/D3 review remains pending. This is
+not a claim that these routes, DTOs, policies, or workflows are implemented.
+Existing behavior remains available under `/api` while clients migrate.
+`/api/v1` is the sole target prefix for new clients and fixtures.
 
 ## Shared conventions
 
@@ -119,12 +119,18 @@ month and service-date range, unique request IDs and cohorts, excluded request
 IDs/reasons, and capacity/offer/rule versions. A cohort shares service, zone,
 dates, suitability, and funding requirements. Unknown-zone requests remain
 visible in exclusions and summaries but are ineligible until reviewed.
+The example hash is SHA-256 of the snapshot object excluding `input_hash`,
+serialized as UTF-8 compact JSON with recursively sorted keys and no escaped
+non-ASCII characters. Fixture values use only strings and integer numbers.
 
 **Solver result** includes snapshot/budget/rule/model versions, selected
 actions, request assignments, baseline and additional units, integer-PKR
 cost breakdown, remaining demand, exclusions, status (`OPTIMAL`, `FEASIBLE`,
 `INFEASIBLE`, `UNKNOWN`, `MODEL_INVALID`), objective, runtime, and assumptions.
-`FEASIBLE` never implies `OPTIMAL`.
+`FEASIBLE` never implies `OPTIMAL`. `solver-v1.json` is an illustrative target
+shape only: its status is not a solver result, and its runtime is null because
+no measurement was made. Results distinguish request IDs excluded by the
+snapshot from IDs additionally excluded by the solver.
 
 ## Errors, authorization, concurrency, and retries
 
@@ -154,42 +160,53 @@ resource/history.
 
 ## Route ownership and fixtures
 
-Fixtures use the route's response DTO unless marked request-only. Task IDs map
-to the shared `todo.md` cards. Route ownership describes the planned target;
-routes are not evidence of implementation.
+Fixtures use the route's response DTO unless marked request-only. Exact
+T01–T03 examples are in `data/contracts/routes-v1.json`; task IDs map to the
+shared `todo.md` cards. Later routes name the owning task's fixture artifact
+and the consumer gate. Route ownership describes the planned target; routes
+are not evidence of implementation.
 
-| Method | Target route | Owner | Fixture / contract |
+| Method | Target route | Owner | Exact fixture or owner handoff |
 |---|---|---|---|
-| POST | `/api/v1/auth/login` | T02 | Auth session contract; session default above |
-| GET, POST | `/api/v1/facilities` | T03 | Capacity fixture; facility/request ID convention |
-| PATCH | `/api/v1/facilities/{id}` | T03 | Facility profile + provenance contract |
-| POST | `/api/v1/facilities/{id}/participation` | T03 (authorization: T02) | Facility participation state contract |
-| GET, POST | `/api/v1/facilities/{id}/services` | T03 | `PRIMARY_CARE_OPD` service contract |
-| PUT | `/api/v1/facilities/{id}/capacity/{service_id}/{date}` | T03 | `capacity-v1.json` |
-| POST | `/api/v1/matching/facilities` | T08 | `matching-v1.json` |
-| POST | `/api/v1/matching/services` | T08 | `matching-v1.json` |
-| POST | `/api/v1/matching/reviews` | T08 | Matching result/review contract |
-| GET, POST | `/api/v1/requests` | T05 | `eligibility-v1.json` request DTO |
-| GET | `/api/v1/requests/{id}/recommendations` | T09 | `eligibility-v1.json` |
-| POST | `/api/v1/referrals` | T05 | Request/attempt and capacity contracts |
-| POST | `/api/v1/referrals/{id}/partner-response` | T05 | Attempt state contract |
-| POST | `/api/v1/referrals/{id}/patient-agreement` | T05 | Attempt state contract |
-| POST | `/api/v1/referrals/{id}/funding-approval` | T04 | Ledger state contract |
-| POST | `/api/v1/referrals/{id}/arrival` | T05 | Attempt state contract |
-| POST | `/api/v1/referrals/{id}/completion` | T05 | Attempt and ledger state contracts |
-| POST | `/api/v1/referrals/{id}/cancel` | T05 | Attempt and capacity contracts |
-| GET | `/api/v1/intelligence/summary` | T10 | `snapshot-v1.json` |
-| GET | `/api/v1/intelligence/map` | T10 (display: T16) | Snapshot and capacity contracts |
-| POST | `/api/v1/intelligence/snapshots` | T10 | `snapshot-v1.json` |
-| GET, POST | `/api/v1/budgets` | T04 | Integer-PKR monthly budget contract |
-| GET, POST | `/api/v1/partner-quota-offers` | T06 | Offer contract |
-| GET, POST | `/api/v1/mobile-offers` | T06 | Offer contract |
-| POST | `/api/v1/plans/optimize` | T11 | `solver-v1.json` |
-| GET | `/api/v1/plans/{id}` | T11 | `solver-v1.json`; review/inspect draft before approval |
-| POST | `/api/v1/plans/{id}/approve` | T12 | Action/ledger state contract |
-| POST | `/api/v1/plans/{id}/actions/{action_id}/activate` | T12 | Action/ledger state contract |
-| GET | `/api/v1/plans/{id}/export` | T19 | Solver result plus provenance/assumptions |
-| GET | `/api/v1/audit` | T02 | Actor/time/object/reason contract |
+| POST | `/api/v1/auth/login` | T02 | `routes-v1.json#/examples/auth_login` exact request/response |
+| GET | `/api/v1/facilities` | T03 | `routes-v1.json#/examples/facilities_list` exact response |
+| POST | `/api/v1/facilities` | T03 | `routes-v1.json#/examples/facility_register` exact request/response |
+| PATCH | `/api/v1/facilities/{id}` | T03 | `routes-v1.json#/examples/facility_profile_patch` exact request/response |
+| POST | `/api/v1/facilities/{id}/participation` | T03 (authorization: T02) | `routes-v1.json#/examples/facility_participation` exact request/response |
+| GET | `/api/v1/facilities/{id}/services` | T03 | `routes-v1.json#/examples/facility_services_list` exact response |
+| POST | `/api/v1/facilities/{id}/services` | T03 | `routes-v1.json#/examples/facility_service_create` exact request/response |
+| PUT | `/api/v1/facilities/{id}/capacity/{service_id}/{date}` | T03 | `routes-v1.json#/examples/capacity_update` request/response; `capacity-v1.json` response shape |
+| POST | `/api/v1/matching/facilities` | T08 | T08 publishes exact request/response in `matching-v1.json` before T14 consumes |
+| POST | `/api/v1/matching/services` | T08 | T08 publishes exact request/response in `matching-v1.json` before T14 consumes |
+| POST | `/api/v1/matching/reviews` | T08 | T08 publishes exact review request/response in `matching-v1.json` before T14 consumes |
+| GET, POST | `/api/v1/requests` | T05 | T05 publishes list/intake request/response in `requests-v1.json` before T09/T14 consume |
+| GET | `/api/v1/requests/{id}/recommendations` | T09 | `eligibility-v1.json` representative response; T09 adds exact request/error cases before T14 consumes |
+| POST | `/api/v1/referrals` | T05 | T05 publishes exact request/response in `referrals-v1.json` before T09/T14 consume |
+| POST | `/api/v1/referrals/{id}/partner-response` | T05 | T05 publishes exact request/response in `referrals-v1.json` before T14 consumes |
+| POST | `/api/v1/referrals/{id}/patient-agreement` | T05 | T05 publishes exact request/response in `referrals-v1.json` before T14 consumes |
+| POST | `/api/v1/referrals/{id}/funding-approval` | T04 | T04 publishes exact request/response in `budget-v1.json` before T05/T14 consume |
+| POST | `/api/v1/referrals/{id}/arrival` | T05 | T05 publishes exact request/response in `referrals-v1.json` before T14 consumes |
+| POST | `/api/v1/referrals/{id}/completion` | T05 | T05 publishes exact request/response in `referrals-v1.json` before T14 consumes |
+| POST | `/api/v1/referrals/{id}/cancel` | T05 | T05 publishes exact request/response in `referrals-v1.json` before T14 consumes |
+| GET | `/api/v1/intelligence/summary` | T10 | T10 publishes exact response in `snapshot-v1.json` before T16 consumes |
+| GET | `/api/v1/intelligence/map` | T10 (display: T16) | T10 publishes exact response in `map-v1.json` before T16 consumes |
+| POST | `/api/v1/intelligence/snapshots` | T10 | `snapshot-v1.json` response example; T10 adds exact request before T11 consumes |
+| GET, POST | `/api/v1/budgets` | T04 | T04 publishes exact request/response in `budget-v1.json` before T11/T14 consume |
+| GET, POST | `/api/v1/partner-quota-offers` | T06 | T06 publishes exact request/response in `offers-v1.json` before T11/T14 consume |
+| GET, POST | `/api/v1/mobile-offers` | T06 | T06 publishes exact request/response in `offers-v1.json` before T11/T14 consume |
+| POST | `/api/v1/plans/optimize` | T11 | `solver-v1.json` illustrative response; T11 adds exact request/response before T14 consumes |
+| GET | `/api/v1/plans/{id}` | T11 | `solver-v1.json` illustrative review/inspection response; T11 adds exact response before T14 consumes |
+| POST | `/api/v1/plans/{id}/approve` | T12 | T12 publishes exact request/response in `actions-v1.json` before T14 consumes |
+| POST | `/api/v1/plans/{id}/actions/{action_id}/activate` | T12 | T12 publishes exact request/response in `actions-v1.json` before T14 consumes |
+| GET | `/api/v1/plans/{id}/export` | T19 | T19 publishes exact export response in `export-v1.json` before T14 consumes |
+| GET | `/api/v1/audit` | T02 | `routes-v1.json#/examples/audit_list` exact response |
+
+`routes-v1.json` provides exact representative examples for T01–T03's first
+consumed interfaces. Later-task references above are publish-before-consumption
+gates, not claims that a fixture already exists or has been agreed by D2/D3.
+The owning task adds its exact request/response and updates this index before
+the named consumer starts integration. D2 and D3 are not yet assigned, so their
+acceptance of the contract remains pending review.
 
 The existing unversioned `/api` routes are a temporary compatibility surface.
 The current API is not a v1 implementation and its legacy DTOs retain integer
