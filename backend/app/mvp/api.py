@@ -53,8 +53,9 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app):
-    if len(settings.jwt_secret) < 32 or len(settings.demo_password) < 12:
-        raise RuntimeError("Set JWT_SECRET (32+ chars) and DEMO_PASSWORD (12+ chars) outside source control.")
+    public_demo_password = settings.demo_mode and settings.demo_password == "demo"
+    if len(settings.jwt_secret) < 32 or (len(settings.demo_password) < 12 and not public_demo_password):
+        raise RuntimeError("Set JWT_SECRET (32+ chars) and DEMO_PASSWORD (12+ chars, or 'demo' in demo mode) outside source control.")
     if (
         settings.app_timezone != "Asia/Karachi"
         or settings.capacity_freshness_minutes <= 0

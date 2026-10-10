@@ -1,33 +1,32 @@
 "use client";
-import { useState } from "react";
-
-export const DEMO_PASSWORD = "isolated-browser-demo-password";
-const hospitals = ["Shifa International", "PIMS", "Federal Government Polyclinic", "Kulsum International", "Maroof International", "Ali Medical Centre", "Capital Hospital (CDA)", "NORI"];
-const accounts = [
-  { username: "planner", label: "Government representative", purpose: "Review demand, approve the resource plan and inspect outcomes." },
-  ...hospitals.map((name, i) => ({ username: `operator-p${String(i + 1).padStart(2, "0")}`, label: `${name} · Reception`, purpose: i === 7 ? "Start here to route A-01 or B-01 after the government plan is approved." : [1, 2, 6].includes(i) ? "Public hospital reception: originate and receive eligible referrals." : "Private hospital reception: accept incoming referrals and record care." })),
-  ...hospitals.map((name, i) => ({ username: `onboarder-p${String(i + 1).padStart(2, "0")}`, label: `${name} · Onboarding`, purpose: "Manage this hospital's profile, dated quota, services and prices." })),
-];
-
-export function DemoCredentials({ choose }: { choose?: (username: string) => void }) {
-  const [selected, setSelected] = useState("planner");
-  const [notice, setNotice] = useState("");
-  const account = accounts.find(a => a.username === selected)!;
-  async function copy(value: string, label: string) {
-    try { await navigator.clipboard.writeText(value); setNotice(`${label} copied.`); }
-    catch { setNotice("Clipboard access is unavailable. Select and copy the displayed text manually."); }
+import { useEffect, useRef, useState } from "react";
+export const DEMO_PASSWORD = "demo";
+const hospitals = ["Shifa International", "PIMS", "Polyclinic", "Kulsum International", "Maroof International", "Ali Medical Centre", "Capital Hospital (CDA)", "NORI"];
+export function DemoCredentials({ choose, floating = false }: { choose?: (username: string) => void; floating?: boolean }) {
+  const [role, setRole] = useState("planner"), [hospital, setHospital] = useState("8"), [notice, setNotice] = useState("");
+  const menu = useRef<HTMLDetailsElement>(null);
+  const username = role === "planner" ? "planner" : `${role}-p${hospital.padStart(2, "0")}`;
+  useEffect(() => {
+    if (!floating) return;
+    function outside(event: PointerEvent) { if (event.target instanceof Node && !menu.current?.contains(event.target) && menu.current) menu.current.open = false; }
+    function escape(event: KeyboardEvent) { if (event.key === "Escape" && menu.current) menu.current.open = false; }
+    document.addEventListener("pointerdown", outside); document.addEventListener("keydown", escape);
+    return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", escape); };
+  }, [floating]);
+  async function copy() {
+    try { await navigator.clipboard.writeText(`Username: ${username}\nPassword: ${DEMO_PASSWORD}`); setNotice("Credentials copied."); }
+    catch { setNotice("Select the credentials below to copy manually."); }
   }
-  return <details className="demo-credentials">
-    <summary>Demo accounts & passwords <span>For judges</span></summary>
+  return <details ref={menu} className={`demo-credentials compact-credentials${floating ? " login-demo-access" : ""}`}>
+    <summary><span className="demo-access-label">Demo access</span><span className="demo-access-tag">For judges</span><span className="demo-access-chevron" aria-hidden="true">⌄</span></summary>
     <div className="demo-credentials-body">
-      <p>These are public accounts for this synthetic demo only. All 17 accounts use the same password. Start with Government, then NORI reception, then the receiving hospital.</p>
-      <label>Choose a demo account<select value={selected} onChange={e => { setSelected(e.target.value); setNotice(""); }}>{accounts.map(a => <option key={a.username} value={a.username}>{a.label} · {a.username}</option>)}</select></label>
-      <p className="credential-purpose">{account.purpose}</p>
-      <div className="credential-row"><div><small>Username</small><code>{account.username}</code></div><button type="button" onClick={() => copy(account.username, "Username")}>Copy username</button></div>
-      <div className="credential-row"><div><small>Demo password</small><code>{DEMO_PASSWORD}</code></div><button type="button" onClick={() => copy(DEMO_PASSWORD, "Password")}>Copy password</button></div>
-      <div className="credential-actions">{choose && <button type="button" className="primary" onClick={() => { choose(selected); setNotice("Sign-in fields filled. Click Sign in to open this workspace."); }}>Fill sign-in fields</button>}<button type="button" onClick={() => copy(`Username: ${account.username}\nPassword: ${DEMO_PASSWORD}`, "Credentials")}>Copy both</button></div>
-      <p className="copy-notice" role="status">{notice}</p>
-      <a href="/guide">New here? Read the demo guide →</a>
+      <div className="demo-access-heading"><strong>Choose your workspace</strong><small>Synthetic demo accounts only</small></div>
+      <label>Role<select value={role} onChange={e => { setRole(e.target.value); setNotice(""); }}><option value="planner">Government planner</option><option value="operator">Hospital reception</option><option value="onboarder">Hospital onboarding</option></select></label>
+      {role !== "planner" && <label>Hospital<select value={hospital} onChange={e => { setHospital(e.target.value); setNotice(""); }}>{hospitals.map((name, i) => <option key={name} value={String(i + 1)}>{name} · P{String(i + 1).padStart(2, "0")}</option>)}</select></label>}
+      <div className="demo-shared-credentials"><div><small>Username</small><code>{username}</code></div><div><small>Password · all accounts</small><code>{DEMO_PASSWORD}</code></div></div>
+      <div className="credential-actions"><button type="button" onClick={() => void copy()}>Copy credentials</button>{choose && <button type="button" className="primary" onClick={() => { choose(username); if (menu.current) menu.current.open = false; }}>Use account →</button>}</div>
+      {notice && <small className="copy-notice" role="status">{notice}</small>}
+      <a href="/guide">First visit? Follow the demo guide →</a>
     </div>
   </details>;
 }

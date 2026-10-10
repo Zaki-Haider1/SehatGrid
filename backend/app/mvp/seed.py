@@ -3,7 +3,7 @@ from copy import deepcopy
 from pathlib import Path
 import json
 from sqlalchemy import select
-from .auth import password_hash
+from .auth import password_hash, password_valid
 from .common import SERVICE, capacity_key, now, stamp
 from .store import PilotState
 from ..config import get_settings
@@ -257,6 +257,11 @@ def seed(db, reset=False):
         state = deepcopy(row.payload)
         changed = False
         if state.get("seed_id") == "worked-example-8-7-5":
+            if get_settings().demo_mode:
+                for user in state["users"].values():
+                    if not password_valid(get_settings().demo_password, user["password_hash"]):
+                        user["password_hash"] = password_hash(get_settings().demo_password)
+                        changed = True
             for i in range(1, 9):
                 fid = f"P{i:02d}"
                 source = state["users"].get(f"operator-{fid.lower()}")

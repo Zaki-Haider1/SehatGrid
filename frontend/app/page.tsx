@@ -304,6 +304,7 @@ export default function Home() {
   if (!token || !state)
     return (
       <main className="login">
+        <DemoCredentials choose={setDemoAccount} floating />
         <div className="login-intro">
           <div className="brand">
             <Activity />
@@ -390,8 +391,7 @@ export default function Home() {
               ]}
             />
           )}
-          <small>Use the password configured for this deployment.</small>
-          <DemoCredentials choose={setDemoAccount} />
+          <small>Demo password: <code>demo</code> · Find accounts in Demo access above.</small>
         </div>
       </main>
     );
