@@ -17,6 +17,13 @@ if context.is_offline_mode():
 else:
     engine = make_engine(get_settings().database_url)
     with engine.connect() as connection:
+        if engine.dialect.name == "sqlite":
+            # SQLite table rebuilds need FK enforcement paused while dependent
+            # tables continue to reference the table being copied. The rebuilt
+            # tables retain their declared foreign keys, which are re-enabled
+            # for every application connection by make_engine.
+            connection.exec_driver_sql("PRAGMA foreign_keys=OFF")
+            connection.commit()
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
@@ -24,3 +31,5 @@ else:
         )
         with context.begin_transaction():
             context.run_migrations()
+        if engine.dialect.name == "sqlite":
+            connection.exec_driver_sql("PRAGMA foreign_keys=ON")

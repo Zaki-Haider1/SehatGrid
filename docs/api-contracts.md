@@ -92,15 +92,27 @@ quota is managed through the dated capacity DTO separately.
 `origin_type`. `committed_units` counts confirmed but uncompleted units.
 Availability is quota less held, committed, completed, and forfeited units.
 Availability and freshness are server-derived; clients cannot write them.
+Persisted `reserved` covers both held and confirmed-uncompleted units, while
+`consumed` covers completed units; target DTOs derive the held and committed
+split from reservation/attempt history. `forfeited_units` is stored separately.
 Missing or stale reports are unknown for eligibility.
 
 **Request** includes `request_id`, `source_facility_id`, synthetic `reference`,
-`zone_id`, `original_service_text`, reviewed `service_id`, nullable
+`zone_id`, `original_service_text`, nullable reviewed `service_id`, nullable
 `service_review_id`, `acceptable_service_dates`, staff-recorded
 `in_scope_suitability`, `patient_agreement_required`, `patient_agreed`,
 `funding_required`, `funding_approved`, `status`, and `unresolved_reasons`.
 Requests contain no real patient details. Suitability is recorded by staff;
-software does not infer clinical eligibility.
+software does not infer clinical eligibility. An unsupported or unreviewed
+description keeps its original text and has no canonical service ID until a
+reviewer selects one. `service_id` is the single service relation and may be
+null for unsupported source text. For migrated legacy requests, it retains the
+historical relation, while `service_text_review_status=NEEDS_REVIEW` tells v1
+not to expose that relation as a reviewed canonical service. `status` is the
+single request-state column: legacy lowercase values remain intact for the
+legacy adapter and v1 maps `pending` to `OPEN`, `reserved` and `confirmed` to
+`IN_PROGRESS`, `completed` to `FULFILLED`, and `cancelled` to `CANCELLED`.
+Target-only unresolved and scope states use `UNRESOLVED` and `OUT_OF_SCOPE`.
 
 **Matching result/review** includes the original input, `model_id`, `model_revision`,
 `policy_version`, candidate canonical IDs, numeric similarity scores and

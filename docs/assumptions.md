@@ -40,6 +40,15 @@ outcomes.
 - T07 selects the matching model and numeric threshold. Contracts expose model,
   revision, and threshold/policy version; T00 makes no accuracy or quality
   claim.
+- Unsupported or unreviewed service text keeps its original description and a
+  null reviewed canonical service ID until a reviewer selects one. `service_id`
+  remains the only service relation; migrated requests may retain a historical
+  service FK while review status prevents v1 from treating it as canonical.
+  `status` remains the only request-state column: legacy values are preserved
+  and mapped by v1, while target states are stored directly. Existing provider
+  participation stays `PENDING`, old service records remain `NEEDS_REVIEW`, and
+  old capacity reports migrate as `UNKNOWN`; T03 derives freshness from report
+  time and policy at read time.
 
 ## Scope differences preserved for migration
 
