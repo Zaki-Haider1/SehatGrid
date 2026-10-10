@@ -26,11 +26,17 @@ import {
   Facility,
   CareRequest,
   Recommendation,
+  RecommendationResult,
   Match,
   Plan,
 } from "@/lib/api";
 import { PilotMap } from "@/components/pilot-map";
 import { Dialog } from "@/components/dialog";
+import {
+  AllocationDecisionTrace,
+  MatchDecisionTrace,
+  ReferralDecisionTrace,
+} from "@/components/decision-traces";
 
 type Field = {
   name: string;
@@ -164,6 +170,8 @@ export default function Home() {
   const [request, setRequest] = useState<CareRequest | null>(null),
     [options, setOptions] = useState<Recommendation[]>([]),
     [reasons, setReasons] = useState<string[]>([]),
+    [recommendationResult, setRecommendationResult] =
+      useState<RecommendationResult | null>(null),
     [match, setMatch] = useState<Match | null>(null),
     [reviewId, setReviewId] = useState(""),
     [description, setDescription] = useState("general doctor consultation"),
@@ -364,13 +372,15 @@ export default function Home() {
     setRequest(r);
     setOptions([]);
     setReasons([]);
+    setRecommendationResult(null);
     await run(async () => {
-      const result = await api<{
-        candidates: Recommendation[];
-        reasons: string[];
-      }>(`requests/${r.id}/recommendations`, token);
+      const result = await api<RecommendationResult>(
+        `requests/${r.id}/recommendations`,
+        token,
+      );
       setOptions(result.candidates);
       setReasons(result.reasons);
+      setRecommendationResult(result);
     }, "Recommendations checked against current capacity and funding.");
   }
   async function exportPlan(p: Plan, format: string) {
@@ -902,7 +912,12 @@ export default function Home() {
                     {match && matchKind === "service" && (
                       <div className="matching">
                         <Badge value={match.status} />
-                        {match.candidates.map((c) => (
+                        <MatchDecisionTrace
+                          match={match}
+                          state={state}
+                          reviews={state.reviews}
+                        />
+                        {match.candidates.map((c, index) => (
                           <button
                             key={c.id}
                             disabled={busy || !!reviewId}
@@ -914,7 +929,11 @@ export default function Home() {
                                   "POST",
                                   {
                                     match_id: match.id,
-                                    decision: "ACCEPT",
+                                    decision:
+                                      match.status === "NEEDS_REVIEW" &&
+                                      index === 0
+                                        ? "ACCEPT"
+                                        : "CORRECT",
                                     candidate_id: c.id,
                                     reason:
                                       "Operator reviewed primary-care description",
@@ -925,13 +944,37 @@ export default function Home() {
                             }
                           >
                             <Check size={14} />
-                            {c.name} · review suggestion
+                            {match.status === "NEEDS_REVIEW" && index === 0
+                              ? `Accept suggestion: ${c.name}`
+                              : `Correct to: ${c.name}`}
                           </button>
                         ))}
+                        <button
+                          disabled={busy || !!reviewId}
+                          onClick={() =>
+                            run(async () => {
+                              const r = await api<{ id: string }>(
+                                "matching/reviews",
+                                token,
+                                "POST",
+                                {
+                                  match_id: match.id,
+                                  decision: "DECLINE",
+                                  candidate_id: null,
+                                  reason:
+                                    "Operator declined the suggested service",
+                                },
+                              );
+                              setReviewId(r.id);
+                            }, "Decline recorded as a human decision.")
+                          }
+                        >
+                          Decline suggestion
+                        </button>
                         <small>
                           {reviewId
                             ? "Human review recorded"
-                            : "Unsupported descriptions may be left unreviewed."}
+                            : "Choose accept, correct, or decline. No match is approved automatically."}
                         </small>
                       </div>
                     )}
@@ -1004,6 +1047,13 @@ export default function Home() {
                         {human(r)}
                       </div>
                     ))}
+                    {request && (
+                      <ReferralDecisionTrace
+                        request={request}
+                        result={recommendationResult}
+                        state={state}
+                      />
+                    )}
                     {options.map((o) => (
                       <div key={o.capacity_id} className="recommendation">
                         <strong>{o.name}</strong>
@@ -1024,6 +1074,8 @@ export default function Home() {
                                 facility_version: o.facility_version,
                               });
                               setOptions([]);
+                              setReasons([]);
+                              setRecommendationResult(null);
                             }, "Temporary hold created. Partner acceptance and patient agreement are pending.")
                           }
                         >
@@ -1605,10 +1657,13 @@ export default function Home() {
                       <strong>PKR {money(plan.cost)}</strong>
                     </div>
                     <div>
-                      <span>Solver result</span>
+                      <span>Original solver result</span>
                       <strong>{human(plan.solver_status)}</strong>
                     </div>
                   </div>
+                  {planner && (
+                    <AllocationDecisionTrace plan={plan} token={token} />
+                  )}
                   <p>
                     {plan.unresolved_remaining} eligible units remain
                     unresolved.{" "}
@@ -1821,7 +1876,11 @@ export default function Home() {
         {match && (
           <div className="matching">
             <Badge value={match.status} />
-            <small>{match.model_version}</small>
+            <MatchDecisionTrace
+              match={match}
+              state={state!}
+              reviews={state!.reviews}
+            />
             <Form
               key={match.id}
               busy={busy}

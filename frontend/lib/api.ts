@@ -55,12 +55,15 @@ export type CareRequest = {
   source_facility_id: string;
   zone: string;
   original_text: string;
+  service_id: string | null;
   service_reviewed: boolean;
+  review_id?: string | null;
   date_from: string;
   date_to: string;
   status: string;
   reasons: string[];
   needs_funding: boolean;
+  funding_eligible: boolean;
 };
 export type Referral = {
   id: string;
@@ -97,9 +100,15 @@ export type Offer = {
 };
 export type Plan = {
   id: string;
+  snapshot_id: string;
   month: string;
   status: string;
+  version: number;
+  input_hash: string;
+  budget_version: number;
+  solver: string;
   solver_status: string;
+  decision_source?: "SOLVER" | "HUMAN_REVISION";
   cost: number;
   subsidy_cost: number;
   baseline: number;
@@ -122,16 +131,61 @@ export type Plan = {
   }[];
   assumptions: string[];
   excluded: Record<string, number>;
+  runtime_seconds: number;
+  original_solver_result?: PlanDecision | null;
+  revisions?: {
+    version: number;
+    actor: string;
+    timestamp: string;
+    reason: string;
+    before: PlanDecision;
+    after: PlanDecision;
+  }[];
+};
+export type PlanDecision = {
+  status?: string;
+  coverage?: number;
+  cost: number;
+  subsidy_cost: number;
+  projected?: number;
+  baseline?: number;
+  additional: number;
+  unresolved_remaining: number;
+  assignments: Plan["assignments"];
+  actions: Plan["actions"];
+};
+export type DemandSnapshot = {
+  id: string;
+  month: string;
+  timestamp: string;
+  input_hash: string;
+  dataset_version: string;
+  policy_version: string;
+  origin_type: string;
+  immutable: boolean;
+  requests: unknown[];
+  excluded: Record<string, number>;
+  summary: { budget: Budget | null };
+  operational_rules: Record<string, string | number>;
 };
 export type Match = {
   id: string;
+  kind: "service" | "facility";
+  input_text: string;
+  normalized_text: string;
   status: string;
+  ambiguous: boolean;
+  threshold: number;
+  score_note: string;
   model_version: string;
   candidates: {
     id: string;
     name: string;
     score: number;
+    semantic: number;
     exact_alias: boolean;
+    locality_match: boolean;
+    type_match: boolean;
   }[];
 };
 export type Recommendation = {
@@ -144,6 +198,50 @@ export type Recommendation = {
   capacity_version: number;
   facility_version: number;
   explanation: string;
+  same_zone: boolean;
+  package_funded: boolean;
+  funding_authorization_required: boolean;
+  ranking_policy_version: string;
+  eligibility: {
+    service_reviewed: boolean;
+    reviewed_service_id: string;
+    request_zone: string;
+    declared_eligible_zones: string[];
+    zone_eligible: boolean;
+    service_date: string;
+    requested_date_from: string;
+    requested_date_to: string;
+    within_requested_dates: boolean;
+    quota_fresh: boolean;
+    quota_updated_at: string;
+    available_capacity: number;
+    request_needs_funding: boolean;
+    facility_subsidy_required: boolean;
+    funding_eligible: boolean;
+    funding_included: boolean;
+    funding_authorization_required: boolean;
+    funding_amount: number;
+  };
+};
+export type RecommendationResult = {
+  candidates: Recommendation[];
+  reasons: string[];
+  ranking_policy_version?: string;
+  ranking_criteria?: string[];
+  policy_version?: string;
+};
+export type Review = {
+  id: string;
+  match_id: string;
+  kind: "service" | "facility";
+  input_text: string;
+  candidates: Match["candidates"];
+  model_version: string;
+  decision: "ACCEPT" | "CORRECT" | "DECLINE";
+  candidate_id: string | null;
+  reason: string;
+  actor: string;
+  created_at: string;
 };
 export type Summary = {
   month: string;
@@ -181,13 +279,7 @@ export type State = {
   ledger: { id: string; amount: number; state: string; reference: string }[];
   plans: Plan[];
   offers: Offer[];
-  reviews: {
-    id: string;
-    input_text: string;
-    decision: string;
-    candidate_id: string;
-    actor: string;
-  }[];
+  reviews: Review[];
   audit: {
     id: string;
     action: string;

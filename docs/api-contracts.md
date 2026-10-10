@@ -111,14 +111,39 @@ Recommendation response shape (string values, dates, and counts depend on the li
       "ranking_policy_version": "referral-ranking-v2",
       "plan_id": null,
       "funding_authorization_required": false,
+      "eligibility": {
+        "service_reviewed": true,
+        "reviewed_service_id": "PRIMARY_CARE_OPD",
+        "request_zone": "Central",
+        "declared_eligible_zones": ["Central"],
+        "zone_eligible": true,
+        "service_date": "2026-10-11",
+        "requested_date_from": "2026-10-11",
+        "requested_date_to": "2026-10-11",
+        "within_requested_dates": true,
+        "quota_fresh": true,
+        "quota_updated_at": "<UTC timestamp>",
+        "available_capacity": 2,
+        "request_needs_funding": false,
+        "facility_subsidy_required": false,
+        "funding_eligible": true,
+        "funding_included": false,
+        "funding_authorization_required": false,
+        "funding_amount": 0
+      },
       "explanation": "Reviewed primary-care service; declared zone eligibility; 2 eligible units (including any reserved plan unit). Receiving acceptance and patient agreement required."
     }
   ],
   "ranking_policy_version": "referral-ranking-v2",
+  "ranking_criteria": ["same_zone", "subsidy", "available"],
   "reasons": [],
   "policy_version": "same-zone-cost-capacity-id-v1"
 }
 ```
+
+`eligibility` and `ranking_criteria` are additive decision-trace evidence. They repeat facts already used by the existing eligibility/ranking checks, including the quota freshness timestamp and the request's funding flags. A returned candidate has passed those checks at response time; an empty candidate list does not imply that any unreturned destination passed. `reasons` remains the backend's unresolved/exclusion result. These checks are deterministic rules, not model output.
+
+Matching responses already include `input_text`, candidate `score`, `status`, `ambiguous`, `model_version`, and `score_note`. Scores are similarities, not calibrated probabilities or clinical confidence. A review persists the exact model version and candidates together with the explicit `ACCEPT`, `CORRECT`, or `DECLINE` decision and reason. Planner plan responses retain `snapshot_id`, `input_hash`, `decision_source`, `original_solver_result`, and revision history; `GET /intelligence/snapshots/{id}` returns the immutable demand snapshot used for the trace. The snapshot route and full plan history remain planner-only.
 
 ## Proposed referral attempt
 
