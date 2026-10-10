@@ -5,6 +5,25 @@
 **Repository:** https://github.com/Zaki-Haider1/akon  
 **Authoritative scope:** [User-supplied MVP README](docs/mvp-scope-v1.md)
 
+## Current integration verification — 10 October 2026
+
+Dev 1's latest fix (`e43c7ee`) is integrated on `integrate/referral-reservation`, branched from `origin/main` at Dev 2's `b840941`, as `c1ab59c`. The original Dev 1 branch remains unchanged. The conflict in `todo.md` was reconciled so the referral and draft-plan revision features are both recorded. The PR and its CI are still pending at this checkpoint.
+
+| Gate | Command / environment | Result |
+|---|---|---|
+| Backend, SQLite only | From `backend/`, `TEST_DATABASE_URL` unset: `uv run --with-requirements requirements-dev.txt python -m pytest -q` | **116 passed**, 8 existing Alembic/migration warnings, 66.78s. |
+| Backend, SQLite + PostgreSQL | Same command with `TEST_DATABASE_URL` and `DATABASE_URL` set to an isolated PostgreSQL 17 database; the project fixtures ran SQLite and PostgreSQL cases | **210 passed**, 13 migration warnings, 148.54s. |
+| Ruff | `uv run --with-requirements requirements-dev.txt ruff check .` | Passed. |
+| Alembic, SQLite | Fresh temporary SQLite database; `alembic upgrade head`, then `alembic check` | Passed; `No new upgrade operations detected.` |
+| Alembic, PostgreSQL | Fresh database on isolated PostgreSQL 17; `alembic upgrade head`, then `alembic check` | Passed; `No new upgrade operations detected.` |
+| Matching evaluation | `uv run --with-requirements requirements-dev.txt python scripts/evaluate_matching.py` | Pinned MiniLM; 6 development / 14 held-out synthetic examples; candidate retrieval 1.00, exact-alias retrieval 0.25, suggestion precision 1.00, false-match rate 0.00, abstention 0.50, all 14 held-out examples require manual review. This is not a clinical accuracy claim. |
+| Allocation evaluation | `uv run --with-requirements requirements-dev.txt python scripts/evaluate_allocation.py` | **42 independent exhaustive checks passed** for seed `islamabad-primary-care-v1`; tiny synthetic fixtures only. The tracked report was restored because this run changed only nondeterministic timing values. |
+| Frontend typecheck | From `frontend/`, after `npm ci`: `npm run typecheck` | Passed (`next typegen` and `tsc --noEmit`). |
+| Frontend build | `npm run build` | Passed with Next.js 16.4.0. |
+| Frontend formatting | `npm run format:check` | **Failed** on nine unchanged files: `app/globals.css`, `app/layout.tsx`, `app/page.tsx`, `components/dialog.tsx`, `components/pilot-map.tsx`, `lib/api.ts`, `next.config.ts`, `tsconfig.json`, `package.json`. No frontend files differ from `origin/main`; they remain in Dev 3's lane. |
+
+The backend now proves that `POST /referrals` creates `PROPOSED` without a hold, `POST /referrals/{id}/reserve` performs the hold on the same attempt, stale proposals expire and reopen the request, and Dev 2's draft-plan revision behavior remains covered. No frontend source was changed. The existing UI has not been updated for a Reserve action; browser acceptance remains with Dev 3 and is not complete. Do not merge unless the PR's required checks pass; the formatter failure is recorded above for triage within the frontend ownership lane.
+
 ## Status at interruption
 
 **10 October 2026 follow-up:** Development has resumed. Dev 1's referral proposal/ranking backend landed at `b3c13de`. Dev 2's draft revision backend is committed at `9e5d9e5` on `codex/dev2-plan-revision`, with [draft PR #1](https://github.com/Zaki-Haider1/akon/pull/1), focused tests and a versioned UI fixture. See [the handoff](docs/dev2-plan-revision.md) and current `todo.md`. The interruption report below is historical. Public deployment is now explicitly required by the user and remains open until a live URL and persistence/restart evidence exist.
@@ -149,13 +168,13 @@ CI run: https://github.com/Zaki-Haider1/akon/actions/runs/38054258367
 
 A fresh CI status lookup during this handoff failed because `api.github.com` could not be resolved. The table records the last observed results and does not treat an unverified job as successful.
 
-## Still to implement or reconcile with the README
+## Backend features present on the integration branch
 
-These items prevent an unconditional statement that every detail of the README is finished:
+These implementations have local automated evidence above; PR merge is still pending, and frontend acceptance remains a separate Dev 3 responsibility:
 
-- [x] **Planner-configurable referral ranking:** planner-only `GET/PUT /api/v1/referral-ranking` validates a versioned criteria order, audits changes, and returns the ranking policy version with recommendations. Added a focused API regression test; the frontend configuration control remains unimplemented.
-- [ ] **Manual draft-plan revision with a recorded reason:** plans can be recomputed after inputs change, but direct manual editing/override of draft allocations is not implemented. Any implementation must retain all budget/capacity/eligibility constraints.
-- [ ] **Explicit `PROPOSED` referral state:** the current sending action creates an attempt in `AWAITING_CONFIRMATIONS` with its hold. A separately persisted proposed stage from the README state table is not implemented.
+- **Planner-configurable referral ranking:** planner-only `GET/PUT /api/v1/referral-ranking` validates and audits a versioned criteria order, keeps eligibility independent of ranking, and returns the applied policy version. The planner UI control remains unimplemented.
+- **Manual draft-plan revision with a recorded reason:** `GET /plans/{id}/revision-options` and `POST /plans/{id}/revise` support draft-only human revisions, preserve solver output, revalidate edits and approval, and record revisions for export/audit. The planner editor/browser acceptance remain with Dev 3.
+- **Explicit `PROPOSED` referral state:** `POST /referrals` persists a proposal without a hold; `/referrals/{id}/reserve` revalidates and places the hold. Stale proposals expire and reopen requests. The existing UI has not been updated with a Reserve action; operator browser acceptance remains open for Dev 3.
 
 ## Known simplifications and architecture limits
 
@@ -171,12 +190,12 @@ These are implementation choices to review when continuing; they are not evidenc
 
 ## Remaining verification and deployment work
 
-- [ ] Recheck the final GitHub backend-job conclusion and address any reported failure.
+- [ ] Open the integration PR, inspect its CI, and resolve required-check failures before merging. The local `format:check` failure affects unchanged Dev 3-owned frontend files.
 - [ ] Complete a browser rehearsal of operator intake, matching review, recommendations/reservation, receiving acceptance, patient agreement, funding approval, arrival and completion.
 - [ ] Complete the browser planning loop: snapshot, compute, approve, resource activation/rejection, reprocess unresolved demand and inspect results/export.
 - [ ] Check all new screens at phone and desktop widths, including empty/error states and permission-denied cases.
 - [ ] Reconcile the local frontend startup command with Next.js standalone output. `next start` emitted a standalone warning; the combined container uses the standalone server.
-- [ ] Re-run relevant checks after implementing the missing README items above.
+- [x] Run the requested local backend suites, Ruff, SQLite/PostgreSQL Alembic upgrade/checks, matching/allocation evaluations, and frontend typecheck/build on the integration branch; results are recorded above. The repository formatter check is the outstanding local CI failure.
 - [ ] Perform the final five-minute demonstration and record its results against the supplied README acceptance criteria.
 - [ ] Provision the chosen hosting environment and PostgreSQL, configure secrets, run migrations and initialize synthetic data according to deployment instructions.
 - [ ] Verify the deployed application, authentication, API proxy, persistent data, model availability and restart behavior, then record the public URL.
@@ -199,4 +218,4 @@ A patient self-service portal, forecasting, emergency triage, clinical decision 
 - [Matching evaluation](outputs/matching-results.json)
 - [Allocation evaluation](outputs/allocation-results.json)
 
-Resume with the missing README items and incomplete acceptance checks above. No feature implementation was continued while preparing this handoff report.
+Resume by opening the integration PR and checking its required CI. Do not claim browser acceptance or Reserve UI support; Dev 3 still owns those items. Complete the open browser, demonstration, and deployment checks above before claiming the MVP fully accepted.
