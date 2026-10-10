@@ -16,3 +16,6 @@ test-results/
 playwright-report/
 .DS_Store
 work/
+
+# Local source plan; share actionable work through todo.md.
+/plan.md
