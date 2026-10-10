@@ -39,6 +39,9 @@ def selection_for(a):
 
 
 def validate_selection(snap, selections, budget):
+    limit = snap.get("ai_scenario", {}).get("budget_limit_pkr")
+    if limit is not None:
+        budget = min(budget, limit)
     resources = {r["id"]: r for r in eligible_resources(snap)}
     choices = {(a["request_id"], rid): a for rid, a in assignment_choices(snap, list(resources.values()))}
     require(
@@ -127,12 +130,16 @@ def revision_options(s, u, pid):
     resources = eligible_resources(snap)
     choices = assignment_choices(snap, resources)
     valid = {rid for rid, _ in choices}
+    remaining = budget_view(s, p["month"])["remaining"]
+    scenario_limit = snap.get("ai_scenario", {}).get("budget_limit_pkr")
+    if scenario_limit is not None:
+        remaining = min(remaining, scenario_limit)
     return {
         "contract_version": "plan-revision-v1",
         "plan_id": pid,
         "version": p["version"],
         "input_hash": p["input_hash"],
-        "remaining_budget": budget_view(s, p["month"])["remaining"],
+        "remaining_budget": remaining,
         "current_assignments": [selection_for(a) for a in p["assignments"]],
         "resources": [r for r in resources if r["id"] in valid],
         "choices": [{**a, "resource_id": rid} for rid, a in choices],

@@ -114,6 +114,7 @@ export type Offer = {
   site?: string;
 };
 export type Plan = {
+  ai_scenario?: { goal: string; budget_limit_pkr: number; excluded_offer_ids: string[]; allow_subsidies: boolean } | null;
   id: string;
   snapshot_id: string;
   month: string;

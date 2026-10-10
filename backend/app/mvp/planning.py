@@ -67,6 +67,8 @@ def eligible_resources(snapshot, baseline=False):
 
     if not baseline:
         for o in sorted(inputs["offers"].values(), key=lambda o: o["id"]):
+            if o["id"] in snapshot.get("ai_scenario", {}).get("excluded_offer_ids", []):
+                continue
             f = inputs["facilities"][o["facility_id"]]
 
             if (
@@ -141,6 +143,7 @@ def assignment_choices(snapshot, resources, baseline=False):
 
             if sub and (
                 baseline
+                or not snapshot.get("ai_scenario", {}).get("allow_subsidies", True)
                 or not request["funding_eligible"]
                 or inputs["subsidy_rule"]["month"] != snapshot["month"]
             ):
@@ -161,6 +164,9 @@ def assignment_choices(snapshot, resources, baseline=False):
 
 
 def solve(snapshot, budget, baseline=False):
+    limit = snapshot.get("ai_scenario", {}).get("budget_limit_pkr")
+    if limit is not None:
+        budget = min(budget, limit)
     inputs = snapshot["inputs"]
     resources = eligible_resources(snapshot, baseline)
     model = cp_model.CpModel()
@@ -326,6 +332,7 @@ def optimize(s, u, data):
         "plans",
         {
             "snapshot_id": snap["id"],
+            "ai_scenario": deepcopy(snap.get("ai_scenario")),
             "month": month,
             "status": "DRAFT",
             "version": 1,

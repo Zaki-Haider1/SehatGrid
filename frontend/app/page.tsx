@@ -147,13 +147,15 @@ function Card({
   title,
   children,
   aside,
+  id,
 }: {
   title: string;
   children: ReactNode;
   aside?: ReactNode;
+  id?: string;
 }) {
   return (
-    <section className="card">
+    <section className="card" id={id}>
       <div className="card-title">
         <h2>{title}</h2>
         {aside}
@@ -1583,6 +1585,7 @@ export default function Home() {
                         state={state}
                       />
                     )}
+                    {request && reasons.length > 0 && options.length === 0 && <div className="resource-handoff"><strong>This request needs a resource intervention.</strong><p>Ask the government planner to open Monthly planner → AI-assisted allocation. The planner detects recorded bottlenecks and proposes subsidies, partner quota or a mobile resource where eligible.</p><a href="/guide#first-demo" target="_blank" rel="noreferrer">See the government-to-hospital handoff →</a></div>}
                     {options.map((o) => (
                       <div
                         key={o.capacity_id}
@@ -2153,7 +2156,13 @@ export default function Home() {
                       </details>
                     </Card>
                     <Card title="Compute an allocation">
-                      <AIPlanner token={token} month={planningMonth} revision={JSON.stringify([state.requests.map(r => [r.id, r.status]), state.plans.map(p => [p.id, p.status]), state.summary?.budget?.remaining])} />
+                      <AIPlanner token={token} month={planningMonth} revision={JSON.stringify([state.requests.map(r => [r.id, r.status, r.reasons]), state.plans.map(p => [p.id, p.status]), state.summary?.budget?.remaining])} onDraft={async snapshotId => {
+                        const draft = await api<Plan>("plans/optimize", token, "POST", { snapshot_id: snapshotId });
+                        setPlan(draft);
+                        await load();
+                        setNotice("AI proposal saved as a checked draft. Review it below, then approve explicitly.");
+                        requestAnimationFrame(() => document.getElementById("review-plan")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+                      }} />
                       <span className="eyebrow">
                         SUBSIDY + PARTNER QUOTA + MOBILE CLINIC
                       </span>
@@ -2261,8 +2270,10 @@ export default function Home() {
               {plan && (
                 <Card
                   title={`Plan ${plan.id}`}
+                  id="review-plan"
                   aside={<Badge value={plan.status} />}
                 >
+                  {plan.ai_scenario && <div className="ai-comparison"><strong>AI-proposed scenario · solver-checked draft</strong><p>{plan.ai_scenario.goal}</p><small>Spending cap PKR {money(plan.ai_scenario.budget_limit_pkr)} · {plan.ai_scenario.allow_subsidies ? "subsidies allowed" : "no subsidies"}{plan.ai_scenario.excluded_offer_ids.length > 0 ? ` · excluded: ${plan.ai_scenario.excluded_offer_ids.join(", ")}` : ""}. These constraints remain in force when editing or approving.</small></div>}
                   <div className="plan-metrics">
                     <div>
                       <span>Projected additional accommodation</span>
