@@ -11,7 +11,7 @@ The team has three developers. Names are deliberately unassigned; claim a lane o
 | Narrow pilot, provider network, two authenticated roles, permissions and audit | Coded; automated checks | Eight synthetic providers, five Islamabad catchments, one non-emergency primary-care service; `backend/app/mvp/seed.py`, `auth.py`, `api.py`, `frontend/app/page.tsx`. |
 | Matching and human review | Coded; small evaluation | Pinned MiniLM/ONNX inference and persisted review in `matching.py`; `outputs/matching-results.json` covers 6 development and 14 held-out synthetic examples. No clinical accuracy claim. |
 | Referral lifecycle, capacity, funding and ledger | Coded; automated checks | `referrals.py`, `common.py`, `api.py`; `backend/tests/test_mvp.py` includes completion, permissions, idempotency and concurrent guards. The distinct persisted `PROPOSED` attempt state is absent. |
-| Unique unresolved demand, snapshots and monthly three-action allocation | Coded; automated checks | `intelligence.py`, `planning.py`; worked 8/7/5, PKR 25,000 loop and 42 tiny independent allocation cases. Draft manual revision with a recorded reason is absent. |
+| Unique unresolved demand, snapshots and monthly three-action allocation | Coded; revision integration pending | `intelligence.py`, `planning.py`; worked 8/7/5, PKR 25,000 loop and 42 tiny independent allocation cases. Dev 2's draft revision backend and fixture are on `codex/dev2-plan-revision`; planner UI remains with Dev 3. |
 | Islamabad map, role screens and JSON/CSV export | Coded; partial browser checks | `frontend/components/pilot-map.tsx`, `frontend/app/page.tsx`; planner login/map/allocation draft exercised. Full operator, activation and mobile journeys remain unverified in a browser. |
 | CI and local delivery package | Verified CI, deployment open | GitHub run 38054258367 completed successfully for backend, frontend and combined-container jobs. CI includes PostgreSQL, migrations, evaluations and an offline container cold start. No public URL or live restart check. |
 
@@ -57,13 +57,17 @@ Dev 3 owns `frontend/app/page.tsx` and `frontend/lib/api.ts` during parallel wor
 
 ### P1 — Manual draft-plan revision with reason
 
-**Owner:** Dev 2 (claim: unassigned). **Status:** OPEN. **Can start now.**
+**Owner:** Dev 2 (Codex). **Status:** Backend and contract coded and locally verified in [draft PR #1](https://github.com/Zaki-Haider1/akon/pull/1) on `codex/dev2-plan-revision`, rebased onto Dev 1's `b3c13de`; review/merge remain open. Planner UI/browser acceptance remain with Dev 3. Checkboxes remain open until integration.
 
 - [ ] Define a draft-only planner revision operation that records actor, timestamp, reason, prior and revised choices. Preserve original solver output and distinguish a human revision in exports/audit.
 - [ ] Recheck revised assignments and actions with the same budget, date, service, zone, capacity, offer and mobile exclusivity constraints as optimization. Reject stale snapshot/input versions and unfeasible edits. Approval must revalidate again.
 - [ ] Add focused valid/invalid/stale/concurrent tests. Give Dev 3 a fixture for the planner edit/reason UI.
 
 **Done when:** A planner can revise a draft for a stated reason; an invalid or stale revision has no side effects; displayed/approved totals and export match the revised persisted plan.
+
+**Handoff:** [Revision API and UI contract](docs/dev2-plan-revision.md), [versioned fixture](data/contracts/plan-revision-v1.json). Approval requires the displayed plan version after a human revision. No migration or new dependency is needed.
+
+**Backend evidence:** Full SQLite backend suite: **115 passed** (includes 35 focused revision cases); selected PostgreSQL revision/export/activation/legacy/concurrency integration cases: **6 passed**. Ruff, PostgreSQL `alembic check` and **42 independent exhaustive allocation cases** passed. Commands and limits are recorded in `WORK_STATUS.md`. The test model was preloaded from the pinned revision; no matcher stub was used. No planner browser or deployment acceptance is claimed.
 
 ### V1 — Browser and responsive acceptance
 
@@ -76,21 +80,21 @@ Dev 3 owns `frontend/app/page.tsx` and `frontend/lib/api.ts` during parallel wor
 
 **Done when:** The full two-role demo completes in a browser after a fresh seed and survives refresh, with mobile screens usable and numbers matching persisted state.
 
-### V2 — Final local delivery and deployment handoff
+### V2 — Final local delivery and required public deployment
 
 **Owner:** Dev 3 (claim: unassigned), with Dev 1 backend support. **Status:** OPEN. **Can start local work now; live checks require hosting access.**
 
 - [ ] Reconcile the local production start instructions with Next.js standalone output; test the documented command/container and update `README.md` and `docs/deployment.md` if needed.
 - [ ] Rehearse `docs/demo-script.md` in five minutes after synthetic reset and cold restart, with no runtime model downloads; record exact results and limits in `WORK_STATUS.md`.
-- [ ] If hosting is authorized and available, configure secrets/PostgreSQL, apply migration and seed deliberately, then verify HTTPS, authentication, proxy, model, export and persistence across restart. Record URL and smoke evidence. No public deployment is currently claimed.
+- [ ] Complete the required public deployment: configure secrets/PostgreSQL, apply migration and seed deliberately, then verify HTTPS, authentication, proxy, model, export and persistence across restart. Record URL and smoke evidence. No public deployment is currently claimed.
 
-**Done when:** Local handoff works from documented commands. Public-deployment checkbox stays open until a live URL and restart evidence exist.
+**Done when:** Local handoff works from documented commands, and a public HTTPS URL with live restart evidence exists. Public deployment is required by the user for the hackathon.
 
 ## Integration and completion gates
 
 - [ ] R1, R2 and P1 merged with focused tests and contract updates; Dev 3's UI follows their final DTOs.
 - [ ] Run backend `pytest -q`, `ruff check .`, `alembic check`, matching/allocation evaluations; run frontend `npm run typecheck`, `npm run format:check`, `npm run build`. Use isolated SQLite/PostgreSQL databases and run relevant CI on merged code.
 - [ ] V1 full browser and mobile acceptance completed; V2 local reset/cold-start/five-minute demo completed.
-- [ ] Update `WORK_STATUS.md` with merged commits, exact commands/results and any remaining limits. Public hosting is a separately evidenced deployment handoff, not a substitute for local acceptance.
+- [ ] Update `WORK_STATUS.md` with merged commits, exact commands/results and any remaining limits; include the required public URL and live persistence/restart evidence.
 
 The existing CI success is a baseline for commit `06390db`; it does not verify future changes. Keep reports of failed checks and partial outcomes with their fixes. Claim MVP completion only after the open scope gaps and acceptance gates above pass.

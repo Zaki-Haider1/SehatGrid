@@ -27,7 +27,7 @@ from .intelligence import fingerprint
 from ..config import get_settings
 
 
-def solve(snapshot, budget, baseline=False):
+def eligible_resources(snapshot, baseline=False):
 
     inputs = snapshot["inputs"]
 
@@ -41,6 +41,8 @@ def solve(snapshot, budget, baseline=False):
             and available(c) > 0
             and f["participation"] == "ACTIVE"
             and f["service_reviewed"]
+            and f["service_id"] == SERVICE
+            and c["service_id"] == SERVICE
             and f.get("canonical_id", f["id"]) == f["id"]
         ):
             covered = min(available(c), c.get("funded_free", 0))
@@ -72,6 +74,8 @@ def solve(snapshot, budget, baseline=False):
                 and o["date"][:7] == snapshot["month"]
                 and f["participation"] == "ACTIVE"
                 and f["service_reviewed"]
+                and f["service_id"] == SERVICE
+                and o["service_id"] == SERVICE
                 and f.get("canonical_id", f["id"]) == f["id"]
             ):
                 resources.append(
@@ -91,17 +95,23 @@ def solve(snapshot, budget, baseline=False):
                     }
                 )
 
-    model = cp_model.CpModel()
+    return resources
 
-    ys = {r["id"]: model.new_bool_var("buy_" + r["id"]) for r in resources if r["offer_id"]}
 
-    xs = []
-
-    by_request = defaultdict(list)
-
-    by_resource = defaultdict(list)
+def assignment_choices(snapshot, resources, baseline=False):
+    inputs = snapshot["inputs"]
+    choices = []
 
     for request in sorted(snapshot["requests"], key=lambda r: r["id"]):
+        if (
+            not request["suitable"]
+            or not request["service_reviewed"]
+            or request["service_id"] != SERVICE
+            or request.get("blocked_reasons")
+            or request["status"] not in ["OPEN", "UNRESOLVED"]
+            or request["needs_funding"] and not request["funding_eligible"]
+        ):
+            continue
         for resource in resources:
             if (
                 request["zone"] not in resource["zones"]
@@ -126,8 +136,6 @@ def solve(snapshot, budget, baseline=False):
             ):
                 continue
 
-            v = model.new_bool_var(f"assign_{request['id']}_{resource['id']}")
-
             assignment = {
                 "request_id": request["id"],
                 "resource_id": resource.get("capacity_id", resource["id"]),
@@ -138,11 +146,23 @@ def solve(snapshot, budget, baseline=False):
                 "funding_included": resource["funding_included"],
             }
 
-            xs.append((v, assignment))
+            choices.append((resource["id"], assignment))
+    return choices
 
-            by_request[request["id"]].append(v)
 
-            by_resource[resource["id"]].append(v)
+def solve(snapshot, budget, baseline=False):
+    inputs = snapshot["inputs"]
+    resources = eligible_resources(snapshot, baseline)
+    model = cp_model.CpModel()
+    ys = {r["id"]: model.new_bool_var("buy_" + r["id"]) for r in resources if r["offer_id"]}
+    xs = []
+    by_request = defaultdict(list)
+    by_resource = defaultdict(list)
+    for resource_id, assignment in assignment_choices(snapshot, resources, baseline):
+        v = model.new_bool_var(f"assign_{assignment['request_id']}_{resource_id}")
+        xs.append((v, assignment))
+        by_request[assignment["request_id"]].append(v)
+        by_resource[resource_id].append(v)
 
     for values in by_request.values():
         model.add(sum(values) <= 1)
@@ -334,18 +354,37 @@ def optimize(s, u, data):
         },
     )
 
+    p["decision_source"] = "SOLVER"
+    p["revisions"] = []
+    p["original_solver_result"] = {
+        **deepcopy(result),
+        "actions": deepcopy(actions),
+        "baseline_assignments": deepcopy(baseline["assignments"]),
+        "baseline": p["baseline"],
+        "additional": p["additional"],
+        "subsidy_cost": p["subsidy_cost"],
+        "unresolved_remaining": p["unresolved_remaining"],
+    }
+
     audit(s, u, "PLAN_GENERATED", p["id"], after={"cost": p["cost"], "additional": p["additional"]})
 
     return p
 
 
-def approve(s, u, pid):
+def approve(s, u, pid, version=None):
 
     planner(u)
 
     p = get(s, "plans", pid)
 
     require(p["status"] == "DRAFT", "INVALID_TRANSITION", "Only a draft may be approved")
+
+    require(
+        (version is None and p.get("decision_source", "SOLVER") == "SOLVER")
+        or version == p["version"],
+        "STALE_INPUT",
+        "Refresh the draft and approve its current version",
+    )
 
     require(
         p["input_hash"] == fingerprint(s, p["month"]),
@@ -356,6 +395,10 @@ def approve(s, u, pid):
     require(
         budget_view(s, p["month"])["remaining"] >= p["cost"], "BUDGET_EXCEEDED", "Insufficient monthly funds"
     )
+
+    from .plan_revision import validate_draft
+
+    validate_draft(s, p)
 
     for action in p["actions"]:
         o = get(s, "offers", action["offer_id"])

@@ -7,6 +7,22 @@
 
 ## Status at interruption
 
+**10 October 2026 follow-up:** Development has resumed. Dev 1's referral proposal/ranking backend landed at `b3c13de`. Dev 2's draft revision backend is committed at `9e5d9e5` on `codex/dev2-plan-revision`, with [draft PR #1](https://github.com/Zaki-Haider1/akon/pull/1), focused tests and a versioned UI fixture. See [the handoff](docs/dev2-plan-revision.md) and current `todo.md`. The interruption report below is historical. Public deployment is now explicitly required by the user and remains open until a live URL and persistence/restart evidence exist.
+
+### Dev 2 verification — 10 October 2026
+
+Ran from `backend/` in the isolated Dev 2 worktree using Python 3.12, pinned development dependencies and the actual pinned MiniLM model preloaded by `scripts/preload_model.py`. Databases were isolated from the existing demo. Windows' default pytest temporary directory denied access; the successful commands use a worktree-local temporary directory instead.
+
+| Command | Result |
+|---|---|
+| `python -m pytest -xq --basetemp=.pytest_cache/dev2-final-sqlite` with `TEST_DATABASE_URL` unset | **115 passed**, including 35 revision cases, on the combined Dev 1/Dev 2 code. Eight existing Alembic configuration/legacy constraint reflection warnings; no failures. |
+| `python -m pytest -xq --basetemp=.pytest_cache/dev2-final-pg tests/test_plan_revision.py -k 'postgresql and (concurrent or race or preserves_solver or keeps_fixed or multiple_revisions or handoff_fixture)'` with `TEST_DATABASE_URL` pointing to an isolated PostgreSQL 17 container | **6 passed**, 51 deselected. Covers revised approval/export, mobile activation, fixture, concurrent revisions, revision/approval race and legacy/multiple revisions. |
+| `ruff check .` | Passed. |
+| `alembic upgrade head`, then `alembic check` with isolated PostgreSQL `DATABASE_URL` | Passed; no new upgrade operations detected. |
+| `python scripts/evaluate_allocation.py` | **42 independent exhaustive checks passed**. Runtime-only changes to the existing evaluation artifact were discarded. |
+
+Revisions consume no funds/quota before approval; invalid edits roll back, original solver results remain preserved, and revised approval requires the displayed version. No migration or dependency was added. Dev 3 still owns the planner editor, reload/error/mobile browser acceptance and required public deployment. PR review/merge and CI on the final integration remain open; local backend checks do not establish browser or deployment acceptance.
+
 Implementation is paused at the user's request. The main README-aligned implementation was committed and pushed to `main` at the checkpoint above. Most core features are coded and automated checks have passed, but this is **not a claim that every README requirement or acceptance check is complete**. The remaining items and known simplifications are listed below.
 
 There is **no public deployment URL yet**. Deployment configuration and instructions are in the repository. A local preview was running during development; this is not public hosting.

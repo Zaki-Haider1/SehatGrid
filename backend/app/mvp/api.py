@@ -44,6 +44,7 @@ from .referrals import (
 )
 from .intelligence import intelligence, snapshot
 from .planning import optimize, approve, activate, cancel_plan, reject_action
+from .plan_revision import revise, revision_options
 from . import schemas
 
 settings = get_settings()
@@ -132,6 +133,8 @@ def view(s, u, month, day):
     if u["role"] != "planner":
         plans = deepcopy(plans)
         for p in plans:
+            p.pop("original_solver_result", None)
+            p.pop("revisions", None)
             p["assignments"] = [a for a in p["assignments"] if a["facility_id"] in u["facility_ids"]]
             p["actions"] = [
                 a for a in p["actions"] if s["offers"][a["offer_id"]]["facility_id"] in u["facility_ids"]
@@ -425,9 +428,10 @@ def mutate(s, u, path, method, body):
     if path == "plans/optimize":
         return optimize(s, u, validate(schemas.OptimizeInput, body))
     if parts[0] == "plans" and len(parts) >= 3:
+        if len(parts) == 3 and parts[2] == "revise" and method == "POST":
+            return revise(s, u, parts[1], validate(schemas.RevisePlanInput, body))
         if parts[2] == "approve":
-            validate(schemas.Empty, body)
-            return approve(s, u, parts[1])
+            return approve(s, u, parts[1], validate(schemas.ApprovePlanInput, body)["version"])
         if parts[2] == "cancel":
             return cancel_plan(s, u, parts[1], validate(schemas.ReasonInput, body)["reason"])
         if len(parts) == 5 and parts[2] == "actions" and parts[4] == "reject":
@@ -438,13 +442,33 @@ def mutate(s, u, path, method, body):
     require(False, "NOT_FOUND", "Unknown API operation", 404)
 
 
-def export_plan(s, p):
-    snap = s["snapshots"][p["snapshot_id"]]
+def allocation_export(snap, assignments):
     cohorts = {}
-    for a in p["assignments"]:
+    for a in assignments:
+        if a.get("cancelled"):
+            continue
         r = next(r for r in snap["requests"] if r["id"] == a["request_id"])
         key = (r["zone"], a["facility_id"], a["date"], a["offer_id"], a["subsidy"])
         cohorts[key] = cohorts.get(key, 0) + 1
+    return [
+        {"zone": k[0], "facility_id": k[1], "date": k[2], "offer_id": k[3],
+         "subsidy_per_unit": k[4], "units": v}
+        for k, v in cohorts.items()
+    ]
+
+
+def decision_export(snap, decision):
+    return {
+        **{k: decision[k] for k in ("cost", "subsidy_cost", "additional", "unresolved_remaining")},
+        "projected": decision.get("projected", decision.get("coverage")),
+        "actions": deepcopy(decision["actions"]),
+        "allocations": allocation_export(snap, decision["assignments"]),
+    }
+
+
+def export_plan(s, p):
+    snap = s["snapshots"][p["snapshot_id"]]
+    original = p.get("original_solver_result")
     return {
         "scope_version": "1.0",
         "label": "Synthetic demo data — recorded network requests only",
@@ -457,6 +481,20 @@ def export_plan(s, p):
         "model_version": matcher().version,
         "solver": p["solver"],
         "solver_status": p["solver_status"],
+        "solver_status_applies_to": "original_solver_result",
+        "decision_source": p.get("decision_source", "SOLVER"),
+        "version": p["version"],
+        "original_solver_result": (
+            {**decision_export(snap, original), "status": original["status"],
+             "runtime_seconds": original["runtime_seconds"], "baseline": original["baseline"]}
+            if original else None
+        ),
+        "revisions": [
+            {**{k: rev[k] for k in ("version", "actor", "timestamp", "reason")},
+             "before": decision_export(snap, rev["before"]),
+             "after": decision_export(snap, rev["after"])}
+            for rev in p.get("revisions", [])
+        ],
         "solver_parameters": p["solver_parameters"],
         "status": p["status"],
         "cost": p["cost"],
@@ -474,17 +512,7 @@ def export_plan(s, p):
             "offers": snap["inputs"]["offers"],
             "subsidy_rule": snap["inputs"]["subsidy_rule"],
         },
-        "allocations": [
-            {
-                "zone": k[0],
-                "facility_id": k[1],
-                "date": k[2],
-                "offer_id": k[3],
-                "subsidy_per_unit": k[4],
-                "units": v,
-            }
-            for k, v in cohorts.items()
-        ],
+        "allocations": allocation_export(snap, p["assignments"]),
         "input_versions": {
             "capacities": {k: c["version"] for k, c in snap["inputs"]["capacities"].items()},
             "offers": {k: o["version"] for k, o in snap["inputs"]["offers"].items()},
@@ -557,6 +585,8 @@ async def api(path: str, request: Request, db: Session = Depends(get_db)):
             if path.startswith("plans/"):
                 planner(u)
                 p = get(s, "plans", path.split("/")[1])
+                if path.endswith("/revision-options"):
+                    return revision_options(s, u, p["id"])
                 if path.endswith("/export"):
                     output = export_plan(s, p)
                     if request.query_params.get("format") == "csv":
