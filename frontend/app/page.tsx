@@ -42,6 +42,7 @@ import { PlanRevision } from "@/components/plan-revision";
 import { GuidedDemo } from "@/components/guided-demo";
 import { DemoCredentials, DEMO_PASSWORD } from "@/components/demo-credentials";
 import { AIPlanner } from "@/components/ai-planner";
+import { AIWorkflow } from "@/components/ai-workflow";
 import {
   AllocationDecisionTrace,
   MatchDecisionTrace,
@@ -920,8 +921,7 @@ export default function Home() {
           {onboarder &&
             screen === "catalog" &&
             own.map((f) => (
-              <HospitalCatalog
-                key={f.id}
+              <div key={f.id}><AIWorkflow token={token} facilityId={f.id} revision={JSON.stringify([f.version,f.catalog])} /><HospitalCatalog
                 facility={f}
                 busy={busy}
                 save={async (path, body, method) => {
@@ -936,7 +936,7 @@ export default function Home() {
                   });
                   if (failed) throw new Error("Catalog update failed");
                 }}
-              />
+              /></div>
             ))}
           {(screen === "providers" || (screen === "network" && onboarder)) && (
             <>
@@ -980,6 +980,7 @@ export default function Home() {
                     onboarder ? "Onboarding checklist" : "Provider management"
                   }
                 >
+                  {onboarder && <AIWorkflow token={token} facilityId={facility.id} revision={String(facility.version)} />}
                   <div className="onboarding-checklist">
                     <p>
                       <Check size={17} />
@@ -1343,6 +1344,7 @@ export default function Home() {
               )}
               {!planner && !canSend && (
                 <Card title="Receiving hospital workspace">
+                  <AIWorkflow token={token} revision={JSON.stringify(state.referrals.map(a => [a.id,a.status,a.partner_accepted,a.patient_agreed,a.funding_approved]))} />
                   <p>
                     Accept or decline incoming referrals, record patient
                     agreement, arrival and completion. Only approved government
@@ -1568,6 +1570,7 @@ export default function Home() {
                     title="Recommendations"
                     aside={request && <Badge value={request.status} />}
                   >
+                    <AIWorkflow token={token} requestId={request?.id} revision={JSON.stringify([request?.status,reasons,state.referrals.map(a => [a.id,a.status,a.partner_accepted,a.patient_agreed,a.funding_approved])])} />
                     <p>
                       {request
                         ? `${request.reference} · ${request.zone}`
@@ -2155,7 +2158,7 @@ export default function Home() {
                         />
                       </details>
                     </Card>
-                    <Card title="Compute an allocation">
+                    <Card title="Allocation workspace">
                       <AIPlanner token={token} month={planningMonth} revision={JSON.stringify([state.requests.map(r => [r.id, r.status, r.reasons]), state.plans.map(p => [p.id, p.status]), state.summary?.budget?.remaining])} onDraft={async snapshotId => {
                         const draft = await api<Plan>("plans/optimize", token, "POST", { snapshot_id: snapshotId });
                         setPlan(draft);
@@ -2163,6 +2166,7 @@ export default function Home() {
                         setNotice("AI proposal saved as a checked draft. Review it below, then approve explicitly.");
                         requestAnimationFrame(() => document.getElementById("review-plan")?.scrollIntoView({ behavior: "smooth", block: "start" }));
                       }} />
+                      <details className="standard-planner"><summary>Create a standard allocation</summary>
                       <span className="eyebrow">
                         SUBSIDY + PARTNER QUOTA + MOBILE CLINIC
                       </span>
@@ -2200,6 +2204,7 @@ export default function Home() {
                         No future demand is forecast. Budget excludes active
                         holds, commitments and settled costs.
                       </small>
+                      </details>
                     </Card>
                   </div>
                 </>

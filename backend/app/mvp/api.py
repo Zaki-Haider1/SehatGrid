@@ -626,6 +626,38 @@ def export_plan(s, p):
     }
 
 
+@app.post("/api/v1/ai/workflow-help")
+def workflow_help(body: dict, request: Request, db: Session = Depends(get_db)):
+    from .ai_advisor import workflow_advice
+    with transaction(db) as s:
+        u = authenticate(s, request.headers.get("Authorization", ""))
+        require(u["role"] in {"operator", "onboarder"}, "ROLE_FORBIDDEN", "Hospital workspace permission required", 403)
+        expire(s)
+        if u["role"] == "onboarder":
+            fid = str(body.get("facility_id", ""))
+            require(fid in u["facility_ids"], "ROLE_FORBIDDEN", "Choose your assigned hospital", 403)
+            f = get(s, "facilities", fid)
+            evidence = {"role": "onboarder", "facility": {k: deepcopy(f.get(k)) for k in ["id", "ownership", "participation", "zone", "eligible_zones", "service_id", "service_reviewed"]}, "service_date": s["service_date"], "capacities": [cap_view(s, c) for c in s["capacities"].values() if c["facility_id"] == fid and c["date"] == s["service_date"]], "catalog": [{k: item.get(k) for k in ["name", "category", "price", "daily_capacity", "active"]} for item in f.get("catalog", [])][:40]}
+        else:
+            rows = own_requests(s, u)
+            rid = str(body.get("request_id", ""))
+            if rid:
+                require(any(r["id"] == rid for r in rows), "ROLE_FORBIDDEN", "This request is outside your assigned workspace", 403)
+                rows = [r for r in rows if r["id"] == rid]
+            else:
+                rows = sorted(rows, key=lambda r: (r["status"] in {"FULFILLED", "CANCELLED"}, r["id"]))[:6]
+            cases = []
+            for r in rows:
+                refresh_request(s, r)
+                source = s["facilities"].get(r["source_facility_id"], {})
+                can_send = r["source_facility_id"] in u["facility_ids"] and source.get("ownership") == "Public" and source.get("participation") == "ACTIVE"
+                options = recommendations(s, r)["candidates"][:3] if can_send and r["status"] not in {"FULFILLED", "CANCELLED", "IN_PROGRESS"} else []
+                attempts = [a for a in s["referrals"].values() if a["request_id"] == r["id"] and (r["source_facility_id"] in u["facility_ids"] or a["facility_id"] in u["facility_ids"])]
+                cases.append({"request_id": r["id"], "status": r["status"], "zone": r["zone"], "reasons": r["reasons"], "can_originate": can_send, "eligible_destinations_in_rank_order": [{k: o.get(k) for k in ["facility_id", "date", "available", "subsidy"]} for o in options], "referrals": [{**{k: a.get(k) for k in ["id", "status", "facility_id", "partner_accepted", "patient_agreed", "funding_approved"]}, "can_receive": a["facility_id"] in u["facility_ids"]} for a in attempts[-2:]]})
+            evidence = {"role": "reception", "assigned_hospitals": u["facility_ids"], "requests": cases}
+    return {"model": settings.ai_model, "advice": workflow_advice(settings, evidence), "preview_only": True}
+
+
 @app.post("/api/v1/ai/planning-advice")
 def planning_advice(body: dict, request: Request, db: Session = Depends(get_db)):
     from .planning import solve, eligible_resources

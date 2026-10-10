@@ -8,6 +8,7 @@ const names: Record<string, string> = {P01: "Shifa", P02: "PIMS", P03: "Polyclin
 const reasonNames: Record<string, string> = {CAPACITY_EXHAUSTED: "quota exhausted", FUNDING_UNAVAILABLE: "funding unavailable", AFFORDABILITY: "affordability", NO_ELIGIBLE_PARTNER: "no eligible partner", CAPACITY_UNKNOWN_OR_STALE: "capacity needs verification"};
 const money = (n: number) => n.toLocaleString("en-PK");
 export function AIPlanner({ token, month, revision, onDraft }: { token: string; month: string; revision: string; onDraft: (snapshotId: string) => Promise<void> }) {
+  const [expanded, setExpanded] = useState(false);
   const [question, setQuestion] = useState(defaultGoal), [result, setResult] = useState<Result | null>(null), [busy, setBusy] = useState(false), [creating, setCreating] = useState(false), [error, setError] = useState(""), [generatedGoal, setGeneratedGoal] = useState("");
   const sequence = useRef(0);
   async function propose(goal = question) {
@@ -16,7 +17,7 @@ export function AIPlanner({ token, month, revision, onDraft }: { token: string; 
     catch (e) { if (id === sequence.current) setError(e instanceof Error ? e.message : "Could not prepare an AI proposal. You can use the standard planner below."); }
     finally { if (id === sequence.current) setBusy(false); }
   }
-  useEffect(() => { void propose(); return () => { sequence.current++; }; }, [month, revision]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (expanded) void propose(); return () => { sequence.current++; }; }, [month, revision, expanded]); // eslint-disable-line react-hooks/exhaustive-deps
   async function createDraft() {
     if (!result?.snapshot_id) return;
     setCreating(true); setError("");
@@ -25,9 +26,9 @@ export function AIPlanner({ token, month, revision, onDraft }: { token: string; 
     finally { setCreating(false); }
   }
   const checked = result?.checked;
-  return <section className="ai-planner">
-    <span className="eyebrow">AI-ASSISTED ALLOCATION · QWEN 3.8 27B</span><h3>Turn blocked requests into a workable plan.</h3>
-    <p>Choose a goal. AI proposes a resource strategy; the planner checks eligibility, capacity and costs before you create a draft.</p>
+  return <section className="ai-planner ai-planner-compact">
+    <div className="ai-allocation-header"><div><span className="eyebrow">AI-ASSISTED ALLOCATION</span><h3>Resolve blocked demand.</h3><p>Propose resources, compare the trade-off, create a checked draft.</p></div><button type="button" className="ai-expand-button" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? "Collapse" : "Plan with AI →"}</button></div>
+    {expanded && <div className="ai-allocation-body">
     {result && <div className="ai-bottlenecks">{result.evidence.bottlenecks.filter(z => z.count > 0).map(z => <div key={z.zone}><strong>{z.count} · {z.zone}</strong><small>{Object.entries(z.reasons).map(([r, n]) => `${n} ${reasonNames[r] || r.toLowerCase().replaceAll("_", " ")}`).join(" · ")}</small></div>)}</div>}
     <label>Your allocation goal<textarea value={question} onChange={e => setQuestion(e.target.value)} maxLength={1500} disabled={creating} /></label>
     <div className="ai-goal-presets">{[["Most patients", defaultGoal], ["PKR 15,000 limit", "Help the most blocked requests with a spending cap of PKR 15,000."], ["No mobile resource", "Help the most blocked requests, but exclude mobile clinic offers; use eligible partner quota and subsidies."]].map(([label, goal]) => <button key={label} type="button" disabled={busy || creating} onClick={() => { setQuestion(goal); void propose(goal); }}>{label}</button>)}</div>
@@ -36,7 +37,7 @@ export function AIPlanner({ token, month, revision, onDraft }: { token: string; 
     {result?.proposal.clarification && <p role="status" className="ai-plan-error"><strong>One detail needed:</strong> {result.proposal.clarification} Update your goal above and propose again.</p>}
     {checked && result && <div className="ai-checked-proposal" aria-live="polite">
       <div className="ai-proposal-heading"><h4>{result.proposal.title}</h4><span className="ai-check-badge">{checked.status === "OPTIMAL" ? "Checked · optimal" : "Checked · feasible"}</span></div>
-      <p>{result.proposal.rationale}</p>
+      <details className="ai-proposal-reason"><summary>Why AI proposed this strategy</summary><p>{result.proposal.rationale}</p></details>
       <div className="ai-scenario-constraints"><span>Spending cap: PKR {money(result.proposal.budget_limit_pkr ?? result.evidence.remaining_budget_pkr)}</span><span>{result.proposal.allow_subsidies ? "Subsidies allowed" : "No subsidies"}</span>{result.proposal.excluded_offer_ids.map(id => <span key={id}>Exclude {id}</span>)}</div>
       <div className="ai-allocation-stats"><strong>{checked.projected_services} requests can be accommodated</strong><strong>PKR {money(checked.cost_pkr)} proposed cost</strong><strong>{checked.unresolved_remaining} eligible requests remain</strong></div>
       <div className="ai-interventions">{checked.destinations.map((d, i) => <div key={i}><div><strong>{names[d.facility_id] || d.facility_id}</strong><small>{d.offer_id ? `${d.offer_id} · activate after approval` : d.subsidy_cost_pkr ? `Subsidy support · PKR ${money(d.subsidy_cost_pkr)}` : "Use existing eligible quota"}</small></div><b>{d.projected_services} requests</b></div>)}</div>
@@ -44,6 +45,6 @@ export function AIPlanner({ token, month, revision, onDraft }: { token: string; 
       <button className="primary" disabled={busy || creating || question !== generatedGoal || checked.projected_services === 0} onClick={() => void createDraft()}>{creating ? "Creating checked draft…" : "Create draft from this proposal →"}</button>
       {question !== generatedGoal && <small>Your goal changed. Propose again before creating a draft.</small>}
     </div>}
-    <small>Projected care, not delivered care. Creating a draft reserves nothing. Review and approve it below; hospitals then activate resources and coordinate referrals. Unknown or stale capacity still needs staff verification.</small>
+    <small>Projected care, not delivered care. Creating a draft reserves nothing. Review and approve it below; hospitals then activate resources and coordinate referrals. Unknown or stale capacity still needs staff verification.</small></div>}
   </section>;
 }
