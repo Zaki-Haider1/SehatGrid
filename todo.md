@@ -2,6 +2,8 @@
 
 Reviewed 10 October 2026 against local `plan.md` scope v1.0 and repository commit `19c0efa`.
 
+**Directory update, 10 October 2026:** User-requested research adds 12 real Islamabad hospital profiles and a MapLibre street map, with source links and campus coordinates. Capacity, referrals and budgets remain synthetic. This directory does not establish partner participation or complete the pilot-zone, eligibility, offline or snapshot requirements below. Evidence and accuracy limits: [directory register](docs/islamabad-directory.md). Planned user-facing roles: [government, hospital and patient portals](docs/role-portals.md); authenticated separation is still pending.
+
 **Goal:** Finish the agreed Islamabad primary-care MVP: reviewed service matching → eligible referral → recorded outcome → immutable unresolved-demand snapshot → monthly subsidy/quota/mobile plan → approval → operator activation → valid reprocessing.
 
 This file is the shared, Git-visible execution handoff. `plan.md` is a local, ignored source specification and will not arrive with a fresh clone. Required scope, rules, interfaces, and acceptance checks are therefore summarized here. Checkboxes mean reviewed completion with evidence, not merely code written. All remaining tasks start unchecked.
@@ -18,13 +20,13 @@ This is a source inspection, not a new runtime qualification. No backend tests, 
 | C: intelligence | Live pending counts and local-capacity gaps in `/api/dashboard` | Unique unresolved units through all attempts, reason taxonomy, unknown-zone/freshness views, resolution funnel, immutable month/date snapshots |
 | D: allocation | Actual CP-SAT, dated incremental slot purchases, guarded budget approval, automatic retry | Monthly ledger; subsidy, bounded quota packages and mobile actions; snapshots, input revalidation, solver status, baseline/additional benefit, separate activation |
 | ML / review | RapidFuzz top-three service suggestions; duplicate-name guard | Pinned pretrained embeddings, explicit abstention, persisted human reviews and original records, reviewed canonical IDs used downstream, held-out evaluation |
-| UI / map | One dashboard with five tabs, role view toggle, selectable SVG schematic, JSON export | Authenticated facility scopes, full workflow screens, operational statuses, Islamabad geography, aggregate demand map, traceable JSON/CSV plan export |
+| UI / map | One dashboard with five tabs, role view toggle, MapLibre Islamabad street map, 12 sourced public/private hospital profiles, directory search/filter and JSON export | Authenticated facility scopes, full workflow screens, operational statuses, agreed pilot-zone geography, aggregate demand map, offline geography, traceable JSON/CSV plan export |
 | Verification / delivery | 18 backend test functions; CI declares SQLite + PostgreSQL tests, migrations, container smoke and frontend checks; deployment/demo guides | New invariant tests, independent solver checks, matching results, browser workflow, offline/cold-start rehearsal, verified public deployment if needed |
 
 ### Scope differences to resolve first
 
 - `README.md` / `overview.md` describe a deliberately smaller milestone: no authentication, fuzzy-only matching, one global budget, instant funded capacity activation. They do not establish completion of `plan.md`.
-- Seeds and map currently use **Karachi**, six providers, six services including dialysis/maternal care, and `urgent` priority. Target **selected Islamabad zones**, roughly eight synthetic public/private partners, and **non-emergency general primary-care OPD**. Do not treat priority as clinical triage.
+- The map now uses **Islamabad** and 12 real directory hospitals, with simulated offers on six facilities. Five cardinal demonstration catchments, six services including dialysis/maternal care, and `urgent` priority remain. Target **selected Islamabad zones**, roughly eight synthetic public/private partners, and **non-emergency general primary-care OPD** still requires T00/T01 agreement. Real directory membership does not imply active partnership. Do not treat priority as clinical triage.
 - Current optimization prioritizes urgent demand, then slots, then cost. Target maximizes additional eligible units, then minimizes cost, then uses stable action IDs. Current unrestricted synthetic slot growth must become bounded offered resources.
 - Existing repeat mutations return conflicts; this protects some effects but is not the specified idempotent replay contract. Existing stale-budget checks do not validate capacity/offer/snapshot versions.
 - Existing approval activates capacity immediately. Target approval reserves resources/funds; partner/mobile capacity becomes usable only after operator activation.
@@ -289,6 +291,8 @@ For each card, fill **Claim: name / branch / PR** and append **Evidence: command
 **Accept:** Browser journey completes a scoped request through review and all required confirmations; unauthorized controls, unknown capacity, rejected/expired attempts, conflict recovery and cancellation are covered.
 
 ### T16 — Islamabad network and unresolved-demand map
+
+**Partial implementation:** The geographic hospital map, sourced profile selection, date-specific demo slots and unknown-capacity copy are implemented and browser-checked. Map markers indicate public/private ownership, not live availability. Aggregate unresolved-demand geography, licensed offline assets and the agreed pilot-zone DTOs remain open; T16 is not accepted as complete.
 
 **Owner:** D3. **Status:** WAIT(T14); real data WAIT(T03,T10). **Claim:** Unclaimed.
 
