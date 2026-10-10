@@ -1,4 +1,4 @@
-# Dev 3 browser acceptance
+# Browser acceptance
 
 The suite runs real Chromium against a production Next.js standalone server and the actual FastAPI/model/solver. Every case resets only the dedicated `sehat-grid-browser` Compose service. It never resets the normal Compose project or port 8000 demo. Run one suite at a time; its seed and fixed ports are intentionally shared by a single worker.
 
@@ -21,7 +21,7 @@ The suite owns frontend port 13000 and API port 18000, and refuses to reuse an e
 
 The test browser uses software WebGL rendering through [Chromium's documented SwiftShader flags](https://github.com/chromium/chromium/blob/main/docs/gpu/swiftshader.md) so map rendering does not depend on a particular GPU/driver. These flags apply only to the isolated acceptance browser. WebGL-disabled coverage separately verifies the software rendering of the same 3D box geometry. The suite has no automatic retries; failed attempts and their corrections belong in the work log.
 
-Coverage at 1440×1000 and 390×844:
+Coverage at 1440Ã—1000 and 390Ã—844:
 
 - Login, service paraphrase matching, persisted review/intake, recommendations and ranking version, saved proposal without a hold, reload/reservation, receiving response, patient agreement, arrival and completion; proposal cancellation leaves quota and budget unchanged.
 - Exact 8-subsidy/7-quota/5-mobile allocation costing PKR 25,000, approval, separate operators activating quota/mobile, reprocessing B-01, completed quota and funded subsidy referrals.

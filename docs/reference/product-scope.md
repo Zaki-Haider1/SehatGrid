@@ -1,3 +1,7 @@
+# Product scope baseline
+
+This document preserves the original MVP specification for context. Implemented additions and current behavior are documented in the [README](../../README.md), [architecture overview](../architecture/overview.md), and [documentation index](../README.md).
+
 # SEHAT GRID
 
 ## Healthcare Access Coordination and Monthly Resource Allocation

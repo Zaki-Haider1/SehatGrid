@@ -1,43 +1,44 @@
 # SEHAT GRID
 
-A synthetic, non-emergency primary-care coordination MVP for five Islamabad pilot catchments. The original specification is [docs/mvp-scope-v1.md](docs/mvp-scope-v1.md). The user’s October 10 frontend revision adds three interfaces and a required 3D government map; see [the frontend design and role contract](docs/frontend-redesign.md).
+SEHAT GRID coordinates non-emergency primary care across eight Islamabad hospitals and five pilot catchments. It combines hospital staff workflows, AI-assisted request guidance, and solver-checked funding and capacity plans. Hospital directory context is public; requests, partnerships, quotas, costs and care records are synthetic.
 
-## What runs
+## Demo
 
-### Frontend preview
+Open [SEHAT GRID](https://sehat-grid.vercel.app). Use **Demo access** to copy or autofill a role account; the shared demo password is `demo`. Start with the in-app guide or [five-minute demo](docs/guides/demo.md).
 
-The government workspace shows the Islamabad hospital network in 3D. Green means more than 20% of reported quota remains, amber means 20% or less remains, red means no quota remains, and grey means capacity is unknown or the hospital is inactive.
+| Role | Demo username |
+|---|---|
+| Government planner | `planner` |
+| Public reception | `operator-nori` |
+| Hospital reception | `operator-shifa-international`, `operator-pims` |
+| Hospital onboarding | `onboarder-polyclinic` |
+
+Other hospital accounts use the hospital slug after `operator-` or `onboarder-`. Legacy `p01`–`p08` aliases remain available.
+
+## Product workflow
+
+1. Hospital staff maintain reviewed eligibility, service catalog and dated quota.
+2. Public reception reviews an AI-suggested service match, registers a synthetic request and checks eligible destinations.
+3. Reception proposes and reserves a referral. The receiver accepts; staff records patient agreement, funding approval when required, arrival and completion.
+4. Government can ask AI to turn blocked demand into a structured funding/capacity scenario. The allocation solver checks eligibility, dates, budget and capacity, then compares coverage and cost with the standard plan.
+5. Government reviews, revises and approves the draft. Responsible hospitals activate any new resources; reception records subsequent care.
+
+AI contributes MiniLM semantic matching and Groq-hosted Qwen advice for reception, onboarding and government planning. Advice cannot change records or approve spending. Deterministic backend rules and the OR-Tools solver validate decisions; staff remain responsible for actions. WhatsApp updates are preview-only and are not sent.
 
 ![Government hospital map](docs/screenshots/planner-desktop.png)
 
-Hospital onboarders maintain service/test/facility availability, PKR prices and daily capacity.
-
-![Hospital service catalog](docs/screenshots/catalog-desktop.png)
-
-The separate patient-message demo follows actual confirmed and cancelled referrals in the app. It simulates the WhatsApp experience; it does not send messages.
-
-![Patient update demo](docs/screenshots/whatsapp-demo-desktop.png)
-
-See [routing, role permissions, capacity and patient updates](docs/routing-and-patient-updates.md) for the approach, formulas, demo steps and integration boundaries.
-
-Sign in with a username and password. The authenticated account's stored role opens its government, reception or onboarding interface automatically; there is no role selector. Hospital labels use the bundled Islamabad directory names in place of generic seed labels. Internal provider IDs remain stable, and capacity, budgets and patient activity remain demonstration data.
-
-- **Hospital receptionist:** public hospitals originate referrals; private hospitals receive them. Reviewed request intake, recommendations and saved proposals, acceptance/rejection, patient agreement, arrival/completion, rerouting/reprocessing, offers and activation.
-- **Hospital onboarder:** assigned hospital profile, primary-care eligibility, dated quota, and an editable service/test catalog with PKR prices, daily capacity and availability.
-- **Government representative:** interactive 3D city, hospital details and capacity/demand/funding layers; participation and ranking policy; monthly budgets, allocation/revision/approval, funding authorization, monthly outcomes and JSON/CSV exports.
-- **No patient portal.** Operators record voluntary patient agreement. No forecasts, diagnosis, emergencies, exact appointment slots, waiting-time predictions, travel-time routing, construction, payment or voucher features.
-
-Next.js/TypeScript and Three.js share a FastAPI backend. A pinned MiniLM embedding model plus RapidFuzz suggests matches; human reviews persist. OR-Tools computes monthly allocations for subsidies, purchased quota packages and mobile visits. All operational data and costs are synthetic. Public hospital coordinates remain separately attributed directory context, not confirmed partnerships.
+The government map shows capacity, demand and funding. Green indicates available quota, amber limited, red exhausted, grey unknown/inactive. Map controls and selected layer persist across views. No map token or external tiles are needed.
 
 ## Run locally
 
-Use Python 3.12 and Node 22+. From the repository root:
+Requirements: Python 3.12, Node 22+. From the repository root in PowerShell:
 
 ```powershell
 python -m venv .venv
 .venv/Scripts/python.exe -m pip install -r backend/requirements-dev.txt
 Copy-Item backend/.env.example backend/.env
-# Edit backend/.env: set JWT_SECRET (32+ random characters) and DEMO_PASSWORD (12+ characters).
+# Set JWT_SECRET (at least 32 characters) and DEMO_PASSWORD in backend/.env.
+# Optional AI: set AI_API_KEY and AI_MODEL (default qwen/qwen3.8-27b).
 .venv/Scripts/python.exe backend/scripts/preload_model.py
 cd backend
 ../.venv/Scripts/python.exe -m alembic upgrade head
@@ -45,62 +46,29 @@ cd backend
 ../.venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-In a second terminal, from `frontend/`:
+In another terminal:
 
-```sh
+```powershell
+cd frontend
 npm ci
 npm run dev
 ```
 
-Open `http://localhost:3000`. The Next.js server proxies `/api/v1` to FastAPI on port 8000. Use account `planner` or `operator-p01` through `operator-p08` (reception), or `onboarder-p01` through `onboarder-p08` (setup) and the configured `DEMO_PASSWORD`. Existing synthetic demos gain onboarding accounts when the seed command or seed-on-start runs, without resetting requests, plans or funds. New accounts use the configured demo password. Existing accounts are seeded once; changing an environment variable does not silently change persisted account credentials. A deliberate synthetic reset recreates them.
+Open `http://localhost:3000`. Next.js proxies `/api/v1` to FastAPI. For a local production frontend, run `npm run build` then `npm start`. The backend supports SQLite for local demos and PostgreSQL for shared persistence.
 
-For a separate frontend host, set `NEXT_PUBLIC_API_BASE_URL` at build time and configure backend `CORS_ORIGINS` accordingly. Same-origin local/container operation needs no public API variable.
+A deliberate local demo reset (run from `backend/`) is `../.venv/Scripts/python.exe scripts/seed_demo.py --reset`. It replaces synthetic pilot state. A fresh seed includes 20 completed, 20 confirmed and 20 unresolved requests. The standard plan has a PKR 25,000 budget and projects up to 20 additional accommodations; these are synthetic estimates.
 
-For a local production frontend, run `npm run build` then `npm start` from `frontend/`. The start script copies static assets into `.next/standalone` and runs its `server.js`. Set `PORT`/`HOSTNAME` to change its listener. The private `API_PROXY_TARGET` build variable changes the default internal API origin (`http://127.0.0.1:8000`); rebuild after changing it. Do not use `next start` with this standalone configuration.
+## Deployment configuration
 
-## Reproducible demonstration
-
-```powershell
-# From backend/; explicitly discards only the scope-v1 synthetic pilot state.
-../.venv/Scripts/python.exe scripts/seed_demo.py --reset
-```
-
-Reset seeds eight demo providers, five team-defined pilot catchments, 40 previously accommodated units (20 recorded completed, 20 confirmed), and 20 unresolved units. The service date is explicitly tomorrow in Asia/Karachi, the simulation's dated accounting bucket. Seeded history is a synthetic replay, not an actual chronology of delivered care. Quota freshness is stamped at reset; stale examples are intentionally aged. Do not use these records for real care.
-
-The selected month has PKR 25,000: 8 subsidies × 1,000, a 7-unit quota offer for 7,000, and a 5-unit mobile visit for 10,000. The actual solver returns 20 projected additional accommodations. Approval reserves funds and resources; operators P02 and P08 activate their offered resources; P01 can then refer B/C requests. A mobile activation creates a **separate synthetic site** and preserves the public hospital campus coordinate.
-
-Follow [docs/demo-script.md](docs/demo-script.md). Matching/model files and the bundled 3D city are loaded before presentation. The map requires no external tiles or map token. Missing/corrupt embedding files produce a startup failure instead of fabricated ML results.
-
-## Verification
-
-```powershell
-# From backend/
-../.venv/Scripts/python.exe -m pytest -q
-../.venv/Scripts/ruff.exe check .
-../.venv/Scripts/python.exe -m alembic check
-../.venv/Scripts/python.exe scripts/evaluate_matching.py
-../.venv/Scripts/python.exe scripts/evaluate_allocation.py
-```
-
-Set `TEST_DATABASE_URL` to an isolated PostgreSQL connection to run the same workflow suite against PostgreSQL as well as SQLite. Each PostgreSQL test uses its own temporary schema. Frontend: `npm run typecheck`, `npm run format:check`, `npm run build`.
-
-Real-browser acceptance uses Chromium at desktop and phone widths, the production frontend, and a dedicated synthetic API/database. See [browser acceptance](docs/browser-acceptance.md) for exact setup, reset boundaries and evidence. Run `npm run test:browser` after that setup; backend unit tests alone do not count as browser acceptance.
-
-Evaluation artifacts live in `outputs/matching-results.json` and `outputs/allocation-results.json`. Threshold tuning and held-out matching examples are separated. The allocation check independently enumerates 42 tiny cases and records a constrained greedy comparator. These small checks do not establish clinical impact or general model superiority.
-
-## Deployment handoff
-
-The root Dockerfile packages Next.js and FastAPI behind one origin, with the model downloaded at **image build** and loaded locally at runtime. Use PostgreSQL for the hosted instance. The root `railway.json` sets `/health` as the readiness check. Configure `DATABASE_URL`, `JWT_SECRET`, `DEMO_PASSWORD`, and `CORS_ORIGINS`; do not upload local `.env` or SQLite files. `backend/Dockerfile` remains available for a separate backend-only deployment.
-
-The deployer can run `docker compose up --build` after supplying `.env` values at the repository root; this starts PostgreSQL and the complete app on port 3000. The repository does not embed hosting credentials. Production partner onboarding, clinical governance and real operational data are outside this synthetic MVP.
+The frontend is configured for Vercel and the backend for a Docker Space on Hugging Face. See [deployment instructions](docs/guides/deployment.md) for build roots, proxy settings, Space port, model artifacts and secrets. The README records configuration, not current deployment status.
 
 ## Documentation
 
-- [Authoritative MVP scope](docs/mvp-scope-v1.md)
-- [Architecture and implementation decisions](overview.md)
-- [API contracts and error behavior](docs/api-contracts.md)
-- [Operational policies and limitations](docs/assumptions.md)
-- [Five-minute demo](docs/demo-script.md)
-- [Three interfaces and their permissions](docs/role-portals.md)
-- [Verification and scope checklist](todo.md)
-- [Islamabad public coordinate sources](docs/islamabad-directory.md)
+- [Documentation index](docs/README.md)
+- [System architecture](docs/architecture/overview.md) and [UML diagrams](docs/architecture/diagrams.md)
+- [API contracts](docs/reference/api-contracts.md), [AI contracts](docs/reference/ai-contracts.md), and [role permissions](docs/reference/role-portals.md)
+- [Routing and patient updates](docs/reference/routing-and-patient-updates.md)
+- [Manual testing](docs/guides/testing.md) and [browser acceptance](docs/guides/browser-acceptance.md)
+- [Operational assumptions](docs/reference/assumptions.md), [product scope](docs/reference/product-scope.md), and [hospital directory attribution](docs/reference/islamabad-directory.md)
+
+This is not a patient portal or clinical decision system. It does not diagnose, triage emergencies, book exact time slots, send WhatsApp messages or process payments. Real clinical use needs separate governance and operational validation.

@@ -1,8 +1,8 @@
-# API contracts — implemented scope v1
+# API contracts â€” implemented scope v1
 
-Base path: `/api/v1`. `GET /health` is public. All other routes except `POST /auth/login` require `Authorization: Bearer <JWT>`. All mutations require an `Idempotency-Key` of 8–160 characters. Reuse the same key and identical payload for a retry; a different payload with that key returns `IDEMPOTENCY_CONFLICT`. Login is exempt.
+Base path: `/api/v1`. `GET /health` is public. All other routes except `POST /auth/login` require `Authorization: Bearer <JWT>`. All mutations require an `Idempotency-Key` of 8â€“160 characters. Reuse the same key and identical payload for a retry; a different payload with that key returns `IDEMPOTENCY_CONFLICT`. Login is exempt.
 
-Errors use `{ "detail": { "code": "STALE_INPUT", "message": "Refresh…" } }`. Validation errors are 422, unauthorized authentication 401, role/scope denial 403, missing entities 404, workflow/version conflicts 409. The UI displays corrective messages and retains the form for correction.
+Errors use `{ "detail": { "code": "STALE_INPUT", "message": "Refreshâ€¦" } }`. Validation errors are 422, unauthorized authentication 401, role/scope denial 403, missing entities 404, workflow/version conflicts 409. The UI displays corrective messages and retains the form for correction.
 
 The Pydantic input contracts live in `backend/app/mvp/schemas.py`. All inputs forbid unknown fields. The dispatcher uses the explicit routes below; `/docs` shows its shared transport route rather than pretending each dynamic operation has a separately generated OpenAPI schema.
 
@@ -64,13 +64,13 @@ The Pydantic input contracts live in `backend/app/mvp/schemas.py`. All inputs fo
 }
 ```
 
-Use the current facility version and omit the catalog item's `id` from the body. Categories are Consultation/Laboratory/Imaging/Other; name is 2–120 characters, integer PKR price is 0–10,000,000, and declared daily capacity is 0–10,000. A facility supports up to 200 entries. Stale versions return `STALE_INPUT`; wrong role/facility returns 403. Configured cross-origin hosts may preflight `DELETE` with Authorization/Content-Type/Idempotency-Key. Catalog services are informational and do not expand automated primary-care routing eligibility or quota.
+Use the current facility version and omit the catalog item's `id` from the body. Categories are Consultation/Laboratory/Imaging/Other; name is 2â€“120 characters, integer PKR price is 0â€“10,000,000, and declared daily capacity is 0â€“10,000. A facility supports up to 200 entries. Stale versions return `STALE_INPUT`; wrong role/facility returns 403. Configured cross-origin hosts may preflight `DELETE` with Authorization/Content-Type/Idempotency-Key. Catalog services are informational and do not expand automated primary-care routing eligibility or quota.
 
 Onboarders receive no requests, referrals, plans, aggregate network summary, ledger, budget or subsidy rule in `/state`. Profile/service/quota routes retain legacy operator compatibility; catalog mutation remains onboarding-only.
 
 ## Proposal-first referral example
 
-Draft revision examples, error recovery and Dev 3's UI fixture are in [the plan revision handoff](dev2-plan-revision.md). Original solver output remains immutable; `decision_source` identifies human decisions in the plan and aggregate JSON/CSV exports.
+Draft revision examples, error recovery and the versioned fixture are in [the plan revision contract](plan-revision.md). Original solver output remains immutable; `decision_source` identifies human decisions in the plan and aggregate JSON/CSV exports.
 
 First fetch recommendations and copy the returned versions. Submit:
 

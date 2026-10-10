@@ -1,6 +1,6 @@
 # Implementation decisions — scope v1
 
-The supplied [MVP specification](docs/mvp-scope-v1.md) controls product scope. Earlier optional patient-portal and broad service proposals are superseded.
+The supplied [MVP specification](../reference/product-scope.md) controls product scope. Earlier optional patient-portal and broad service proposals are superseded.
 
 ## One operational loop
 
@@ -26,7 +26,7 @@ Suggestions combine embedding cosine similarity (80%) and fuzzy string similarit
 
 ## Geography and frontend
 
-Eight public hospital coordinate records provide attributed context for clearly labelled synthetic partners. Demo catchments are not legal boundaries or road-access estimates. The government interface uses a bundled Three.js city with approximate hospital positions and procedural context buildings. Orbit, zoom, reset, ray-cast selection and accessible projected hospital markers work without external tiles. A software renderer projects the same 3D box geometry when WebGL is unavailable. Capacity/demand/funding layers use persisted operational data; monthly outcomes distinguish projected services from recorded delivery. Reception and onboarding have separate interfaces in the same pale visual theme. See [the frontend role contract](docs/frontend-redesign.md).
+Eight public hospital coordinate records provide attributed context for clearly labelled synthetic partners. Demo catchments are not legal boundaries or road-access estimates. The government interface uses a bundled Three.js city with approximate hospital positions and procedural context buildings. Orbit, zoom, reset, ray-cast selection and accessible projected hospital markers work without external tiles. A software renderer projects the same 3D box geometry when WebGL is unavailable. Capacity/demand/funding layers use persisted operational data; monthly outcomes distinguish projected services from recorded delivery. Reception and onboarding have separate interfaces in the same pale visual theme. See [the frontend role contract](frontend.md).
 
 Three authenticated roles share one Next.js app. There is no client-side role switch granting authority. JWTs are signed with an external secret, passwords use salted PBKDF2, tokens expire, and every operation enforces role/facility scope on the server. Demo accounts intentionally share a configured presentation password; this is not a real-provider onboarding scheme.
 

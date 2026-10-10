@@ -17,11 +17,11 @@ playwright-report/
 .DS_Store
 work/
 
-# Local source plan; share actionable work through todo.md.
+# Local planning scratch files.
 /plan.md
 
 # Preloaded model artifacts: use backend/scripts/preload_model.py
 backend/models/
 
-# T00-T03 planning and integration scratch artifacts.
+# Local agent scratch artifacts.
 .superpowers/
