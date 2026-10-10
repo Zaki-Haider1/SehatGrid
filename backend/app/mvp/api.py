@@ -640,7 +640,14 @@ def planning_advice(body: dict, request: Request, db: Session = Depends(get_db))
     remaining = max(0, int((snap["summary"].get("budget") or {}).get("remaining", 0)))
     allocation = solve(snap, remaining)
     # Send aggregate evidence only, never patient records or contact details.
-    evidence = {"month": month, "remaining_budget_pkr": remaining, "eligible_requests": len(snap["requests"]), "excluded": snap["excluded"], "solver_status": allocation["status"], "projected_coverage": allocation["coverage"], "cost_pkr": allocation["cost"], "selected_offers": [{k: v for k, v in snap["inputs"]["offers"][offer_id].items() if k in {"id", "kind", "facility_id", "date", "cost", "quantity", "zone"}} for offer_id in allocation["offer_ids"]], "subsidized_requests": sum(1 for a in allocation["assignments"] if a.get("subsidy", 0) > 0)}
+    evidence = {"month": month, "remaining_budget_pkr": remaining, "eligible_requests": len(snap["requests"]), "excluded": snap["excluded"], "solver_status": allocation["status"], "projected_coverage": allocation["coverage"], "cost_pkr": allocation["cost"], "selected_offers": [{k: v for k, v in snap["inputs"]["offers"][offer_id].items() if k in {"id", "kind", "facility_id", "date", "cost", "units", "eligible_zones"}} for offer_id in allocation["offer_ids"]], "subsidized_requests": sum(1 for a in allocation["assignments"] if a.get("subsidy", 0) > 0)}
+    groups = {}
+    for assignment in allocation["assignments"]:
+        key = (assignment["facility_id"], assignment.get("offer_id"))
+        group = groups.setdefault(key, {"facility_id": key[0], "hospital": snap["inputs"]["facilities"].get(key[0], {}).get("name", key[0]), "offer_id": key[1], "projected_services": 0, "subsidy_cost_pkr": 0})
+        group["projected_services"] += 1
+        group["subsidy_cost_pkr"] += assignment.get("subsidy", 0)
+    evidence["allocation_by_destination"] = list(groups.values())
     return {"model": settings.ai_model, "snapshot_id": snap["id"], "input_hash": snap["input_hash"], "evidence": evidence, "allocation": allocation, "advice": advise(settings, evidence, question), "preview_only": True}
 
 
