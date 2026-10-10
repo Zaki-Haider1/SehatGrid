@@ -212,3 +212,52 @@ Result: **67 passed** across SQLite and PostgreSQL; fresh and populated Alembic 
 ### Round 3 files and limits
 
 Updated `backend/app/seed.py`, `backend/tests/test_seed.py`, and `backend/tests/test_workflows.py`. Reset intentionally refuses older seed metadata without exact membership rather than attempting an unsafe best-effort cleanup. Downgrade placeholders remain deferred and were not run, as directed.
+
+## Review round 4: persisted JSON dependencies
+
+The reset preflight now includes public IDs and internal primary keys for
+owned request, facility, service, offer, and subsidy references in snapshot,
+plan, and action JSON. It also inspects identity-bearing keys in snapshot
+capacity, offer, and rule version maps. Capacity keys in the published
+`facility:service:date` shape count as dependencies when the facility or
+service identity is seed-owned; direct internal capacity keys count too.
+Version numbers themselves do not count as identities. The exact ownership
+manifest, provider dependency checks, transaction, and deletion order remain
+unchanged. An unrelated snapshot with independent request and version keys
+survives a safe reset.
+
+### RED evidence
+
+After adding persisted reference cases, before changing the preflight:
+
+```powershell
+$env:TEST_DATABASE_URL='postgresql+psycopg://sehat_test:sehat_local_tests_only@127.0.0.1:55469/sehat_grid_test'
+.venv/Scripts/python -m pytest backend/tests/test_seed.py -k 'persisted_json_references or preserves_snapshot_with_only_unrelated' -q
+```
+
+Result: **14 failed, 8 passed** on SQLite and PostgreSQL. The failures were
+expected `DemoResetConflict` refusals that did not occur for public request
+IDs and keyed capacity/offer versions in snapshots, or public request IDs in
+plan allocations/action assignments. Internal request IDs already refused.
+
+### GREEN and final gates
+
+The same focused command passed: **22 passed**. A separate API regression
+persisted a snapshot using `REQ-DEMO-001`,
+`FAC-P03:PRIMARY_CARE_OPD:<service date>`, and `OFFER-DEMO-QUOTA`, then proved
+`POST /api/demo/reset` returns HTTP 409 and preserves the snapshot, owned
+request/offer, and metadata on SQLite and PostgreSQL: **2 passed**.
+
+Final commands after the last code/test edit:
+
+```powershell
+$env:TEST_DATABASE_URL='postgresql+psycopg://sehat_test:sehat_local_tests_only@127.0.0.1:55469/sehat_grid_test'
+.venv/Scripts/python -m pytest -q backend/tests --tb=short
+.venv/Scripts/ruff.exe check backend
+git diff --check
+```
+
+Results: **91 passed** across SQLite and PostgreSQL; **All checks passed!**
+from Ruff; no whitespace errors. Existing Starlette/Alembic deprecation notices
+and SQLite warnings about unnamed legacy check constraints remain. The
+generated migration downgrade placeholders remain deferred outside this fix.

@@ -4,7 +4,7 @@ from sqlalchemy import func, select
 import pytest
 
 from app import models
-from app.seed import load_seed_fixture, seed
+from app.seed import DemoResetConflict, load_seed_fixture, seed
 
 
 DEMO_CLOCK = datetime(2026, 10, 10, 9, 0, tzinfo=timezone.utc)
@@ -290,6 +290,111 @@ def test_reset_refuses_older_seed_metadata_without_exact_row_ownership(empty_ses
     assert session.scalar(select(func.count()).select_from(entity("Facility"))) == 9
     assert session.scalar(select(func.count()).select_from(entity("CareRequest"))) == 24
     assert session.get(SeedMetadata, metadata.id) is not None
+
+
+@pytest.mark.parametrize(
+    "reference_kind",
+    [
+        "snapshot_public_request", "snapshot_internal_request",
+        "snapshot_public_capacity_version", "snapshot_internal_capacity_version",
+        "snapshot_public_offer_version", "snapshot_internal_offer_version",
+        "plan_public_request", "plan_internal_request",
+        "action_public_request", "action_internal_request",
+    ],
+)
+def test_reset_refuses_persisted_json_references_to_owned_rows(empty_session, reference_kind):
+    from app.models import AllocationPlan, Capacity, CareRequest, DemandSnapshot, Offer, PlanAction, SeedMetadata, Service
+
+    session = empty_session
+    day = date(2026, 10, 10)
+    # Shared catalog rows keep a plan action's ordinary service/zone FKs from masking
+    # the JSON dependency under test.
+    session.add(Service(
+        name="Primary care outpatient", display_name="Primary care outpatient",
+        code="PRIMARY_CARE_OPD", aliases="primary care outpatient",
+        unit_cost=1_000, origin_type="legacy", origin_label="shared catalog",
+    ))
+    for zone in load_seed_fixture()["zones"]:
+        session.add(entity("Zone")(**zone, origin_type="synthetic", origin_label="shared catalog"))
+    session.flush()
+    seed(session, day, clock=DEMO_CLOCK, reset=True)
+    request = session.scalar(select(CareRequest).where(CareRequest.public_id == "REQ-DEMO-001"))
+    capacity = session.scalar(select(Capacity).where(Capacity.facility_id ==
+        select(entity("Facility").id).where(entity("Facility").public_id == "FAC-P03").scalar_subquery()))
+    offer = session.scalar(select(Offer).where(Offer.public_id == "OFFER-DEMO-QUOTA"))
+    assert request is not None and capacity is not None and offer is not None
+
+    snapshot_fields = {"request_ids": [], "capacity_versions": [], "offer_versions": []}
+    if reference_kind == "snapshot_public_request":
+        snapshot_fields["request_ids"] = ["REQ-DEMO-001"]
+    elif reference_kind == "snapshot_internal_request":
+        snapshot_fields["request_ids"] = [request.id]
+    elif reference_kind == "snapshot_public_capacity_version":
+        snapshot_fields["capacity_versions"] = {"FAC-P03:PRIMARY_CARE_OPD:2026-10-12": 1}
+    elif reference_kind == "snapshot_internal_capacity_version":
+        snapshot_fields["capacity_versions"] = {str(capacity.id): 1}
+    elif reference_kind == "snapshot_public_offer_version":
+        snapshot_fields["offer_versions"] = {"OFFER-DEMO-QUOTA": 1}
+    elif reference_kind == "snapshot_internal_offer_version":
+        snapshot_fields["offer_versions"] = {str(offer.id): 1}
+
+    if reference_kind.startswith("snapshot_"):
+        row = DemandSnapshot(
+            public_id=f"SNAP-{reference_kind}", captured_at=DEMO_CLOCK,
+            local_month=day.replace(day=1), service_date_start=day,
+            service_date_end=day, input_hash="independent-snapshot",
+            cohorts=[], exclusions=[], **snapshot_fields,
+        )
+    else:
+        reference = "REQ-DEMO-001" if "public" in reference_kind else request.id
+        plan = AllocationPlan(day=day, cost=0, units=0, allocations=[], status="DRAFT")
+        session.add(plan)
+        session.flush()
+        if reference_kind.startswith("plan_"):
+            plan.allocations = [{"request_id": reference}]
+            row = plan
+        else:
+            row = PlanAction(
+                public_id=f"ACT-{reference_kind}", plan_id=plan.id,
+                action_type="SUBSIDY", service_id=request.service_id,
+                zone_id="Central", service_date=day, units=0, cost_pkr=0,
+                status="DRAFT", assignments=[{"request_id": reference}],
+            )
+    session.add(row)
+    session.commit()
+    row_id, request_id = row.id, request.id
+    row_type = type(row)
+    session.expire_all()
+
+    with pytest.raises(DemoResetConflict, match="Reset was refused"):
+        seed(session, day, clock=DEMO_CLOCK, reset=True)
+    session.expire_all()
+    assert session.get(row_type, row_id) is not None
+    assert session.get(CareRequest, request_id) is not None
+    assert session.scalar(select(SeedMetadata.id)) is not None
+
+
+def test_reset_preserves_snapshot_with_only_unrelated_json_references(empty_session):
+    from app.models import DemandSnapshot, SeedMetadata
+
+    session = empty_session
+    day = date(2026, 10, 10)
+    seed(session, day, clock=DEMO_CLOCK)
+    snapshot = DemandSnapshot(
+        public_id="SNAP-UNRELATED", captured_at=DEMO_CLOCK,
+        local_month=day.replace(day=1), service_date_start=day,
+        service_date_end=day, input_hash="independent-snapshot",
+        request_ids=["REQ-UNRELATED"], cohorts=[], exclusions=[],
+        capacity_versions={"FAC-UNRELATED:OTHER_SERVICE:2026-10-10": 1},
+        offer_versions={"OFFER-UNRELATED": 1}, rule_versions=[],
+    )
+    session.add(snapshot)
+    session.commit()
+    snapshot_id = snapshot.id
+    seed(session, day, clock=DEMO_CLOCK, reset=True)
+    session.expire_all()
+    assert session.get(DemandSnapshot, snapshot_id) is not None
+    assert session.scalar(select(SeedMetadata.id)) is not None
 
 
 def test_explicit_reset_seeds_demo_even_when_database_has_only_unrelated_rows(empty_session):

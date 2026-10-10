@@ -1,5 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from app.main import today
 
@@ -315,6 +315,45 @@ def test_demo_reset_refuses_linked_activity_atomically(client, monkeypatch):
         assert session.get(Capacity, demo_capacity_id) is not None
         assert demo_facility_ids <= set(session.scalars(select(Facility.id)).all())
         assert session.scalar(select(SeedMetadata.id)) is not None
+
+
+def test_demo_reset_refuses_public_snapshot_references_atomically(client, monkeypatch):
+    from sqlalchemy import select
+    from app.main import settings
+    from app.models import CareRequest, DemandSnapshot, Offer, SeedMetadata, Zone
+    from app.seed import load_seed_fixture, seed
+
+    api, factory = client
+    monkeypatch.setattr(settings, "enable_demo_reset", True)
+    with factory() as session:
+        for row in load_seed_fixture()["zones"]:
+            if session.scalar(select(Zone.id).where(Zone.zone_id == row["zone_id"])) is None:
+                session.add(Zone(**row, origin_type="synthetic", origin_label="shared existing"))
+        session.flush()
+        seed(session, today(), reset=True)
+        request = session.scalar(select(CareRequest).where(CareRequest.public_id == "REQ-DEMO-001"))
+        offer = session.scalar(select(Offer).where(Offer.public_id == "OFFER-DEMO-QUOTA"))
+        snapshot = DemandSnapshot(
+            public_id="SNAP-PUBLIC-DEPENDENCY", captured_at=datetime.now(timezone.utc),
+            local_month=today().replace(day=1), service_date_start=today(), service_date_end=today(),
+            input_hash="snapshot-public-dependency", request_ids=["REQ-DEMO-001"],
+            cohorts=[], exclusions=[],
+            capacity_versions={f"FAC-P03:PRIMARY_CARE_OPD:{today().isoformat()}": 1},
+            offer_versions={"OFFER-DEMO-QUOTA": 1}, rule_versions=[],
+        )
+        session.add(snapshot)
+        session.commit()
+        request_id, offer_id, snapshot_id = request.id, offer.id, snapshot.id
+        metadata_id = session.scalar(select(SeedMetadata.id))
+
+    response = api.post("/api/demo/reset?confirm=RESET_SYNTHETIC_DATA")
+    assert response.status_code == 409, response.text
+    assert "Reset was refused" in response.json()["detail"]
+    with factory() as session:
+        assert session.get(DemandSnapshot, snapshot_id) is not None
+        assert session.get(CareRequest, request_id) is not None
+        assert session.get(Offer, offer_id) is not None
+        assert session.get(SeedMetadata, metadata_id) is not None
 
 
 def test_demo_reset_refuses_unowned_provider_children_atomically(client, monkeypatch):

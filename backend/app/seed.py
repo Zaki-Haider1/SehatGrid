@@ -62,6 +62,22 @@ def _json_references_owned(value, references):
     return False
 
 
+def _version_keys_reference_owned(value, keys, *, composite_parts=()):
+    """Version maps identify inputs by their keys, not their version numbers."""
+    if isinstance(value, dict):
+        for key, nested in value.items():
+            parts = str(key).split(":")
+            if str(key) in keys or (len(parts) == 3 and any(
+                part in owned for part, owned in zip(parts[:2], composite_parts)
+            )):
+                return True
+            if _version_keys_reference_owned(nested, keys, composite_parts=composite_parts):
+                return True
+    elif isinstance(value, list):
+        return any(_version_keys_reference_owned(item, keys, composite_parts=composite_parts) for item in value)
+    return False
+
+
 def load_seed_fixture():
     return json.loads(SEED_FIXTURE_PATH.read_text(encoding="utf-8"))
 
@@ -126,16 +142,20 @@ def reset_seed(session: Session, day, clock, fixture=None):
     facility_public_ids = session.scalars(select(Facility.public_id).where(Facility.id.in_(facility_ids))).all()
     request_public_ids = session.scalars(select(CareRequest.public_id).where(CareRequest.id.in_(request_ids))).all()
     service_codes = session.scalars(select(Service.code).where(Service.id.in_(service_ids))).all()
+    offer_public_ids = session.scalars(select(Offer.public_id).where(Offer.id.in_(offer_ids))).all()
+    subsidy_public_ids = session.scalars(select(SubsidyRule.public_id).where(SubsidyRule.id.in_(subsidy_ids))).all()
+    facility_references = {str(value) for value in facility_ids} | {value for value in facility_public_ids if value}
+    service_references = {str(value) for value in service_ids} | {value for value in service_codes if value}
     row_id_references = {
-        "facility_id": {str(value) for value in facility_ids},
-        "facility_ids": {str(value) for value in facility_ids},
-        "request_id": {str(value) for value in request_ids},
-        "request_ids": {str(value) for value in request_ids},
+        "facility_id": facility_references,
+        "facility_ids": facility_references,
+        "request_id": {str(value) for value in request_ids} | {value for value in request_public_ids if value},
+        "request_ids": {str(value) for value in request_ids} | {value for value in request_public_ids if value},
         "capacity_id": {str(value) for value in capacity_ids},
         "capacity_ids": {str(value) for value in capacity_ids},
-        "service_id": {str(value) for value in service_ids},
-        "offer_id": {str(value) for value in offer_ids},
-        "subsidy_rule_id": {str(value) for value in subsidy_ids},
+        "service_id": service_references,
+        "offer_id": {str(value) for value in offer_ids} | {value for value in offer_public_ids if value},
+        "subsidy_rule_id": {str(value) for value in subsidy_ids} | {value for value in subsidy_public_ids if value},
         "budget_id": {str(value) for value in budget_ids},
         "zone_id": {str(value) for value in zone_ids} | set(zone_keys),
         "service_review_id": set(review_public_ids),
@@ -149,6 +169,16 @@ def reset_seed(session: Session, day, clock, fixture=None):
              "offer_versions": row.offer_versions, "rule_versions": row.rule_versions,
              "cohorts": row.cohorts, "exclusions": row.exclusions},
             row_id_references,
+        )
+        or _version_keys_reference_owned(
+            row.capacity_versions, {str(value) for value in capacity_ids} | facility_references | service_references,
+            composite_parts=(facility_references, service_references),
+        )
+        or _version_keys_reference_owned(
+            row.offer_versions, {str(value) for value in offer_ids} | {value for value in offer_public_ids if value},
+        )
+        or _version_keys_reference_owned(
+            row.rule_versions, {str(value) for value in subsidy_ids} | {value for value in subsidy_public_ids if value},
         )
         for row in nonowned_snapshots
     ) or any(_json_references_owned(row.allocations, row_id_references) for row in nonowned_plans) or any(
