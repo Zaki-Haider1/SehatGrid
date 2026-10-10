@@ -21,6 +21,12 @@
       "false_match_rate": 0,
       "abstention": 0.5,
       "manual_review_required": 14
+    },
+    "final_focused_onboarding_and_cors": {
+      "command": "python -m pytest -q tests/test_onboarding.py && ruff check .",
+      "passed": 7,
+      "duration_seconds": 46.11,
+      "note": "Full 122-test pass preceded final DELETE CORS addition; expanded full suite belongs to final CI."
     }
   },
   "frontend": {
@@ -266,7 +272,8 @@
     "Manual export assertion used Plan DTO coverage key; corrected to export DTO projected/additional.",
     "Focused onboarding tests used an unsupported helper signature; corrected before full 122-test pass.",
     "Initial backend run lacked repository fixture paths, then shared-container restart interrupted it; final full validation used a separate container with repository mounted.",
-    "A production build was locked by the preview server; stopped that server before rebuilding."
+    "A production build was locked by the preview server; stopped that server before rebuilding.",
+    "Split-host CORS omitted DELETE; added it and verified configured-origin preflight."
   ],
   "limits": [
     "Phone checks use Chromium emulation, not physical-device Safari/WebKit.",

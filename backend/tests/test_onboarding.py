@@ -123,3 +123,18 @@ def test_existing_demo_gains_onboarding_accounts_without_resetting_operations(pi
         assert after[key] == before[key]
     assert p.ok("auth/me", user="onboarder-p03")["role"] == "onboarder"
     assert all(f["catalog"] == [] for f in after["facilities"])
+
+
+def test_catalog_delete_allows_configured_cross_origin_preflight(pilot):
+    from app.mvp.api import settings
+
+    response = pilot.client.options(
+        "/api/v1/facilities/P03/catalog/catalog-0001",
+        headers={
+            "Origin": settings.cors_origins.split(",")[0].strip(),
+            "Access-Control-Request-Method": "DELETE",
+            "Access-Control-Request-Headers": "Authorization,Content-Type,Idempotency-Key",
+        },
+    )
+    assert response.status_code == 200
+    assert "DELETE" in response.headers["access-control-allow-methods"]

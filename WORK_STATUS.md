@@ -11,7 +11,7 @@ Dev 3 is implemented on `codex/dev3-acceptance-delivery`, integrating `origin/ma
 
 | Gate | Final local evidence |
 |---|---|
-| Backend, isolated SQLite | `python -m pytest -q`: **122 passed**, 8 existing warnings, 662.03s. All repository tests and the six onboarding/catalog cases ran with the actual pinned model. |
+| Backend, isolated SQLite | `python -m pytest -q`: **122 passed**, 8 existing warnings, 662.03s. All repository tests and six onboarding/catalog cases ran with the actual pinned model. Final review then added cross-origin catalog DELETE support: `python -m pytest -q tests/test_onboarding.py` passed **7 cases in 46.11s**, followed by Ruff. The full 122-test pass predates that focused CORS addition; final CI runs the expanded suite. |
 | Backend lint / migrations | `ruff check .`, fresh `python -m alembic upgrade head`, and `python -m alembic check` passed; no new migration operations. |
 | Evaluations | `python scripts/evaluate_allocation.py`: **42 independent exhaustive cases passed**. Matching: 6 development / 14 held-out synthetic examples, retrieval/precision 1.00, false-match 0.00, abstention 0.50, all 14 require manual review. No clinical accuracy claim. Timing-only changes to tracked evaluation reports were discarded. |
 | Frontend | `npm run typecheck`, `npm run format:check`, `API_PROXY_TARGET=http://127.0.0.1:18000 npm run build`, and documented standalone `npm start` passed. |
