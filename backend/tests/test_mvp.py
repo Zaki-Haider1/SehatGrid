@@ -80,6 +80,27 @@ def test_ranking_never_selects_an_ineligible_provider(pilot):
     assert all(candidate["facility_id"] != "P02" for candidate in result["candidates"])
 
 
+def test_recommendation_exposes_the_checks_and_ranking_used(pilot):
+    p = pilot
+    result = p.ok("requests/A-01/recommendations", user="operator-p01")
+    candidate = result["candidates"][0]
+
+    assert result["ranking_criteria"] == ["same_zone", "subsidy", "available"]
+    assert candidate["eligibility"]["service_reviewed"] is True
+    assert candidate["eligibility"]["reviewed_service_id"] == SERVICE
+    assert candidate["eligibility"]["request_zone"] == "South"
+    assert candidate["eligibility"]["zone_eligible"] is True
+    assert candidate["eligibility"]["declared_eligible_zones"] == ["South"]
+    assert candidate["eligibility"]["service_date"] == candidate["date"]
+    assert candidate["eligibility"]["within_requested_dates"] is True
+    assert candidate["eligibility"]["quota_fresh"] is True
+    assert candidate["eligibility"]["quota_updated_at"]
+    assert candidate["eligibility"]["available_capacity"] == candidate["available"]
+    assert candidate["eligibility"]["request_needs_funding"] is True
+    assert candidate["eligibility"]["funding_eligible"] is True
+    assert candidate["eligibility"]["funding_amount"] == candidate["subsidy"]
+
+
 def test_proposed_referral_persists_without_holding_capacity_or_funds(pilot):
     p = pilot
     choice = p.ok("requests/A-01/recommendations", user="operator-p01")["candidates"][0]

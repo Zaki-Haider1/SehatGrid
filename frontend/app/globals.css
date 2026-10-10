@@ -603,6 +603,66 @@ header {
 .matching small {
   overflow-wrap: anywhere;
 }
+.decision-trace {
+  border-top: 1px solid var(--line);
+  margin: 14px 0;
+  padding-top: 12px;
+  min-width: 0;
+}
+.decision-trace > summary,
+.trace-technical > summary {
+  color: var(--green);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+.trace-rows {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+  margin: 12px 0;
+}
+.trace-rows > div {
+  min-width: 0;
+  padding: 9px 10px;
+  background: #f7f8f5;
+  border-radius: 6px;
+}
+.trace-rows dt {
+  color: var(--muted);
+  font-size: 10px;
+}
+.trace-rows dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.trace-note,
+.trace-destination > strong,
+.trace-revision {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.trace-destination {
+  margin: 14px 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+.trace-technical {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+.trace-candidate {
+  margin: 5px 0;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.trace-revision + .trace-revision {
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
 .recommendation {
   border: 1px solid var(--line);
   border-radius: 7px;
@@ -953,6 +1013,9 @@ footer {
   }
   .plan-metrics {
     grid-template-columns: 1fr 1fr;
+  }
+  .trace-rows {
+    grid-template-columns: 1fr;
   }
   .referral {
     flex-direction: column;
