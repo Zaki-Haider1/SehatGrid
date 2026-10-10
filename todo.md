@@ -6,6 +6,8 @@ Reviewed 10 October 2026 against local `plan.md` scope v1.0 and repository commi
 
 This file is the shared, Git-visible execution handoff. `plan.md` is a local, ignored source specification and will not arrive with a fresh clone. Required scope, rules, interfaces, and acceptance checks are therefore summarized here. Checkboxes mean reviewed completion with evidence, not merely code written. All remaining tasks start unchecked.
 
+**Execution update:** T00 and T01 are complete on `feat/backend-t00-t03`; T02/T03 have not started. Further pushes are held until the requested scope is complete. Execution stops at the requested T01 checkpoint. The assessment below records the initial repository state.
+
 ## 1. What exists and what is still missing
 
 This is a source inspection, not a new runtime qualification. No backend tests, frontend build, or deployment were run during this review; `.venv` and `frontend/node_modules` were absent. Existing tests and CI are evidence of verification infrastructure, not evidence that the full new scope passes.
@@ -114,26 +116,32 @@ JSON fixtures parsed; `git diff --check` — clean. Full notes:
 
 ### T01 — Shared entities, migrations and narrow synthetic seed
 
-**Owner:** D1. **Status:** ACTIVE. **Claim:** Codex + GPT-6 Luna / `feat/backend-t00-t03` / implementation in progress.
+**Owner:** D1. **Status:** DONE. **Claim:** Codex + GPT-6 Luna / `feat/backend-t00-t03` / locally committed; focused closure after user capped re-reviews.
 
 **Files:** `backend/app/models.py`, `schemas.py`, `seed.py`, `seed_cli.py`, new additive migrations; new `data/seed/` fixtures; `backend/tests/conftest.py`, new `tests/test_migrations.py`, `tests/test_seed.py`.
 
-- [ ] Add users/facility scope, zones, participation/provenance, facility services, dated versioned capacity, reviewed requests/attempts/reservations, match reviews, monthly budgets/ledger, subsidy rules, quota/mobile offers, demand snapshots, versioned plans/actions and audit events. Phase migrations by dependent task rather than landing speculative unused machinery.
-- [ ] Keep ownership and funding/capacity counters constrained; preserve canonical IDs and existing history through migration. Document any synthetic-only reseed instead of silently deleting data.
-- [ ] Replace Karachi/broad-service fixtures with ~5 Islamabad pilot zones and ~8 explicitly synthetic public/private providers. Include fresh/stale/exhausted data, ambiguous/unsupported text, scope/date/funding exclusions, and all three funded offers.
-- [ ] Seed a declared demo clock/version and the disjoint 8/7/5 unresolved cohorts with PKR 25,000; keep any referral walkthrough request separate so the snapshot remains exactly 20 units.
+- [x] Add users/facility scope, zones, participation/provenance, facility services, dated versioned capacity, reviewed requests/attempts/reservations, match reviews, monthly budgets/ledger, subsidy rules, quota/mobile offers, demand snapshots, versioned plans/actions and audit events. Phase migrations by dependent task rather than landing speculative unused machinery.
+- [x] Keep ownership and funding/capacity counters constrained; preserve canonical IDs and existing history through migration. Document any synthetic-only reseed instead of silently deleting data.
+- [x] Replace Karachi/broad-service fixtures with ~5 Islamabad pilot zones and ~8 explicitly synthetic public/private providers. Include fresh/stale/exhausted data, ambiguous/unsupported text, scope/date/funding exclusions, and all three funded offers.
+- [x] Seed a declared demo clock/version and the disjoint 8/7/5 unresolved cohorts with PKR 25,000; keep any referral walkthrough request separate so the snapshot remains exactly 20 units.
+
+**Evidence:** Task commits `29a5bc8` through `03f909b`; 91 backend tests passed across SQLite/PostgreSQL, including fresh/populated Alembic upgrades and empty model/schema diffs; Ruff and whitespace checks passed. Root-context Docker build, packaged fixture read, and Compose validation passed. Seed/reset regression tests cover feasible 8/7/5 cohorts, real manual review provenance, exact row ownership, and refusal preserving linked history. Full notes: `.superpowers/sdd/backend-t00-t03/T01-report.md`.
+
+**Limits / handoff:** Migration downgrade cleanup is deferred; upgrades are verified. T02 must adapt the legacy dashboard to the narrow seed monthly budget and authenticate the CI container smoke. Final repeated re-review was stopped at the user's request; the last fixes were checked against persisted regressions and the published contract.
 
 **Produces:** Migrated shared schema and deterministic data consumed by T02–T12. **Accept:** Empty DB and existing-schema upgrade work on SQLite/PostgreSQL; repeat seed does not duplicate; reset deterministically rebuilds counts/origins and declared freshness.
 
 ### T02 — Authentication, facility permissions and audit
 
-**Owner:** D1. **Status:** WAIT(T00,T01). **Claim:** Unclaimed.
+**Owner:** D1. **Status:** READY. **Claim:** Unclaimed; paused at user-requested T01 checkpoint.
 
 **Files:** new `backend/app/services/auth.py`, `audit.py`, auth routes; `main.py`, `config.py`, `.env.example`, dependency pins by D1; new `tests/test_auth.py`, `test_audit.py`.
 
 - [ ] Seed operator and planner accounts; implement validated login/session handling with secrets outside Git. Replace unrestricted API mutation access with backend role and assigned-facility checks.
 - [ ] Enforce sender/receiver scope, planner-only budget/participation/plan approval, own-resource activation, and any explicit delegated subsidy limit. Planner cannot impersonate partner acceptance.
 - [ ] Persist actor/time/object/before-after or reason for mutations and reviewed decisions; expose scoped audit reads.
+
+- [ ] Adapt authenticated legacy dashboard to the narrow seed monthly budget without duplicate writable budgets; authenticate the CI container smoke and cover the real product seed.
 
 **Accept:** Unauthenticated access fails; cross-facility edits/responses and undelegated budget actions fail; valid actors succeed and produce audit events. UI role switching never grants backend permissions.
 
@@ -336,6 +344,8 @@ JSON fixtures parsed; `git diff --check` — clean. Full notes:
 - [ ] Cover concurrent last-unit/same-request reservations, budget/offer/mobile claims, idempotency, cutoff/expiry, ledger transfers and rollback; include stale capacity/offer/budget/rule approval conflicts.
 - [ ] Add a browser test for review → referral completion → snapshot → mixed monthly plan → approval → activation → formerly unresolved confirmation/completion → export, including projected versus actual totals.
 - [ ] Preserve relevant old regression guards; rewrite urgent-objective and instant-approval assertions to match accepted new semantics instead of deleting coverage.
+
+- [ ] Repair T01 generated downgrade placeholders and verify rollback on disposable SQLite/PostgreSQL databases before relying on downgrade.
 
 **Accept:** Reproducible commands pass against both DB targets and real frontend/API; artifacts identify input/seed/version and show actual outcomes. Migrations, solver oracle and browser journey are separate gates.
 
