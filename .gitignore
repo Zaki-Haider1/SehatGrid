@@ -19,3 +19,11 @@ work/
 
 # Local source plan; share actionable work through todo.md.
 /plan.md
+.superpowers/
+!.superpowers/
+.superpowers/*
+!.superpowers/sdd/
+.superpowers/sdd/*
+!.superpowers/sdd/backend-t00-t03/
+.superpowers/sdd/backend-t00-t03/*
+!.superpowers/sdd/backend-t00-t03/T00-report.md

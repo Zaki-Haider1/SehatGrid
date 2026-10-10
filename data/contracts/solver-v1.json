@@ -1,0 +1,26 @@
+{
+  "contract_version": "1.0",
+  "snapshot_id": "SNAP-2026-10-DEMO-001",
+  "budget": {"budget_id": "BUDGET-2026-10", "version": 3, "authorized_pkr": 25000},
+  "rule_version": "allocation-policy-1",
+  "model_version": "solver-config-1",
+  "status": "OPTIMAL",
+  "objective": "MAXIMIZE_ADDITIONAL_UNITS_THEN_MINIMIZE_COST_THEN_STABLE_ACTION_ID",
+  "runtime_seconds": 0.018,
+  "selected_actions": [
+    {"action_id": "ACTION-SUBSIDY-A", "type": "SUBSIDY", "cohort_id": "COHORT-A", "units": 8, "cost_pkr": 8000},
+    {"action_id": "ACTION-QUOTA-B", "type": "PARTNER_QUOTA", "offer_id": "OFFER-QUOTA-01", "cohort_id": "COHORT-B", "units": 7, "cost_pkr": 7000},
+    {"action_id": "ACTION-MOBILE-C", "type": "MOBILE_UNIT", "offer_id": "OFFER-MOBILE-01", "cohort_id": "COHORT-C", "units": 5, "cost_pkr": 10000}
+  ],
+  "assignments": [
+    {"request_ids": ["REQ-A-001", "REQ-A-002", "REQ-A-003", "REQ-A-004", "REQ-A-005", "REQ-A-006", "REQ-A-007", "REQ-A-008"], "units": 8, "action_id": "ACTION-SUBSIDY-A"},
+    {"request_ids": ["REQ-B-001", "REQ-B-002", "REQ-B-003", "REQ-B-004", "REQ-B-005", "REQ-B-006", "REQ-B-007"], "units": 7, "action_id": "ACTION-QUOTA-B"},
+    {"request_ids": ["REQ-C-001", "REQ-C-002", "REQ-C-003", "REQ-C-004", "REQ-C-005"], "units": 5, "action_id": "ACTION-MOBILE-C"}
+  ],
+  "baseline_units": 0,
+  "additional_units": 20,
+  "cost_breakdown_pkr": {"subsidy": 8000, "partner_quota": 7000, "mobile_unit": 10000, "total": 25000},
+  "remaining_demand": 0,
+  "excluded_requests": [],
+  "assumptions": ["Synthetic Islamabad demo fixture", "All costs are integer PKR", "FEASIBLE does not imply OPTIMAL"]
+}

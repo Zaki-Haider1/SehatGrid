@@ -1,0 +1,59 @@
+{
+  "contract_version": "1.0",
+  "snapshot_id": "SNAP-2026-10-DEMO-001",
+  "created_at": "2026-10-10T09:00:00Z",
+  "period": {
+    "calendar_month": "2026-10",
+    "service_date_from": "2026-10-01",
+    "service_date_to": "2026-10-31",
+    "timezone": "Asia/Karachi"
+  },
+  "input_hash": "sha256:demo-fixture-hash",
+  "request_ids": [
+    "REQ-A-001", "REQ-A-002", "REQ-A-003", "REQ-A-004", "REQ-A-005", "REQ-A-006", "REQ-A-007", "REQ-A-008",
+    "REQ-B-001", "REQ-B-002", "REQ-B-003", "REQ-B-004", "REQ-B-005", "REQ-B-006", "REQ-B-007",
+    "REQ-C-001", "REQ-C-002", "REQ-C-003", "REQ-C-004", "REQ-C-005"
+  ],
+  "cohorts": [
+    {
+      "cohort_id": "COHORT-A",
+      "request_ids": ["REQ-A-001", "REQ-A-002", "REQ-A-003", "REQ-A-004", "REQ-A-005", "REQ-A-006", "REQ-A-007", "REQ-A-008"],
+      "service_id": "PRIMARY_CARE_OPD",
+      "zone_id": "Central",
+      "service_dates": ["2026-10-12"],
+      "suitability_requirement": "STAFF_RECORDED",
+      "funding_requirement": "SUBSIDY_MAY_BE_REQUIRED",
+      "units": 8
+    },
+    {
+      "cohort_id": "COHORT-B",
+      "request_ids": ["REQ-B-001", "REQ-B-002", "REQ-B-003", "REQ-B-004", "REQ-B-005", "REQ-B-006", "REQ-B-007"],
+      "service_id": "PRIMARY_CARE_OPD",
+      "zone_id": "East",
+      "service_dates": ["2026-10-12"],
+      "suitability_requirement": "STAFF_RECORDED",
+      "funding_requirement": "FUNDING_INCLUDED_OFFER_REQUIRED",
+      "units": 7
+    },
+    {
+      "cohort_id": "COHORT-C",
+      "request_ids": ["REQ-C-001", "REQ-C-002", "REQ-C-003", "REQ-C-004", "REQ-C-005"],
+      "service_id": "PRIMARY_CARE_OPD",
+      "zone_id": "North",
+      "service_dates": ["2026-10-12"],
+      "suitability_requirement": "STAFF_RECORDED",
+      "funding_requirement": "FUNDING_INCLUDED_OFFER_REQUIRED",
+      "units": 5
+    }
+  ],
+  "excluded_requests": [
+    {"request_id": "REQ-UNKNOWN-001", "reason_code": "UNKNOWN_ZONE_REVIEW_REQUIRED"},
+    {"request_id": "REQ-STALE-001", "reason_code": "CAPACITY_DATA_STALE"}
+  ],
+  "versions": {
+    "capacity": {"FAC-P03:PRIMARY_CARE_OPD:2026-10-12": 4},
+    "offers": {"OFFER-QUOTA-01": 2, "OFFER-MOBILE-01": 1},
+    "rules": {"eligibility": "eligibility-policy-1", "subsidy": "subsidy-rules-1"}
+  },
+  "immutability": "Creating a corrected snapshot produces a new ID and input hash."
+}

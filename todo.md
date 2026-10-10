@@ -36,9 +36,15 @@ Three ownership lanes follow the source plan. Assign actual names in the table b
 
 | Lane | Person | Owns | Default reviewer |
 |---|---|---|---|
-| D1 — operational backend / integration | Unassigned | Schema and migrations; auth, providers, capacity, referral persistence, ledger, approval/activation; shared backend wiring | D2 for invariant/contract changes |
-| D2 — decision logic / evidence | Unassigned | Matching and review logic, eligibility/ranking, intelligence snapshots, allocation model, offline evaluation | D1 for persistence/transactions |
-| D3 — frontend / presentation | Unassigned | Typed API client, authenticated screens, map, results/export UI, browser checks and rehearsal | D1 or D2 for displayed semantics |
+| D1 — operational backend / integration | Codex (`feat/backend-t00-t03`) | Schema and migrations; auth, providers, capacity, referral persistence, ledger, approval/activation; shared backend wiring | D2 for invariant/contract changes |
+| D2 — decision logic / evidence | To be assigned | Matching and review logic, eligibility/ranking, intelligence snapshots, allocation model, offline evaluation | D1 for persistence/transactions |
+| D3 — frontend / presentation | To be assigned | Typed API client, authenticated screens, map, results/export UI, browser checks and rehearsal | D1 or D2 for displayed semantics |
+
+**T00 coordination ruling:** The integration branch is `feat/backend-t00-t03`.
+Lane names and boundaries are D1 operational backend/integration, D2 decision
+logic/evidence, and D3 frontend/presentation. Only D1 is assigned in this task;
+D2/D3 remain named lanes with their assignment pending. `/api/v1` is the target
+client prefix; `/api` remains the compatibility surface during migration.
 
 1. Claim one task by changing its status and adding your name/branch/PR in its task card. Confirm dependencies before implementing against a contract.
 2. Use a separate clone or worktree per person, with a task branch such as `feat/T03-capacity`. Agree the integration branch at T00; do not share one working directory or push unfinished changes to `main`.
@@ -68,19 +74,19 @@ Three ownership lanes follow the source plan. Assign actual names in the table b
 
 Publish `docs/api-contracts.md`, `docs/assumptions.md`, and versioned example JSON in `data/contracts/`. These travel with the repo because the source plan is ignored.
 
-- [ ] Declare selected Islamabad zone IDs/origin, `PRIMARY_CARE_OPD`, provider/request IDs, integer PKR, UTC event timestamps, and `Asia/Karachi` dates/calendar months. Unknown-zone records are retained in summaries but excluded from eligible planning until reviewed.
-- [ ] Declare request states `OPEN`, `IN_PROGRESS`, `UNRESOLVED`, `FULFILLED`, `CANCELLED`, `OUT_OF_SCOPE`; attempt states `PROPOSED`, `AWAITING_CONFIRMATIONS`, `CONFIRMED`, `ARRIVED`, `COMPLETED`, `REJECTED`, `CANCELLED`, `EXPIRED`, `NO_SHOW`. Preserve attempt history independently of request state.
-- [ ] Declare action states `DRAFT`, `APPROVED`, `PENDING_ACTIVATION`, `ACTIVE`, `CLOSED` plus explicit rejection/cancellation; ledger states `HELD`, `COMMITTED`, `SETTLED`, `RELEASED` with transfer links.
-- [ ] Define availability as quota minus active holds, confirmed uncompleted, completed, and forfeited units. Publish freshness/hold minutes, local cancellation cutoff, limited-capacity threshold and service-window/no-show rule as validated settings.
-- [ ] Freeze capacity DTO: facility/service/date, declared quota, held/committed/completed/forfeited/available units, update actor/time, freshness, version, origin. Availability/freshness are server-derived.
-- [ ] Freeze request DTO: source facility, synthetic reference, zone, original service text, reviewed service/review ID, acceptable dates, staff-recorded in-scope suitability, agreement and funding flags, status/reasons. No real patient details or automatic clinical eligibility.
-- [ ] Freeze match result/review DTO: candidate IDs/scores/supporting fields, original input, model/revision, `NEEDS_REVIEW`/`NO_SUPPORTED_MATCH`, selected canonical ID, actor/time. Similarity is not probability.
-- [ ] Freeze offer DTOs: dated units/service/eligible zones, cost, funding-included flag, version/validity, spare-capacity group for quota and mobile-unit/site/date exclusivity for mobile.
-- [ ] Freeze immutable snapshot DTO: snapshot ID/time/hash, month/date range, unique request IDs/cohorts, exclusions/reasons, capacity/offer/rule versions. Cohorts share service, zone, dates, suitability and funding requirements.
-- [ ] Freeze solver DTO: snapshot/budget/rule/model versions, selected actions, assignments, baseline/additional units, total/cost breakdown, remaining demand, exclusions, status/objective/runtime/assumptions. `FEASIBLE` never implies `OPTIMAL`.
-- [ ] Decide versioned `/api/v1` cutover or a documented compatibility adapter for existing `/api`; use one prefix in client and tests. Cover login, facility participation/services/capacity, matching/reviews, requests/recommendations, all referral transitions, intelligence/snapshots, monthly budgets, offers, optimize/review/approve/activate/export and audit.
-- [ ] Define role/facility checks, expected-version conflicts, idempotency-key replay/body-mismatch behavior, and stable errors: `CAPACITY_CONFLICT`, `BUDGET_EXCEEDED`, `STALE_INPUT`, `INVALID_TRANSITION`, `SERVICE_REVIEW_REQUIRED`, `ROLE_FORBIDDEN`. Include actionable retry/recompute responses.
-- [ ] Keep a route → task owner → request/response fixture index. A changed interface updates its fixture, Python validation, TypeScript type and consuming tests together.
+- [x] Declare selected Islamabad zone IDs/origin, `PRIMARY_CARE_OPD`, provider/request IDs, integer PKR, UTC event timestamps, and `Asia/Karachi` dates/calendar months. Unknown-zone records are retained in summaries but excluded from eligible planning until reviewed.
+- [x] Declare request states `OPEN`, `IN_PROGRESS`, `UNRESOLVED`, `FULFILLED`, `CANCELLED`, `OUT_OF_SCOPE`; attempt states `PROPOSED`, `AWAITING_CONFIRMATIONS`, `CONFIRMED`, `ARRIVED`, `COMPLETED`, `REJECTED`, `CANCELLED`, `EXPIRED`, `NO_SHOW`. Preserve attempt history independently of request state.
+- [x] Declare action states `DRAFT`, `APPROVED`, `PENDING_ACTIVATION`, `ACTIVE`, `CLOSED` plus explicit rejection/cancellation; ledger states `HELD`, `COMMITTED`, `SETTLED`, `RELEASED` with transfer links.
+- [x] Define availability as quota minus active holds, confirmed uncompleted, completed, and forfeited units. Publish freshness/hold minutes, local cancellation cutoff, limited-capacity threshold and service-window/no-show rule as configurable demo settings.
+- [x] Freeze capacity DTO: facility/service/date, declared quota, held/committed/completed/forfeited/available units, update actor/time, freshness, version, origin. Availability/freshness are server-derived.
+- [x] Freeze request DTO: source facility, synthetic reference, zone, original service text, reviewed service/review ID, acceptable dates, staff-recorded in-scope suitability, agreement and funding flags, status/reasons. No real patient details or automatic clinical eligibility.
+- [x] Freeze match result/review DTO: candidate IDs/scores/supporting fields, original input, model/revision, `NEEDS_REVIEW`/`NO_SUPPORTED_MATCH`, selected canonical ID, actor/time. Similarity is not probability.
+- [x] Freeze offer DTOs: dated units/service/eligible zones, cost, funding-included flag, version/validity, spare-capacity group for quota and mobile-unit/site/date exclusivity for mobile.
+- [x] Freeze immutable snapshot DTO: snapshot ID/time/hash, month/date range, unique request IDs/cohorts, exclusions/reasons, capacity/offer/rule versions. Cohorts share service, zone, dates, suitability and funding requirements.
+- [x] Freeze solver DTO: snapshot/budget/rule/model versions, selected actions, assignments, baseline/additional units, total/cost breakdown, remaining demand, exclusions, status/objective/runtime/assumptions. `FEASIBLE` never implies `OPTIMAL`.
+- [x] Decide versioned `/api/v1` target with a documented `/api` compatibility adapter during client migration. Cover login, facility participation/services/capacity, matching/reviews, requests/recommendations, all referral transitions, intelligence/snapshots, monthly budgets, offers, optimize/review/approve/activate/export and audit.
+- [x] Define role/facility checks, expected-version conflicts, idempotency-key replay/body-mismatch behavior, and stable errors: `CAPACITY_CONFLICT`, `BUDGET_EXCEEDED`, `STALE_INPUT`, `INVALID_TRANSITION`, `SERVICE_REVIEW_REQUIRED`, `ROLE_FORBIDDEN`. Include actionable retry/recompute responses.
+- [x] Keep a route → task owner → request/response fixture index. A changed interface updates its fixture, Python validation, TypeScript type and consuming tests together.
 
 ## 5. Task cards
 
@@ -88,13 +94,19 @@ For each card, fill **Claim: name / branch / PR** and append **Evidence: command
 
 ### T00 — Agree contracts and remove shared-file collisions
 
-**Owner:** D1, with D2/D3 review. **Status:** READY. **Depends:** none. **Claim:** Unclaimed.
+**Owner:** D1, with D2/D3 review. **Status:** REVIEW. **Depends:** none. **Claim:** Codex / `feat/backend-t00-t03` / PR pending.
 
-**Files:** new `docs/api-contracts.md`, `docs/assumptions.md`, `data/contracts/*.json`; extraction from `backend/app/workflows.py`, `main.py`, `frontend/app/page.tsx`; `frontend/lib/api.ts` by D3 only.
+**Files:** new `docs/api-contracts.md`, `docs/assumptions.md`, `data/contracts/*.json`; backend extraction from `backend/app/workflows.py`, `main.py`. Frontend extraction and client changes are owned by D3 under T14; they do not block this backend handoff.
 
-- [ ] Complete section 4, record scope discrepancies and accepted target, agree integration branch and lane names.
-- [ ] Extract existing functions into task-owned modules without changing existing API behavior; preserve guarded writes and test semantics.
-- [ ] Publish matching/eligibility/snapshot/solver fixtures, route ownership, import interfaces and migration order so lanes can develop independently.
+- [x] Complete section 4, record scope discrepancies and accepted target, agree integration branch and lane names.
+- [x] Extract existing functions into task-owned modules without changing existing API behavior; preserve guarded writes and test semantics.
+- [x] Publish matching/eligibility/snapshot/solver fixtures, route ownership, import interfaces and migration order so lanes can develop independently.
+
+**Evidence:** `python -m pytest tests/test_workflows.py -q` — 18 passed;
+`TEST_DATABASE_URL=<disposable PostgreSQL> python -m pytest -q` — 36 passed
+across SQLite/PostgreSQL; `ruff check app tests` — passed; all five contract
+JSON fixtures parsed; `git diff --check` — clean. Full notes:
+`.superpowers/sdd/backend-t00-t03/T00-report.md`.
 
 **Accept:** All three lanes can identify exact input/output fixtures for their first task; current regression checks still pass after extraction. No new behavior is implemented merely to satisfy this coordination task.
 

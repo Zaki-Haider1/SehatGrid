@@ -1,0 +1,39 @@
+{
+  "contract_version": "1.0",
+  "request": {
+    "request_id": "REQ-DEMO-0001",
+    "source_facility_id": "FAC-P01",
+    "reference": "SYNTH-REQ-0001",
+    "zone_id": "Central",
+    "original_service_text": "general family outpatient checkup",
+    "service_id": "PRIMARY_CARE_OPD",
+    "service_review_id": "MATCH-REV-0001",
+    "acceptable_service_dates": ["2026-10-12"],
+    "in_scope_suitability": "STAFF_RECORDED",
+    "patient_agreement_required": true,
+    "patient_agreed": false,
+    "funding_required": false,
+    "funding_approved": true,
+    "status": "OPEN",
+    "unresolved_reasons": ["AWAITING_PROVIDER_SELECTION"]
+  },
+  "recommendations": [
+    {
+      "facility_id": "FAC-P03",
+      "service_id": "PRIMARY_CARE_OPD",
+      "service_date": "2026-10-12",
+      "available_units": 8,
+      "required_subsidy_pkr": 0,
+      "eligibility": "ELIGIBLE",
+      "supporting_checks": ["ACTIVE_PARTICIPATION", "REVIEWED_SERVICE", "ZONE_ELIGIBLE", "FRESH_CAPACITY", "SUITABILITY_RECORDED"],
+      "policy_version": "eligibility-policy-1"
+    }
+  ],
+  "excluded_candidates": [
+    {
+      "facility_id": "FAC-P04",
+      "reason_code": "CAPACITY_STALE",
+      "action": "Refresh the provider capacity report, then recompute recommendations."
+    }
+  ]
+}

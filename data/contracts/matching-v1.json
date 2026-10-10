@@ -1,0 +1,24 @@
+{
+  "contract_version": "1.0",
+  "kind": "service_match_response",
+  "status": "NEEDS_REVIEW",
+  "original_input": "general family outpatient checkup",
+  "model_id": "demo-matcher-pending-t07",
+  "model_revision": "pending",
+  "policy_version": "matching-policy-pending-t07",
+  "candidates": [
+    {
+      "canonical_id": "PRIMARY_CARE_OPD",
+      "display_name": "Primary care outpatient",
+      "similarity_score": 0.82,
+      "supporting_fields": ["phrase similarity", "candidate alias"]
+    }
+  ],
+  "selected_canonical_id": null,
+  "review": {
+    "review_id": null,
+    "actor_id": null,
+    "reviewed_at": null
+  },
+  "interpretation": "Similarity is a ranking signal, not a probability or clinical eligibility decision."
+}
