@@ -107,6 +107,21 @@ class OptimizeInput(Input):
     snapshot_id: str
 
 
+class PlanSelection(Input):
+    request_id: str = Field(min_length=1, max_length=200)
+    resource_id: str = Field(min_length=1, max_length=200)
+
+
+class RevisePlanInput(Input):
+    version: int = Field(ge=1)
+    reason: str = Field(min_length=3, max_length=500)
+    assignments: list[PlanSelection] = Field(max_length=10000)
+
+
+class ApprovePlanInput(Input):
+    version: int | None = Field(default=None, ge=1)
+
+
 class OfferInput(Input):
     facility_id: str
     date: date

@@ -1,0 +1,31 @@
+{
+  "contract_version": "plan-revision-v1",
+  "setup": "Fresh synthetic seed; planner snapshot and optimization for config.month. Replace {{service_date}} with config.service_date and use revision-options.version.",
+  "request": {
+    "version": 1,
+    "reason": "Run the initial pilot with the eight subsidy-supported requests",
+    "assignments": [
+      {"request_id": "A-01", "resource_id": "P01:PRIMARY_CARE_OPD:{{service_date}}"},
+      {"request_id": "A-02", "resource_id": "P01:PRIMARY_CARE_OPD:{{service_date}}"},
+      {"request_id": "A-03", "resource_id": "P01:PRIMARY_CARE_OPD:{{service_date}}"},
+      {"request_id": "A-04", "resource_id": "P01:PRIMARY_CARE_OPD:{{service_date}}"},
+      {"request_id": "A-05", "resource_id": "P01:PRIMARY_CARE_OPD:{{service_date}}"},
+      {"request_id": "A-06", "resource_id": "P01:PRIMARY_CARE_OPD:{{service_date}}"},
+      {"request_id": "A-07", "resource_id": "P01:PRIMARY_CARE_OPD:{{service_date}}"},
+      {"request_id": "A-08", "resource_id": "P01:PRIMARY_CARE_OPD:{{service_date}}"}
+    ]
+  },
+  "expected": {
+    "status": "DRAFT",
+    "version": 2,
+    "decision_source": "HUMAN_REVISION",
+    "cost": 8000,
+    "subsidy_cost": 8000,
+    "projected": 8,
+    "additional": 8,
+    "unresolved_remaining": 12,
+    "actions": []
+  },
+  "approval_request": {"version": 2},
+  "original_solver_expected": {"coverage": 20, "cost": 25000, "status": "OPTIMAL"}
+}

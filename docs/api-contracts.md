@@ -39,7 +39,9 @@ The Pydantic input contracts live in `backend/app/mvp/schemas.py`. All inputs fo
 | GET/POST | `/partner-quota-offers`, `/mobile-offers` | Scoped offers; owned facility, date, zones, capacity/cost and explicit shared spare group or mobile unit/site |
 | POST | `/plans/optimize` | Planner; immutable snapshot ID |
 | GET | `/plans/{id}` | Planner; draft/status, assignments, assumptions, solver result |
-| POST | `/plans/{id}/approve` | Planner; revalidate all inputs, reserve funds/offers/base earmarks |
+| GET | `/plans/{id}/revision-options` | Planner, current draft; `plan-revision-v1` selections, eligibility choices and current version |
+| POST | `/plans/{id}/revise` | Planner, current draft; expected `version`, recorded `reason`, full `assignments` of `{request_id, resource_id}`; server-derived totals |
+| POST | `/plans/{id}/approve` | Planner; current `version` required after human revision; revalidate all inputs/selections, reserve funds/offers/base earmarks |
 | POST | `/plans/{id}/actions/{id}/activate` | Responsible operator; all-or-nothing offered resource activation |
 | POST | `/plans/{id}/actions/{id}/reject` | Responsible operator; reason; release pending cost and update remaining plan |
 | POST | `/plans/{id}/cancel` | Planner; close unspent commitments, retain settled costs |
@@ -47,6 +49,8 @@ The Pydantic input contracts live in `backend/app/mvp/schemas.py`. All inputs fo
 | GET | `/audit` | Planner network audit / operator own events |
 
 ## Reservation example
+
+Draft revision examples, error recovery and Dev 3's UI fixture are in [the plan revision handoff](dev2-plan-revision.md). Original solver output remains immutable; `decision_source` identifies human decisions in the plan and aggregate JSON/CSV exports.
 
 First fetch recommendations and copy the returned versions. Submit:
 
