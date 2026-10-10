@@ -414,9 +414,10 @@
 .compact-credentials .demo-access-heading small { color: #94a0b7; font-size: 11px; }
 .compact-credentials label { color: #7f8ca6; font-size: 11px; gap: 6px; }
 .compact-credentials select { color: #4b5978; border-color: #e1e7f1; background: #f8faff; font-size: 12px; padding: 10px; }
-.demo-shared-credentials { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; border-radius: 10px; background: #f2f5fb; }
+.demo-shared-credentials { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; padding: 12px; border-radius: 10px; background: #f2f5fb; }
 .demo-shared-credentials small { color: #8997b0; font-size: 10px; display: block; margin-bottom: 5px; }
-.demo-shared-credentials code { color: #52648c; font-size: 12px; }
+.demo-shared-credentials code { color: #52648c; font-size: 12px; overflow-wrap: anywhere; }
+.demo-shared-credentials button { display: block; margin-top: 8px; padding: 9px 10px; border: 1px solid #dce4f1; border-radius: 9px; background: white; color: #52648c; font-size: 11px; cursor: pointer; }
 .compact-credentials .credential-actions { gap: 8px; }
 .compact-credentials .credential-actions button { flex: 1; border-color: #dce4f1; color: #7385aa; font-size: 11px; padding: 10px; }
 .compact-credentials .credential-actions .primary { background: #819be0; color: white; border-color: #819be0; }

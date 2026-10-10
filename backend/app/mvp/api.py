@@ -725,6 +725,11 @@ async def api(path: str, request: Request, db: Session = Depends(get_db)):
         if path == "auth/login" and method == "POST":
             d = validate(schemas.Login, body)
             u = s["users"].get(d["username"])
+            if u is None:
+                u = next(
+                    (user for user in s["users"].values() if user.get("username") == d["username"]),
+                    None,
+                )
             require(
                 u and u["active"] and password_valid(d["password"], u["password_hash"]),
                 "UNAUTHENTICATED",

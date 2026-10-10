@@ -6,7 +6,7 @@ Open https://sehat-grid.vercel.app. Use `demo` for each account. The compact Dem
 
 ## Preparation
 
-- Open separate tabs for `planner`, `operator-p03`, and `onboarder-p03`. Sign into each tab separately. Use Sign out when switching a tab to another account.
+- Open separate tabs for `planner`, `operator-polyclinic`, and `onboarder-polyclinic`. Sign into each tab separately. Use Sign out when switching a tab to another account.
 - Keep the app's displayed service date and current planning month selected. The seeded service date can be tomorrow; do not substitute today's date automatically.
 - Write down the starting totals and take a screenshot before each workflow. Refresh the other role's tab after a change.
 - Test the main planning journey before changing network quotas, budgets, ranking, participation, or eligible zones. Catalog prices/capacities are separate from primary-care referral quotas.
@@ -31,7 +31,7 @@ Pass: map controls and hospital details work; displayed quotas and demand agree 
 
 ## 2. Reception: AI-assisted intake to completed care
 
-Account: `operator-p03` (Federal Government Polyclinic).
+Account: `operator-polyclinic` (Federal Government Polyclinic).
 
 1. Open Referral coordination. Enter `a routine visit with a family physician` into Service description.
 2. Click Suggest service category. Review the General primary-care OPD suggestion explicitly. The suggestion must not authorize a request automatically.
@@ -40,7 +40,7 @@ Account: `operator-p03` (Federal Government Polyclinic).
 5. Save referral proposal, then reload and reopen Referral coordination.
 6. Verify the proposal still exists and saving it did not consume quota or funding.
 7. Approve & reserve proposal. Verify one slot is held and availability decreases by one.
-8. Record patient agreement as P03. Sign in as operator-p04, open Receiving desk and Accept referral. Confirmation requires both decisions.
+8. Record patient agreement as P03. Sign in as operator-kulsum-international, open Receiving desk and Accept referral. Confirmation requires both decisions.
 9. Record arrival, then Complete service. Reload.
 
 Pass: the request is fulfilled, completion is recorded, the slot was consumed once, and reload preserves the result. A completed referral may leave the active referral cards; check request status and totals rather than expecting it to stay active.
@@ -59,9 +59,9 @@ Pass: cost breakdown and budget agree; approval persists; projected coverage is 
 
 ## 4. Hospital activation and cross-hospital referral
 
-1. Sign in as `operator-p02` (PIMS). Open Offers & activation, select the approved plan, then Confirm & activate offered resource for QUOTA-7.
-2. Sign in as `operator-p08` (NORI). Activate MOBILE-5 in the same way. Verify the mobile resource/site appears.
-3. Sign in as `operator-p08` (NORI). In Referral coordination, find B-01. Click Reprocess and save a reason explaining that activated PIMS quota is now available.
+1. Sign in as `operator-pims` (PIMS). Open Offers & activation, select the approved plan, then Confirm & activate offered resource for QUOTA-7.
+2. Sign in as `operator-nori` (NORI). Activate MOBILE-5 in the same way. Verify the mobile resource/site appears.
+3. Sign in as `operator-nori` (NORI). In Referral coordination, find B-01. Click Reprocess and save a reason explaining that activated PIMS quota is now available.
 4. Find providers, choose P02, Save referral proposal, then Approve & reserve proposal. Record patient agreement as P08.
 5. In the P02 tab, refresh and open Referral coordination. Accept the incoming referral, Record arrival and Complete service.
 6. Refresh the P08 and planner tabs.
@@ -70,9 +70,9 @@ Pass: the receiving hospital sees the shared referral; neither role can skip the
 
 ## 5. Subsidy to completed care and government reporting
 
-1. As `operator-p08`, find providers for A-01 and select P01 (Shifa). Only public hospitals originate new referrals in this release.
+1. As `operator-nori`, find providers for A-01 and select P01 (Shifa). Only public hospitals originate new referrals in this release.
 2. Save and reserve its proposal. Verify the PKR 1,000 subsidy uses the approved plan's allocation. It must not require a duplicate allocation or charge the budget twice.
-3. Record patient agreement as P08. Sign in as operator-p01 to accept the incoming referral, record arrival and complete service.
+3. Record patient agreement as P08. Sign in as operator-shifa-international to accept the incoming referral, record arrival and complete service.
 4. As `planner`, open the plan's Projected versus recorded outcomes and Monthly outcomes. Export JSON and CSV summaries.
 5. Check the plan ID, immutable input hash, cost breakdown and actual totals in the downloads. Aggregate exports should not expose patient/request identities.
 
@@ -80,7 +80,7 @@ Pass: funded care is completed and recorded once. If only B-01 and A-01 have bee
 
 ## 6. Onboarding catalog and government visibility
 
-Account: `onboarder-p03`.
+Account: `onboarder-polyclinic`.
 
 1. Open Services & prices, then Add service or test.
 2. Add `Complete blood count - E2E`, category Laboratory, price PKR 900, daily service capacity 30.

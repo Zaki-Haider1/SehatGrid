@@ -9,6 +9,18 @@ from .store import PilotState
 from ..config import get_settings
 
 
+DEMO_HOSPITAL_SLUGS = (
+    "shifa-international",
+    "pims",
+    "polyclinic",
+    "kulsum-international",
+    "maroof-international",
+    "ali-medical-centre",
+    "capital-hospital",
+    "nori",
+)
+
+
 def make_seed():
     config = get_settings()
     day = (
@@ -85,8 +97,8 @@ def make_seed():
         fid = f"P{i:02d}"
         s["facilities"][fid] = {
             "id": fid,
-            "name": f"Demo {source['profile']['ownership']} Provider {fid}",
-            "original_name": f"Demo Provider {fid}",
+            "name": source["name"],
+            "original_name": source["name"],
             "canonical_id": fid,
             "ownership": source["profile"]["ownership"],
             "address": source["profile"]["address"],
@@ -105,7 +117,7 @@ def make_seed():
                 "profile": source["profile"],
                 "label": "Public directory context — not a confirmed partner",
             },
-            "aliases": [fid, f"Demo Provider {fid}"],
+            "aliases": [fid, f"Demo Provider {fid}", source["name"]],
             "catalog": [],
         }
         capid = capacity_key(fid, day)
@@ -127,7 +139,8 @@ def make_seed():
         uid = f"operator-{fid.lower()}"
         s["users"][uid] = {
             "id": uid,
-            "name": f"{fid} hospital operator",
+            "name": f"{source['name']} reception",
+            "username": f"operator-{DEMO_HOSPITAL_SLUGS[i - 1]}",
             "role": "operator",
             "facility_ids": [fid],
             "active": True,
@@ -136,7 +149,8 @@ def make_seed():
         setup_id = f"onboarder-{fid.lower()}"
         s["users"][setup_id] = {
             "id": setup_id,
-            "name": f"{fid} hospital onboarder",
+            "name": f"{source['name']} onboarding",
+            "username": f"onboarder-{DEMO_HOSPITAL_SLUGS[i - 1]}",
             "role": "onboarder",
             "facility_ids": [fid],
             "active": True,
@@ -280,6 +294,32 @@ def seed(db, reset=False):
                 if "catalog" not in facility:
                     facility["catalog"] = []
                     changed = True
+            directory = json.loads(
+                (Path(__file__).resolve().parents[1] / "data/islamabad_hospitals.json").read_text()
+            )
+            for i, source in enumerate(directory[:8], 1):
+                fid = f"P{i:02d}"
+                facility = state["facilities"].get(fid)
+                if facility:
+                    for field in ("name", "original_name"):
+                        if facility.get(field) in (
+                            f"Demo Provider {fid}",
+                            f"Demo Public Provider {fid}",
+                            f"Demo Private Provider {fid}",
+                        ):
+                            facility[field] = source["name"]
+                            changed = True
+                    if source["name"] not in facility.get("aliases", []):
+                        facility.setdefault("aliases", []).append(source["name"])
+                        changed = True
+                for role, label in (("operator", "reception"), ("onboarder", "onboarding")):
+                    user = state["users"].get(f"{role}-{fid.lower()}")
+                    if user:
+                        username = f"{role}-{DEMO_HOSPITAL_SLUGS[i - 1]}"
+                        name = f"{source['name']} {label}"
+                        if user.get("username") != username or user["name"] != name:
+                            user.update(username=username, name=name)
+                            changed = True
         if changed:
             row.payload = state
             row.version += 1
