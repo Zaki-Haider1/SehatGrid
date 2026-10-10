@@ -2,6 +2,8 @@
 
 The supplied [MVP README](docs/mvp-scope-v1.md) is authoritative. The original broader daily-slot demo and optional patient portal have been superseded.
 
+See [WORK_STATUS.md](WORK_STATUS.md) for the interruption handoff, known README gaps, and outstanding acceptance/deployment checks. Checked features below describe implemented code, not complete manual acceptance.
+
 ## Implemented
 
 - [x] Eight synthetic providers, five Islamabad demonstration catchments, one canonical non-emergency primary-care service.
@@ -26,9 +28,10 @@ The supplied [MVP README](docs/mvp-scope-v1.md) is authoritative. The original b
 - Backend workflow suite covers last-unit concurrent reservations, simultaneous monthly funding holds and plan approvals, role denial, stale reports/drafts, lifecycle approvals, cutoff/no-show, rejection/expiry/cancellation, patient decline, idempotency, non-destructive identity review and post-activation completion.
 - Independent exhaustive allocation comparison: 42 tiny cases covering zero budget, overlapping quota, conflicting mobile deployment, mixed subsidy/capacity, wrong dates and stale resources; constrained greedy results also recorded.
 - Matching: separate six-case development and 14-case held-out labelled sets. Small-sample results and limitations are in `outputs/matching-results.json`.
-- Frontend: TypeScript, formatting and production build; browser verification of role login, planner allocation, operator workflow and responsive map.
+- Frontend: TypeScript, formatting and production build passed. Browser verification covered planner login, dashboard/map and allocation draft; the full operator workflow and final mobile-viewport checks remain pending.
 - CI runs workflow tests on SQLite and PostgreSQL, migration drift checks, evaluation scripts, frontend checks, and an offline cold-start of the combined container.
 
 ## Deployment boundary
 
 Public hosting remains the deployment teammate's handoff, as requested in the earlier planning messages. The repository supplies the complete container and configuration; no unrelated Railway project is changed. No patient portal, forecasting, clinical decision automation, real payments or other excluded scope is a hidden delivery task.
+
