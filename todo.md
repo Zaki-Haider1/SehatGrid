@@ -1,37 +1,94 @@
-# Scope-v1 delivery checklist
+# SEHAT GRID — current delivery board
 
-The supplied [MVP README](docs/mvp-scope-v1.md) is authoritative. The original broader daily-slot demo and optional patient portal have been superseded.
+Reviewed 10 October 2026 against [scope v1](docs/mvp-scope-v1.md), the implementation at `49c44b4`, referral ranking backend commit `69f2110`, [WORK_STATUS.md](WORK_STATUS.md), tests, evaluation artifacts and CI run [38054258367](https://github.com/Zaki-Haider1/akon/actions/runs/38054258367). The prior board described pre-MVP code and incorrectly marked most implemented features as missing. This board supersedes it.
 
-See [WORK_STATUS.md](WORK_STATUS.md) for the interruption handoff, known README gaps, and outstanding acceptance/deployment checks. Checked features below describe implemented code, not complete manual acceptance.
+The team has three developers. Names are deliberately unassigned; claim a lane or exchange tasks as needed. Each numbered task has one owner and its own acceptance evidence. A task marked **coded** means the repository implements it; **verified** means the cited check ran; **open** means work remains. Do not infer full product acceptance from CI.
 
-## Implemented
+## Current state
 
-- [x] Eight synthetic providers, five Islamabad demonstration catchments, one canonical non-emergency primary-care service.
-- [x] Two authenticated roles, assigned-facility authorization and attributable audit events.
-- [x] Provider registration, planner participation review, service/zone declarations, dated quota and freshness.
-- [x] Pinned pretrained embeddings plus fuzzy/alias/locality matching and persisted human reviews; unsupported/ambiguous outcomes.
-- [x] Separate request/attempt/reservation states; independent partner response, patient agreement and funding authorization; arrival and completion.
-- [x] Atomic holds, quota floor checks, cancellation cutoff, expiry, no-show and idempotent mutation receipts.
-- [x] Monthly ledger with holds, commitments, settlements, releases and pool transfers.
-- [x] Unique unresolved demand, reason aggregation, unknown-zone group and immutable versioned snapshots.
-- [x] Real monthly OR-Tools allocation: subsidy, purchased quota and mobile clinic; dates, zones, costs, offer overlap and mobile exclusivity.
-- [x] Draft revalidation; approval reserves funds/offers; operator activation changes persisted resources; rejection adjusts remaining plan.
-- [x] Activated resource reprocessing; funded units avoid double subsidy charges; hospital campus coordinates are preserved when mobile sites activate.
-- [x] Offline coordinate map plus optional street layer; backend quota colors and aggregate unresolved labels.
-- [x] Separate projected, confirmed and completed results; aggregate JSON/CSV export with scope, assumptions, versions, costs and solver status.
-- [x] Scoped operator/planner frontend screens and responsive layout.
-- [x] Seed/reset, external secret configuration, migrations, pinned dependencies, combined and backend-only container recipes.
-- [x] Supplied specification, architecture, API contracts, policies, two-role explanation and demo script in the repository.
+| Area | Status | Evidence and limit |
+|---|---|---|
+| Narrow pilot, provider network, two authenticated roles, permissions and audit | Coded; automated checks | Eight synthetic providers, five Islamabad catchments, one non-emergency primary-care service; `backend/app/mvp/seed.py`, `auth.py`, `api.py`, `frontend/app/page.tsx`. |
+| Matching and human review | Coded; small evaluation | Pinned MiniLM/ONNX inference and persisted review in `matching.py`; `outputs/matching-results.json` covers 6 development and 14 held-out synthetic examples. No clinical accuracy claim. |
+| Referral lifecycle, capacity, funding and ledger | Coded; automated checks | `referrals.py`, `common.py`, `api.py`; `backend/tests/test_mvp.py` includes completion, permissions, idempotency and concurrent guards. The distinct persisted `PROPOSED` attempt state is absent. |
+| Unique unresolved demand, snapshots and monthly three-action allocation | Coded; automated checks | `intelligence.py`, `planning.py`; worked 8/7/5, PKR 25,000 loop and 42 tiny independent allocation cases. Draft manual revision with a recorded reason is absent. |
+| Islamabad map, role screens and JSON/CSV export | Coded; partial browser checks | `frontend/components/pilot-map.tsx`, `frontend/app/page.tsx`; planner login/map/allocation draft exercised. Full operator, activation and mobile journeys remain unverified in a browser. |
+| CI and local delivery package | Verified CI, deployment open | GitHub run 38054258367 completed successfully for backend, frontend and combined-container jobs. CI includes PostgreSQL, migrations, evaluations and an offline container cold start. No public URL or live restart check. |
 
-## Verification evidence
+The implementation stores versioned canonical collections in a transactional `pilot_state` JSON aggregate, not normalized tables for every entity. This is a documented small-pilot design limit, not an unimplemented feature to silently add. Expiry runs on API access. Seeded partners and operational data are synthetic; public coordinates are geographic context only. A patient portal, emergency triage, forecasting, real payments and real-provider onboarding are outside scope.
 
-- Backend workflow suite covers last-unit concurrent reservations, simultaneous monthly funding holds and plan approvals, role denial, stale reports/drafts, lifecycle approvals, cutoff/no-show, rejection/expiry/cancellation, patient decline, idempotency, non-destructive identity review and post-activation completion.
-- Independent exhaustive allocation comparison: 42 tiny cases covering zero budget, overlapping quota, conflicting mobile deployment, mixed subsidy/capacity, wrong dates and stale resources; constrained greedy results also recorded.
-- Matching: separate six-case development and 14-case held-out labelled sets. Small-sample results and limitations are in `outputs/matching-results.json`.
-- Frontend: TypeScript, formatting and production build passed. Browser verification covered planner login, dashboard/map and allocation draft; the full operator workflow and final mobile-viewport checks remain pending.
-- CI runs workflow tests on SQLite and PostgreSQL, migration drift checks, evaluation scripts, frontend checks, and an offline cold-start of the combined container.
+## Parallel assignment
 
-## Deployment boundary
+Use separate branches/worktrees from current `main`. Do not share a working directory. One developer can take any lane; record the actual owner and PR here when claimed. Keep changes to the listed files where possible. When a shared contract must change, put the request/response example in the PR and notify the other two developers before merging. Integrate via reviewed PRs; do not edit `main` directly. The board integrator updates checkboxes after merges.
 
-Public hosting remains the deployment teammate's handoff, as requested in the earlier planning messages. The repository supplies the complete container and configuration; no unrelated Railway project is changed. No patient portal, forecasting, clinical decision automation, real payments or other excluded scope is a hidden delivery task.
+| Developer | Independent first task | Primary files | Handoff |
+|---|---|---|---|
+| Dev 1 — referral policy and state | R1 then R2 | `backend/app/mvp/referrals.py`, referral branches of `api.py` and `schemas.py`, focused tests, `docs/api-contracts.md` | Document versioned policy/state DTOs for Dev 3 browser coverage. |
+| Dev 2 — planner revision | P1 | `backend/app/mvp/planning.py`, plan branches of `api.py` and `schemas.py`, focused tests, planner-only UI changes if agreed | Publish draft-revision DTO/fixture for Dev 3; avoid editing referral branches. |
+| Dev 3 — acceptance and delivery | V1 then V2 | browser test/config files, `frontend/components/pilot-map.tsx` and scoped UI test fixes, demo/deployment docs | File exact failing journeys as issues to Dev 1/2; use existing APIs first. |
 
+Dev 3 owns `frontend/app/page.tsx` and `frontend/lib/api.ts` during parallel work. If Dev 2 needs a planner control, Dev 2 publishes the backend contract and Dev 3 wires the UI in V1; this is the only planned integration seam. Dev 1 owns shared backend dispatcher/schema edits and reviews Dev 2's plan-route additions before merge. Dev 2 can build and test planning logic in `planning.py` immediately using existing state fixtures, then submit the narrow route patch after Dev 1's shared-file patch lands. No task depends on another developer finishing an unrelated feature.
+
+## Remaining tasks
+
+### R1 — Planner-configurable referral ranking
+
+**Owner:** Dev 1 (claim: unassigned). **Status:** Backend API complete in `69f2110`; planner UI and remaining acceptance checks are open.
+
+- [x] Define allowed ordering controls in `docs/api-contracts.md` without allowing a policy to bypass service, suitability, zone, date, freshness, capacity or funding eligibility.
+- [x] Persist a versioned planner policy; expose planner-only read/update API and include the applied version in recommendations. Keep deterministic stable-ID tie breaking.
+- [ ] Test default behavior, changed ranking, unauthorized update, stale version and recommendation/reservation recheck. Add a planner control through Dev 3's UI lane.
+
+**Backend evidence:** `backend/tests/test_mvp.py::test_planner_can_configure_referral_ranking`; backend suite: 74 passed; Ruff passed. Stale-version and reservation-recheck cases and Dev 3's planner UI remain to be completed.
+
+**Done when:** A planner can change ranking, operators see the new order and version, and ineligible providers never appear. Record test command and PR.
+
+### R2 — Explicit referral `PROPOSED` stage
+
+**Owner:** Dev 1 (claim: unassigned). **Status:** OPEN. **Can start after R1 on the same lane.**
+
+- [ ] Add a separately persisted proposed attempt before the sender's reservation/hold action, with permitted transition and cancellation semantics matching the scope state table.
+- [ ] Keep one active attempt per request, preserve attempt history, and ensure proposal alone consumes no quota or funds. Define idempotent retries and stale capacity handling.
+- [ ] Update API contract, operator UI through Dev 3 and lifecycle/concurrency tests.
+
+**Done when:** A proposal survives reload, can be approved into the existing confirmation flow or cancelled, and never changes ledger/quota before reservation.
+
+### P1 — Manual draft-plan revision with reason
+
+**Owner:** Dev 2 (claim: unassigned). **Status:** OPEN. **Can start now.**
+
+- [ ] Define a draft-only planner revision operation that records actor, timestamp, reason, prior and revised choices. Preserve original solver output and distinguish a human revision in exports/audit.
+- [ ] Recheck revised assignments and actions with the same budget, date, service, zone, capacity, offer and mobile exclusivity constraints as optimization. Reject stale snapshot/input versions and unfeasible edits. Approval must revalidate again.
+- [ ] Add focused valid/invalid/stale/concurrent tests. Give Dev 3 a fixture for the planner edit/reason UI.
+
+**Done when:** A planner can revise a draft for a stated reason; an invalid or stale revision has no side effects; displayed/approved totals and export match the revised persisted plan.
+
+### V1 — Browser and responsive acceptance
+
+**Owner:** Dev 3 (claim: unassigned). **Status:** OPEN. **Can start now against existing APIs; extend after R1/R2/P1.**
+
+- [ ] Automate or record a reproducible real-browser operator journey: login, matching review, intake, recommendation, send, partner response, patient agreement, funding approval, arrival and completion.
+- [ ] Exercise planner snapshot → optimize → approve → operator quota/mobile activation or rejection → formerly unresolved reprocessing → results and JSON/CSV export. Verify projected, confirmed and completed counts separately.
+- [ ] Check phone and desktop widths, empty/error/permission-denied states and stale-version recovery. Include R1/R2/P1 controls after their contracts land.
+- [ ] Fix concrete UI defects found; record browser/version, seed reset, steps and screenshots or test output. Do not count backend tests as browser acceptance.
+
+**Done when:** The full two-role demo completes in a browser after a fresh seed and survives refresh, with mobile screens usable and numbers matching persisted state.
+
+### V2 — Final local delivery and deployment handoff
+
+**Owner:** Dev 3 (claim: unassigned), with Dev 1 backend support. **Status:** OPEN. **Can start local work now; live checks require hosting access.**
+
+- [ ] Reconcile the local production start instructions with Next.js standalone output; test the documented command/container and update `README.md` and `docs/deployment.md` if needed.
+- [ ] Rehearse `docs/demo-script.md` in five minutes after synthetic reset and cold restart, with no runtime model downloads; record exact results and limits in `WORK_STATUS.md`.
+- [ ] If hosting is authorized and available, configure secrets/PostgreSQL, apply migration and seed deliberately, then verify HTTPS, authentication, proxy, model, export and persistence across restart. Record URL and smoke evidence. No public deployment is currently claimed.
+
+**Done when:** Local handoff works from documented commands. Public-deployment checkbox stays open until a live URL and restart evidence exist.
+
+## Integration and completion gates
+
+- [ ] R1, R2 and P1 merged with focused tests and contract updates; Dev 3's UI follows their final DTOs.
+- [ ] Run backend `pytest -q`, `ruff check .`, `alembic check`, matching/allocation evaluations; run frontend `npm run typecheck`, `npm run format:check`, `npm run build`. Use isolated SQLite/PostgreSQL databases and run relevant CI on merged code.
+- [ ] V1 full browser and mobile acceptance completed; V2 local reset/cold-start/five-minute demo completed.
+- [ ] Update `WORK_STATUS.md` with merged commits, exact commands/results and any remaining limits. Public hosting is a separately evidenced deployment handoff, not a substitute for local acceptance.
+
+The existing CI success is a baseline for commit `06390db`; it does not verify future changes. Keep reports of failed checks and partial outcomes with their fixes. Claim MVP completion only after the open scope gaps and acceptance gates above pass.
