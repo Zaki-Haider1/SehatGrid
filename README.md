@@ -4,7 +4,25 @@ A synthetic, non-emergency primary-care coordination MVP for five Islamabad pilo
 
 ## What runs
 
-- **Hospital receptionist:** reviewed request intake, recommendations and saved proposals, acceptance/rejection, patient agreement, arrival/completion, rerouting/reprocessing, offers and activation.
+### Frontend preview
+
+The government workspace shows the Islamabad hospital network in 3D. Green means more than 20% of reported quota remains, amber means 20% or less remains, red means no quota remains, and grey means capacity is unknown or the hospital is inactive.
+
+![Government hospital map](docs/screenshots/planner-desktop.png)
+
+Hospital onboarders maintain service/test/facility availability, PKR prices and daily capacity.
+
+![Hospital service catalog](docs/screenshots/catalog-desktop.png)
+
+The separate patient-message demo follows actual confirmed and cancelled referrals in the app. It simulates the WhatsApp experience; it does not send messages.
+
+![Patient update demo](docs/screenshots/whatsapp-demo-desktop.png)
+
+See [routing, role permissions, capacity and patient updates](docs/routing-and-patient-updates.md) for the approach, formulas, demo steps and integration boundaries.
+
+Sign in with a username and password. The authenticated account's stored role opens its government, reception or onboarding interface automatically; there is no role selector. Hospital labels use the bundled Islamabad directory names in place of generic seed labels. Internal provider IDs remain stable, and capacity, budgets and patient activity remain demonstration data.
+
+- **Hospital receptionist:** public hospitals originate referrals; private hospitals receive them. Reviewed request intake, recommendations and saved proposals, acceptance/rejection, patient agreement, arrival/completion, rerouting/reprocessing, offers and activation.
 - **Hospital onboarder:** assigned hospital profile, primary-care eligibility, dated quota, and an editable service/test catalog with PKR prices, daily capacity and availability.
 - **Government representative:** interactive 3D city, hospital details and capacity/demand/funding layers; participation and ranking policy; monthly budgets, allocation/revision/approval, funding authorization, monthly outcomes and JSON/CSV exports.
 - **No patient portal.** Operators record voluntary patient agreement. No forecasts, diagnosis, emergencies, exact appointment slots, waiting-time predictions, travel-time routing, construction, payment or voucher features.

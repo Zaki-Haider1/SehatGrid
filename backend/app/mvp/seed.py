@@ -155,7 +155,7 @@ def make_seed():
         return {
             "id": rid,
             "reference": rid,
-            "source_facility_id": "P01",
+            "source_facility_id": "P08",
             "zone": zone,
             "original_text": "general doctor consultation",
             "service_id": SERVICE,

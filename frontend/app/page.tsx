@@ -21,6 +21,7 @@ import {
   ApiError,
   API,
   human,
+  hospitalName,
   money,
   State,
   User,
@@ -51,6 +52,7 @@ type Field = {
   type?: string;
   options?: { value: string; label: string }[];
   required?: boolean;
+  autoComplete?: string;
 };
 function Form({
   fields,
@@ -115,6 +117,9 @@ function Form({
                   <input
                     name={f.name}
                     type={f.type || "text"}
+                    autoComplete={f.autoComplete}
+                    autoCapitalize={f.name === "username" ? "none" : undefined}
+                    spellCheck={f.name === "username" ? false : undefined}
                     defaultValue={String(f.value ?? "")}
                     required={f.required !== false}
                     min={f.type === "number" ? 0 : undefined}
@@ -263,8 +268,9 @@ export default function Home() {
         "auth/login",
         "",
         "POST",
-        data,
+        { username: String(data.username).trim(), password: data.password },
       );
+      logout();
       sessionStorage.setItem("sehat-token", result.token);
       setToken(result.token);
     } catch (e) {
@@ -364,21 +370,15 @@ export default function Home() {
               fields={[
                 {
                   name: "username",
-                  label: "Account",
-                  value: "planner",
-                  options: [
-                    { value: "planner", label: "Government representative" },
-                    ...Array.from({ length: 8 }, (_, i) => ({
-                      value: `operator-p0${i + 1}`,
-                      label: `P0${i + 1} hospital receptionist`,
-                    })),
-                    ...Array.from({ length: 8 }, (_, i) => ({
-                      value: `onboarder-p0${i + 1}`,
-                      label: `P0${i + 1} hospital onboarder`,
-                    })),
-                  ],
+                  label: "Username",
+                  autoComplete: "username",
                 },
-                { name: "password", label: "Demo password", type: "password" },
+                {
+                  name: "password",
+                  label: "Password",
+                  type: "password",
+                  autoComplete: "current-password",
+                },
               ]}
             />
           )}
@@ -397,8 +397,17 @@ export default function Home() {
       state.facilities[0],
     serviceDate = day || state.config.service_date,
     planningMonth = month || state.config.month;
+  const canSend =
+    state.user.role === "operator" &&
+    own.some((f) => f.ownership === "Public" && f.participation === "ACTIVE");
+  const facilityName = (id: string, fallback = id) => {
+    const found = state.facilities.find((f) => f.id === id);
+    return found ? hospitalName(found) : fallback;
+  };
   const zones = state.config.zones.map((z) => ({ value: z.id, label: z.name })),
-    facilityOptions = own.map((f) => ({ value: f.id, label: f.name }));
+    facilityOptions = own
+      .filter((f) => f.ownership === "Public" && f.participation === "ACTIVE")
+      .map((f) => ({ value: f.id, label: hospitalName(f) }));
   const stats =
     planner && state.summary
       ? [
@@ -480,15 +489,17 @@ export default function Home() {
     }, "Plan summary downloaded. It contains aggregate allocations, not request identities.");
   }
   const profileFields = (f?: Facility): Field[] => [
-    { name: "name", label: "Demo provider name", value: f?.name },
+    { name: "name", label: "Hospital name", value: f ? hospitalName(f) : "" },
     {
       name: "ownership",
       label: "Ownership",
       value: f?.ownership,
-      options: [
-        { value: "Public", label: "Public" },
-        { value: "Private", label: "Private" },
-      ],
+      options: f
+        ? [{ value: f.ownership, label: `${f.ownership} (registered)` }]
+        : [
+            { value: "Public", label: "Public" },
+            { value: "Private", label: "Private" },
+          ],
     },
     { name: "address", label: "Address", value: f?.address },
     { name: "zone", label: "Pilot zone", value: f?.zone, options: zones },
@@ -507,6 +518,7 @@ export default function Home() {
           <PlanRevision
             plan={revisionPlan}
             token={token}
+            facilityName={facilityName}
             onSaved={async (p) => {
               setPlan(p);
               setRevisionPlan(null);
@@ -569,7 +581,12 @@ export default function Home() {
           Islamabad <span> / </span> Primary-care pilot
         </div>
         <div className="account">
-          <span>{state.user.name}</span>
+          <span>
+            {own[0] &&
+            /^P\d+ hospital (operator|onboarder)$/.test(state.user.name)
+              ? hospitalName(own[0])
+              : state.user.name}
+          </span>
           <span className="role-label">
             {planner ? "Government" : onboarder ? "Onboarding" : "Reception"}
           </span>
@@ -584,7 +601,7 @@ export default function Home() {
       </header>
       <div className="demo-banner">
         <span>
-          <i /> Synthetic demo data
+          <i /> Islamabad hospital directory · Demo capacity & activity
         </span>
         <span>
           Non-emergency primary-care only · reported network quota, not hospital
@@ -611,7 +628,11 @@ export default function Home() {
                 },
                 {
                   id: "referrals",
-                  name: planner ? "Funding approvals" : "Referral coordination",
+                  name: planner
+                    ? "Funding approvals"
+                    : canSend
+                      ? "Referral coordination"
+                      : "Receiving desk",
                   icon: ClipboardList,
                 },
                 {
@@ -790,7 +811,7 @@ export default function Home() {
                   </div>
                   <div>
                     <span className="eyebrow">ASSIGNED HOSPITAL</span>
-                    <h2>{own[0]?.directory_context?.name || own[0]?.name}</h2>
+                    <h2>{own[0] ? hospitalName(own[0]) : "Your hospital"}</h2>
                     <p>{own[0]?.address}</p>
                     <button
                       className="primary"
@@ -853,7 +874,7 @@ export default function Home() {
                 <Card title="Hospital availability">
                   {own.map((f) => (
                     <div key={f.id}>
-                      <h3>{f.directory_context?.name || f.name}</h3>
+                      <h3>{hospitalName(f)}</h3>
                       <div className="detail-metrics">
                         <div>
                           <strong>{f.capacities[0]?.available ?? "—"}</strong>
@@ -929,14 +950,11 @@ export default function Home() {
                           <Building2 size={20} />
                         </div>
                         <div>
-                          <strong>{f.name}</strong>
+                          <strong>{hospitalName(f)}</strong>
                           <span>
                             {f.zone} · {f.ownership}
                           </span>
-                          <small>
-                            {f.directory_context?.name ||
-                              "New demonstration provider"}
-                          </small>
+                          <small>{f.address}</small>
                         </div>
                         <Badge value={f.capacities[0]?.status || "UNKNOWN"} />
                       </button>
@@ -1000,7 +1018,7 @@ export default function Home() {
               </div>
               {facility && (
                 <Card
-                  title={facility.name}
+                  title={hospitalName(facility)}
                   aside={<Badge value={facility.participation} />}
                 >
                   <div className="profile-grid">
@@ -1144,7 +1162,7 @@ export default function Home() {
                   <Card title="Own provider settings">
                     {own.map((f) => (
                       <details key={f.id} open>
-                        <summary>{f.name}</summary>
+                        <summary>{hospitalName(f)}</summary>
                         <Form
                           fields={profileFields(f)}
                           busy={busy}
@@ -1260,7 +1278,93 @@ export default function Home() {
                   />
                 </Card>
               )}
+              {planner && (
+                <Card title="Hospital routing points">
+                  <p>
+                    Score = 60 × available quota fraction + 40 × government
+                    preference / 100. Scores refresh as reservations change; no
+                    hospital needs to be full before another is recommended.
+                    Existing ranking criteria break ties. Eligibility and
+                    required tests always apply.
+                  </p>
+                  <div className="policy-grid">
+                    {state.facilities.map((f) => (
+                      <section key={f.id} className="policy-hospital">
+                        <h3>{hospitalName(f)}</h3>
+                        <p>
+                          {f.routing_metrics?.completed ?? 0} completed /{" "}
+                          {f.routing_metrics?.referrals ?? 0} referrals ·
+                          Closed-referral completion{" "}
+                          {f.routing_metrics?.completion_rate == null
+                            ? "not yet measured"
+                            : `${f.routing_metrics.completion_rate}%`}
+                        </p>
+                        <Form
+                          key={f.version}
+                          busy={busy}
+                          submit="Save points"
+                          fields={[
+                            {
+                              name: "points",
+                              label: "Government preference (0–100)",
+                              type: "number",
+                              value: f.routing_points ?? 50,
+                            },
+                            { name: "reason", label: "Reason for preference" },
+                          ]}
+                          onSubmit={(d) =>
+                            run(() =>
+                              mutate(
+                                `facilities/${f.id}/routing-points`,
+                                { ...d, version: f.version },
+                                "PUT",
+                              ),
+                            )
+                          }
+                        />
+                      </section>
+                    ))}
+                  </div>
+                </Card>
+              )}
+              {!planner && !canSend && (
+                <Card title="Receiving hospital workspace">
+                  <p>
+                    Accept or decline incoming referrals, record patient
+                    agreement, arrival and completion. Only approved government
+                    hospitals can originate and reroute patients. Contact the
+                    sending hospital when a new destination is needed.
+                  </p>
+                </Card>
+              )}
               {!planner && (
+                <Card title="WhatsApp patient updates">
+                  <button
+                    className="primary"
+                    onClick={() => window.open("/patient-updates", "_blank")}
+                  >
+                    Open patient message demo ↗
+                  </button>
+                  <p>
+                    Consent-based message previews. Live WhatsApp delivery is
+                    not connected; these messages have not been sent.
+                  </p>
+                  {state.notifications?.length ? (
+                    state.notifications.map((n) => (
+                      <div className="notification-preview" key={n.id}>
+                        <strong>{n.recipient} · Preview only</strong>
+                        <p>{n.message}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="empty">
+                      Updates appear after a consented referral is confirmed or
+                      cancelled.
+                    </p>
+                  )}
+                </Card>
+              )}
+              {canSend && (
                 <div className="two-col">
                   <Card title="Register a synthetic request">
                     <p>
@@ -1333,8 +1437,8 @@ export default function Home() {
                           >
                             <Check size={14} />
                             {match.status === "NEEDS_REVIEW" && index === 0
-                              ? `Accept suggestion: ${c.name}`
-                              : `Correct to: ${c.name}`}
+                              ? `Accept suggestion: ${facilityName(c.id, c.name)}`
+                              : `Correct to: ${facilityName(c.id, c.name)}`}
                           </button>
                         ))}
                         <button
@@ -1372,7 +1476,7 @@ export default function Home() {
                       fields={[
                         {
                           name: "reference",
-                          label: "Synthetic reference",
+                          label: "Patient reference",
                           value: `DEMO-${state.requests.length + 1}`,
                         },
                         {
@@ -1381,6 +1485,24 @@ export default function Home() {
                           options: facilityOptions,
                         },
                         { name: "zone", label: "Pilot zone", options: zones },
+                        {
+                          name: "required_tests_text",
+                          label:
+                            "Required tests or facilities (comma-separated catalog names)",
+                          required: false,
+                        },
+                        {
+                          name: "whatsapp_phone",
+                          label: "WhatsApp number (+923001234567)",
+                          type: "tel",
+                          required: false,
+                        },
+                        {
+                          name: "whatsapp_consent",
+                          label:
+                            "Patient agrees to WhatsApp referral updates, including service names",
+                          type: "checkbox",
+                        },
                         {
                           name: "date_from",
                           label: "From",
@@ -1410,10 +1532,14 @@ export default function Home() {
                           type: "checkbox",
                         },
                       ]}
-                      onSubmit={(d) =>
+                      onSubmit={({ required_tests_text, ...d }) =>
                         run(() =>
                           mutate("requests", {
                             ...d,
+                            required_tests: String(required_tests_text || "")
+                              .split(",")
+                              .map((t) => t.trim())
+                              .filter(Boolean),
                             original_text: description,
                             review_id: reviewId || null,
                           }),
@@ -1443,10 +1569,18 @@ export default function Home() {
                       />
                     )}
                     {options.map((o) => (
-                      <div key={o.capacity_id} className="recommendation">
-                        <strong>{o.name}</strong>
+                      <div
+                        key={o.capacity_id}
+                        className="recommendation"
+                        data-facility={o.facility_id}
+                      >
+                        <strong>{facilityName(o.facility_id, o.name)}</strong>
                         <p>{o.explanation}</p>
-                        <small>Ranking: {o.ranking_policy_version}</small>
+                        <small>
+                          Routing score {o.routing_score}/100 · Government
+                          preference {o.routing_points}/100 ·{" "}
+                          {o.ranking_policy_version}
+                        </small>
                         <span>
                           {o.date} · {o.available} units · Subsidy PKR{" "}
                           {money(o.subsidy)}
@@ -1505,9 +1639,10 @@ export default function Home() {
                               <small>{r.reasons.map(human).join(", ")}</small>
                             </td>
                             <td>
-                              {state.user.facility_ids.includes(
-                                r.source_facility_id,
-                              ) &&
+                              {canSend &&
+                                state.user.facility_ids.includes(
+                                  r.source_facility_id,
+                                ) &&
                                 ![
                                   "FULFILLED",
                                   "CANCELLED",
@@ -1574,18 +1709,20 @@ export default function Home() {
                       const receive = state.user.facility_ids.includes(
                         a.facility_id,
                       );
-                      const send = state.requests.some(
-                        (r) =>
-                          r.id === a.request_id &&
-                          state.user.facility_ids.includes(
-                            r.source_facility_id,
-                          ),
-                      );
+                      const send =
+                        canSend &&
+                        state.requests.some(
+                          (r) =>
+                            r.id === a.request_id &&
+                            state.user.facility_ids.includes(
+                              r.source_facility_id,
+                            ),
+                        );
                       return (
                         <div className="referral" key={a.id}>
                           <div>
                             <strong>
-                              {a.id} → {a.facility_id}
+                              {a.id} → {facilityName(a.facility_id)}
                             </strong>
                             <p>
                               {a.request_id} · {a.date} · Subsidy PKR{" "}
@@ -2073,7 +2210,7 @@ export default function Home() {
                             </small>
                           </td>
                           <td>
-                            {o.facility_id}
+                            {facilityName(o.facility_id)}
                             <small>{o.date}</small>
                           </td>
                           <td>{o.units}</td>
@@ -2393,7 +2530,7 @@ export default function Home() {
                     { value: "", label: "No supported match" },
                     ...match.candidates.map((c) => ({
                       value: c.id,
-                      label: `${c.name} · similarity ${c.score.toFixed(2)}`,
+                      label: `${facilityName(c.id, c.name)} · similarity ${c.score.toFixed(2)}`,
                     })),
                   ],
                   required: false,

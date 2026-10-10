@@ -25,6 +25,12 @@ export type Capacity = {
   version: number;
 };
 export type Facility = {
+  routing_points?: number;
+  routing_metrics?: {
+    referrals: number;
+    completed: number;
+    completion_rate: number | null;
+  };
   id: string;
   name: string;
   ownership: string;
@@ -219,6 +225,8 @@ export type Match = {
   }[];
 };
 export type Recommendation = {
+  routing_score: number;
+  routing_points: number;
   ranking_policy_version: string;
   facility_id: string;
   name: string;
@@ -301,6 +309,14 @@ export type Summary = {
   budget: Budget | null;
 };
 export type State = {
+  notifications?: {
+    id: string;
+    request_id: string;
+    recipient: string;
+    status: string;
+    message: string;
+    created_at: string;
+  }[];
   user: User;
   config: {
     today: string;
@@ -370,6 +386,25 @@ export function money(value: number) {
   return new Intl.NumberFormat("en-PK", { maximumFractionDigits: 0 }).format(
     value,
   );
+}
+export function hospitalName(facility: Facility) {
+  return /^Demo\b.*\bProvider P\d+$/.test(facility.name)
+    ? facility.directory_context?.name || facility.name
+    : facility.name;
+}
+export function hospitalShortName(facility: Facility) {
+  const name = hospitalName(facility);
+  const labels: Record<string, string> = {
+    "Shifa International Hospital": "Shifa",
+    "Pakistan Institute of Medical Sciences (PIMS)": "PIMS",
+    "Federal Government Polyclinic": "Polyclinic",
+    "Kulsum International Hospital": "Kulsum",
+    "Maroof International Hospital": "Maroof",
+    "Ali Medical Centre": "Ali Medical",
+    "Capital Hospital (CDA)": "CDA",
+    "NORI Atomic Energy Cancer Hospital": "NORI",
+  };
+  return labels[name] || name;
 }
 export function human(value: string) {
   return value.replaceAll("_", " ").toLowerCase();

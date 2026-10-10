@@ -11,13 +11,13 @@ def make_plan(p):
 
 
 def reserve(p, rid="A-01"):
-    choice = p.ok(f"requests/{rid}/recommendations", user="operator-p01")["candidates"][0]
+    choice = p.ok(f"requests/{rid}/recommendations", user="operator-p08")["candidates"][0]
     proposal = p.ok(
         "referrals",
         {k: choice[k] for k in ["capacity_id", "capacity_version", "facility_version"]} | {"request_id": rid},
-        "operator-p01",
+        "operator-p08",
     )
-    return p.ok(f"referrals/{proposal['id']}/reserve", {}, "operator-p01")
+    return p.ok(f"referrals/{proposal['id']}/reserve", {}, "operator-p08")
 
 
 def test_planner_can_configure_referral_ranking(pilot):
@@ -40,7 +40,7 @@ def test_planner_can_configure_referral_ranking(pilot):
     assert updated["criteria"] == ["subsidy", "same_zone", "available"]
 
     request_id = "A-01"
-    result = p.ok(f"requests/{request_id}/recommendations", user="operator-p01")
+    result = p.ok(f"requests/{request_id}/recommendations", user="operator-p08")
     candidates = result["candidates"]
 
     def key(candidate):
@@ -49,7 +49,7 @@ def test_planner_can_configure_referral_ranking(pilot):
             "subsidy": candidate["subsidy"],
             "available": -candidate["available"],
         }
-        return tuple(values[name] for name in updated["criteria"]) + (
+        return (-candidate["routing_score"],) + tuple(values[name] for name in updated["criteria"]) + (
             candidate["facility_id"],
             candidate["date"],
         )
@@ -75,7 +75,7 @@ def test_ranking_never_selects_an_ineligible_provider(pilot):
         method="PUT",
     )
     p.edit(lambda s: s["facilities"]["P02"].update(participation="SUSPENDED"))
-    result = p.ok("requests/A-01/recommendations", user="operator-p01")
+    result = p.ok("requests/A-01/recommendations", user="operator-p08")
     assert result["candidates"]
     assert all(candidate["facility_id"] != "P02" for candidate in result["candidates"])
 
@@ -103,14 +103,14 @@ def test_recommendation_exposes_the_checks_and_ranking_used(pilot):
 
 def test_proposed_referral_persists_without_holding_capacity_or_funds(pilot):
     p = pilot
-    choice = p.ok("requests/A-01/recommendations", user="operator-p01")["candidates"][0]
+    choice = p.ok("requests/A-01/recommendations", user="operator-p08")["candidates"][0]
     payload = {key: choice[key] for key in ["capacity_id", "capacity_version", "facility_version"]} | {
         "request_id": "A-01"
     }
     before = p.edit(lambda s: deepcopy(s))
-    proposal = p.ok("referrals", payload, "operator-p01", key="proposal-a01")
+    proposal = p.ok("referrals", payload, "operator-p08", key="proposal-a01")
     assert proposal["status"] == "PROPOSED"
-    assert p.ok("referrals", payload, "operator-p01", key="proposal-a01") == proposal
+    assert p.ok("referrals", payload, "operator-p08", key="proposal-a01") == proposal
     after = p.edit(lambda s: deepcopy(s))
     persisted = after["referrals"][proposal["id"]]
     assert persisted == proposal
@@ -121,15 +121,15 @@ def test_proposed_referral_persists_without_holding_capacity_or_funds(pilot):
     assert after["reservations"] == before["reservations"]
     assert after["requests"] != before["requests"]
     assert p.ok("intelligence/summary")["unresolved"] == 20
-    assert p.ok("requests/A-01/recommendations", user="operator-p01")["candidates"] == []
+    assert p.ok("requests/A-01/recommendations", user="operator-p08")["candidates"] == []
     assert p.call(
-        "requests/A-01/reprocess", {"reason": "Try another service date"}, "operator-p01"
+        "requests/A-01/reprocess", {"reason": "Try another service date"}, "operator-p08"
     ).status_code == 409
     assert p.call(f"referrals/{proposal['id']}/reserve", {}, "operator-p02").status_code == 403
-    assert p.call("referrals", payload, "operator-p01", key="proposal-a01-duplicate").status_code == 409
+    assert p.call("referrals", payload, "operator-p08", key="proposal-a01-duplicate").status_code == 409
     assert p.call("referrals", payload, "planner", key="proposal-planner-forbidden").status_code == 403
 
-    reserved = p.ok(f"referrals/{proposal['id']}/reserve", {}, "operator-p01", key="reserve-a01")
+    reserved = p.ok(f"referrals/{proposal['id']}/reserve", {}, "operator-p08", key="reserve-a01")
     assert reserved["id"] == proposal["id"]
     assert reserved["status"] == "AWAITING_CONFIRMATIONS"
     aggregate = p.edit(lambda s: deepcopy(s))
@@ -138,25 +138,25 @@ def test_proposed_referral_persists_without_holding_capacity_or_funds(pilot):
 
 def test_proposed_referral_cancel_has_no_resource_effect(pilot):
     p = pilot
-    choice = p.ok("requests/A-01/recommendations", user="operator-p01")["candidates"][0]
+    choice = p.ok("requests/A-01/recommendations", user="operator-p08")["candidates"][0]
     proposal = p.ok(
         "referrals/proposals",
         {key: choice[key] for key in ["capacity_id", "capacity_version", "facility_version"]}
         | {"request_id": "A-01"},
-        "operator-p01",
+        "operator-p08",
     )
     before = p.edit(lambda s: deepcopy(s))
     cancelled = p.ok(
         f"referrals/{proposal['id']}/cancel",
         {"reason": "Sender chose another provider"},
-        "operator-p01",
+        "operator-p08",
         key="cancel-proposal-a01",
     )
     assert cancelled["status"] == "CANCELLED"
     assert p.ok(
         f"referrals/{proposal['id']}/cancel",
         {"reason": "Sender chose another provider"},
-        "operator-p01",
+        "operator-p08",
         key="cancel-proposal-a01",
     ) == cancelled
     after = p.edit(lambda s: deepcopy(s))
@@ -166,13 +166,13 @@ def test_proposed_referral_cancel_has_no_resource_effect(pilot):
     assert after["capacities"] == before["capacities"]
     assert after["reservations"] == before["reservations"]
     assert after["requests"]["A-01"]["status"] == "OPEN"
-    assert p.ok("requests/A-01/recommendations", user="operator-p01")["candidates"]
-    retry_choice = p.ok("requests/A-01/recommendations", user="operator-p01")["candidates"][0]
+    assert p.ok("requests/A-01/recommendations", user="operator-p08")["candidates"]
+    retry_choice = p.ok("requests/A-01/recommendations", user="operator-p08")["candidates"][0]
     retry = p.ok(
         "referrals",
         {key: retry_choice[key] for key in ["capacity_id", "capacity_version", "facility_version"]}
         | {"request_id": "A-01"},
-        "operator-p01",
+        "operator-p08",
         key="proposal-a01-after-cancel",
     )
     assert retry["status"] == "PROPOSED"
@@ -180,20 +180,20 @@ def test_proposed_referral_cancel_has_no_resource_effect(pilot):
 
 def test_proposed_referral_rechecks_capacity_before_reserving(pilot):
     p = pilot
-    choice = p.ok("requests/A-01/recommendations", user="operator-p01")["candidates"][0]
+    choice = p.ok("requests/A-01/recommendations", user="operator-p08")["candidates"][0]
     proposal = p.ok(
         "referrals/proposals",
         {key: choice[key] for key in ["capacity_id", "capacity_version", "facility_version"]}
         | {"request_id": "A-01"},
-        "operator-p01",
+        "operator-p08",
     )
     ledger_before = p.edit(lambda s: deepcopy(s["ledger"]))
     p.edit(lambda s: s["capacities"][choice["capacity_id"]].update(version=choice["capacity_version"] + 1))
-    stale = p.ok(f"referrals/{proposal['id']}/reserve", {}, "operator-p01")
+    stale = p.ok(f"referrals/{proposal['id']}/reserve", {}, "operator-p08")
     assert stale["status"] == "EXPIRED"
     assert stale["reason"] == "Proposal inputs changed; refresh recommendations"
     # The expired proposal remains in history while the request becomes available again.
-    refreshed = p.ok("requests/A-01/recommendations", user="operator-p01")
+    refreshed = p.ok("requests/A-01/recommendations", user="operator-p08")
     persisted = p.edit(lambda s: deepcopy(s))
     assert persisted["referrals"][proposal["id"]]["status"] == "EXPIRED"
     assert persisted["ledger"] == ledger_before
@@ -205,7 +205,7 @@ def test_proposed_referral_rechecks_capacity_before_reserving(pilot):
         "referrals",
         {key: retry_choice[key] for key in ["capacity_id", "capacity_version", "facility_version"]}
         | {"request_id": "A-01"},
-        "operator-p01",
+        "operator-p08",
         key="proposal-a01-after-stale",
     )
     assert retry["status"] == "PROPOSED"
@@ -213,17 +213,17 @@ def test_proposed_referral_rechecks_capacity_before_reserving(pilot):
 
 def test_stale_proposal_expires_when_recommendations_refresh(pilot):
     p = pilot
-    choice = p.ok("requests/A-01/recommendations", user="operator-p01")["candidates"][0]
+    choice = p.ok("requests/A-01/recommendations", user="operator-p08")["candidates"][0]
     proposal = p.ok(
         "referrals",
         {key: choice[key] for key in ["capacity_id", "capacity_version", "facility_version"]}
         | {"request_id": "A-01"},
-        "operator-p01",
+        "operator-p08",
     )
     before = p.edit(lambda s: deepcopy(s))
     p.edit(lambda s: s["facilities"][choice["facility_id"]].update(version=choice["facility_version"] + 1))
 
-    refreshed = p.ok("requests/A-01/recommendations", user="operator-p01")
+    refreshed = p.ok("requests/A-01/recommendations", user="operator-p08")
     after = p.edit(lambda s: deepcopy(s))
     assert after["referrals"][proposal["id"]]["status"] == "EXPIRED"
     assert after["requests"]["A-01"]["status"] == "OPEN"
@@ -237,20 +237,20 @@ def test_stale_proposal_expires_when_recommendations_refresh(pilot):
 
 def test_proposed_referral_uses_current_subsidy_policy_when_reserved(pilot):
     p = pilot
-    choices = p.ok("requests/A-01/recommendations", user="operator-p01")["candidates"]
+    choices = p.ok("requests/A-01/recommendations", user="operator-p08")["candidates"]
     choice = next(candidate for candidate in choices if candidate["subsidy"])
     proposal = p.ok(
         "referrals/proposals",
         {key: choice[key] for key in ["capacity_id", "capacity_version", "facility_version"]}
         | {"request_id": "A-01"},
-        "operator-p01",
+        "operator-p08",
     )
     p.ok(
         "subsidy-rules",
         {"month": choice["date"][:7], "amount": choice["subsidy"] + 300, "version": 1},
         "planner",
     )
-    reserved = p.ok(f"referrals/{proposal['id']}/reserve", {}, "operator-p01")
+    reserved = p.ok(f"referrals/{proposal['id']}/reserve", {}, "operator-p08")
     aggregate = p.edit(lambda s: deepcopy(s))
     assert reserved["status"] == "AWAITING_CONFIRMATIONS"
     assert reserved["subsidy"] == choice["subsidy"] + 300
@@ -260,11 +260,11 @@ def test_proposed_referral_uses_current_subsidy_policy_when_reserved(pilot):
 
 def test_post_referrals_proposes_before_holding_capacity(pilot):
     p = pilot
-    choice = p.ok("requests/A-01/recommendations", user="operator-p01")["candidates"][0]
+    choice = p.ok("requests/A-01/recommendations", user="operator-p08")["candidates"][0]
     payload = {key: choice[key] for key in ["capacity_id", "capacity_version", "facility_version"]} | {
         "request_id": "A-01"
     }
-    referral = p.ok("referrals", payload, "operator-p01", key="proposal-route-a01")
+    referral = p.ok("referrals", payload, "operator-p08", key="proposal-route-a01")
     aggregate = p.edit(lambda s: deepcopy(s))
     assert referral["status"] == "PROPOSED"
     assert aggregate["capacities"][choice["capacity_id"]]["held"] == 0
@@ -272,7 +272,7 @@ def test_post_referrals_proposes_before_holding_capacity(pilot):
     assert referral["ledger_id"] is None
 
     reserved = p.ok(
-        f"referrals/{referral['id']}/reserve", {}, "operator-p01", key="reserve-route-a01"
+        f"referrals/{referral['id']}/reserve", {}, "operator-p08", key="reserve-route-a01"
     )
     assert reserved["id"] == referral["id"]
     assert reserved["status"] == "AWAITING_CONFIRMATIONS"
@@ -292,7 +292,7 @@ def test_worked_example_and_closed_loop(pilot):
     assert p.ok(f"plans/{plan['id']}/approve", {}, key="approve-unique") == approved
     budget = p.state()["budgets"][0]
     assert budget["remaining"] == 0 and budget["COMMITTED"] == 25000 and budget["SETTLED"] == 0
-    assert p.ok("requests/B-01/recommendations", user="operator-p01")["candidates"] == []
+    assert p.ok("requests/B-01/recommendations", user="operator-p08")["candidates"] == []
     for action, user in [("QUOTA-7", "operator-p02"), ("MOBILE-5", "operator-p08")]:
         p.ok(f"plans/{plan['id']}/actions/{action}/activate", {}, user, key="activate-" + action)
         p.ok(f"plans/{plan['id']}/actions/{action}/activate", {}, user, key="activate-" + action)
@@ -301,7 +301,7 @@ def test_worked_example_and_closed_loop(pilot):
     for rid, receiver in [("A-01", "operator-p01"), ("B-01", "operator-p02"), ("C-01", "operator-p08")]:
         a = reserve(p, rid)
         assert a["status"] == "AWAITING_CONFIRMATIONS"
-        p.ok(f"referrals/{a['id']}/patient-agreement", {"accepted": True}, "operator-p01")
+        p.ok(f"referrals/{a['id']}/patient-agreement", {"accepted": True}, "operator-p08")
         confirmed = p.ok(f"referrals/{a['id']}/partner-response", {"accepted": True}, receiver)
         assert confirmed["status"] == "CONFIRMED"
         p.ok(f"referrals/{a['id']}/arrival", {}, receiver)
@@ -328,7 +328,7 @@ def test_confirmation_permissions_and_approvals(pilot):
         p.call(f"referrals/{a['id']}/partner-response", {"accepted": True}, "operator-p02").status_code == 403
     )
     p.ok(f"referrals/{a['id']}/partner-response", {"accepted": True}, "operator-p01")
-    waiting = p.ok(f"referrals/{a['id']}/patient-agreement", {"accepted": True}, "operator-p01")
+    waiting = p.ok(f"referrals/{a['id']}/patient-agreement", {"accepted": True}, "operator-p08")
     assert waiting["status"] == "AWAITING_CONFIRMATIONS"
     confirmed = p.ok(f"referrals/{a['id']}/funding-approval", {"accepted": True})
     assert confirmed["status"] == "CONFIRMED"
@@ -342,16 +342,16 @@ def test_last_unit_concurrency(pilot):
     p.edit(lambda s: s["capacities"][capacity_key("P01", s["service_date"])].update(quota=1))
     payloads = []
     for rid in ["A-01", "A-02"]:
-        c = p.ok(f"requests/{rid}/recommendations", user="operator-p01")["candidates"][0]
+        c = p.ok(f"requests/{rid}/recommendations", user="operator-p08")["candidates"][0]
         payloads.append(
             {k: c[k] for k in ["capacity_id", "capacity_version", "facility_version"]} | {"request_id": rid}
         )
-    proposals = [p.ok("referrals", data, "operator-p01") for data in payloads]
+    proposals = [p.ok("referrals", data, "operator-p08") for data in payloads]
     assert all(a["status"] == "PROPOSED" for a in proposals)
     assert p.edit(lambda s: s["capacities"][capacity_key("P01", s["service_date"])]["held"]) == 0
     with ThreadPoolExecutor(2) as pool:
         responses = list(
-            pool.map(lambda a: p.call(f"referrals/{a['id']}/reserve", {}, "operator-p01"), proposals)
+            pool.map(lambda a: p.call(f"referrals/{a['id']}/reserve", {}, "operator-p08"), proposals)
         )
     assert all(response.status_code == 200 for response in responses)
     assert sorted(response.json()["status"] for response in responses) == [
@@ -372,16 +372,16 @@ def test_concurrent_budget_holds(pilot):
     p.edit(prepare)
     payloads = []
     for rid, fid in [("A-01", "P01"), ("A-02", "P02")]:
-        candidates = p.ok(f"requests/{rid}/recommendations", user="operator-p01")["candidates"]
+        candidates = p.ok(f"requests/{rid}/recommendations", user="operator-p08")["candidates"]
         c = next(candidate for candidate in candidates if candidate["facility_id"] == fid)
         assert c["subsidy"] == 1000
         payloads.append(
             {k: c[k] for k in ["capacity_id", "capacity_version", "facility_version"]} | {"request_id": rid}
         )
-    proposals = [p.ok("referrals", data, "operator-p01") for data in payloads]
+    proposals = [p.ok("referrals", data, "operator-p08") for data in payloads]
     with ThreadPoolExecutor(2) as pool:
         results = list(
-            pool.map(lambda a: p.call(f"referrals/{a['id']}/reserve", {}, "operator-p01"), proposals)
+            pool.map(lambda a: p.call(f"referrals/{a['id']}/reserve", {}, "operator-p08"), proposals)
         )
     assert all(response.status_code == 200 for response in results)
     assert sorted(response.json()["status"] for response in results) == [
@@ -417,10 +417,10 @@ def test_expiry_rejection_cancel_and_deduplication(pilot):
     assert state["summary"]["unresolved"] == 20
     a3 = reserve(p)
     p.ok(
-        f"referrals/{a3['id']}/cancel", {"reason": "Operator cancellation"}, "operator-p01", key="cancel-once"
+        f"referrals/{a3['id']}/cancel", {"reason": "Operator cancellation"}, "operator-p08", key="cancel-once"
     )
     p.ok(
-        f"referrals/{a3['id']}/cancel", {"reason": "Operator cancellation"}, "operator-p01", key="cancel-once"
+        f"referrals/{a3['id']}/cancel", {"reason": "Operator cancellation"}, "operator-p08", key="cancel-once"
     )
     assert p.state()["summary"]["unresolved"] == 20
     assert p.state()["budgets"][0]["remaining"] == 25000
@@ -434,7 +434,7 @@ def test_stale_capacity_refresh_and_quota_floor(pilot):
             updated_at=(now() - timedelta(days=3)).isoformat()
         )
     )
-    assert p.ok("requests/A-01/recommendations", user="operator-p01")["reasons"] == [
+    assert p.ok("requests/A-01/recommendations", user="operator-p08")["reasons"] == [
         "CAPACITY_UNKNOWN_OR_STALE"
     ]
     assert (
@@ -474,7 +474,7 @@ def test_stale_draft_and_snapshot_immutability(pilot):
 def test_matching_review_feeds_request(pilot):
     p = pilot
     text = "a routine visit with a family physician"
-    m = p.ok("matching/services", {"text": text}, "operator-p01")
+    m = p.ok("matching/services", {"text": text}, "operator-p08")
     assert "all-MiniLM-L6-v2@" in m["model_version"]
     assert m["candidates"][0]["id"] == SERVICE
     rev = p.ok(
@@ -485,14 +485,14 @@ def test_matching_review_feeds_request(pilot):
             "candidate_id": SERVICE,
             "reason": "Operator checked scope",
         },
-        "operator-p01",
+        "operator-p08",
     )
     day = p.state()["config"]["service_date"]
     r = p.ok(
         "requests",
         {
             "reference": "NEW-TEST",
-            "source_facility_id": "P01",
+            "source_facility_id": "P08",
             "zone": "East",
             "original_text": text,
             "review_id": rev["id"],
@@ -500,10 +500,10 @@ def test_matching_review_feeds_request(pilot):
             "date_to": day,
             "suitable": True,
         },
-        "operator-p01",
+        "operator-p08",
     )
     assert r["service_reviewed"]
-    assert p.ok(f"requests/{r['id']}/recommendations", user="operator-p01")["candidates"]
+    assert p.ok(f"requests/{r['id']}/recommendations", user="operator-p08")["candidates"]
     wrong = p.call(
         "requests",
         {
@@ -528,14 +528,14 @@ def test_unsupported_and_scope_exclusion(pilot):
         "requests",
         {
             "reference": "UNSUPPORTED",
-            "source_facility_id": "P01",
+            "source_facility_id": "P08",
             "zone": "Not mapped",
             "original_text": "Emergency trauma operation",
             "date_from": day,
             "date_to": day,
             "suitable": False,
         },
-        "operator-p01",
+        "operator-p08",
     )
     assert r["status"] == "OUT_OF_SCOPE"
     summary = p.ok("intelligence/summary")
@@ -583,13 +583,13 @@ def test_completed_quota_never_releases(pilot):
     p = pilot
     a = reserve(p)
     p.ok(f"referrals/{a['id']}/partner-response", {"accepted": True}, "operator-p01")
-    p.ok(f"referrals/{a['id']}/patient-agreement", {"accepted": True}, "operator-p01")
+    p.ok(f"referrals/{a['id']}/patient-agreement", {"accepted": True}, "operator-p08")
     p.ok(f"referrals/{a['id']}/funding-approval", {"accepted": True})
     p.ok(f"referrals/{a['id']}/arrival", {}, "operator-p01")
     p.ok(f"referrals/{a['id']}/completion", {}, "operator-p01")
     assert (
         p.call(
-            f"referrals/{a['id']}/cancel", {"reason": "Attempt to release completed"}, "operator-p01"
+            f"referrals/{a['id']}/cancel", {"reason": "Attempt to release completed"}, "operator-p08"
         ).status_code
         == 409
     )
@@ -602,17 +602,17 @@ def test_cancel_cutoff_and_no_show(pilot):
     def confirmed():
         a = reserve(p)
         p.ok(f"referrals/{a['id']}/partner-response", {"accepted": True}, "operator-p01")
-        p.ok(f"referrals/{a['id']}/patient-agreement", {"accepted": True}, "operator-p01")
+        p.ok(f"referrals/{a['id']}/patient-agreement", {"accepted": True}, "operator-p08")
         p.ok(f"referrals/{a['id']}/funding-approval", {"accepted": True})
         return a
 
     first = confirmed()
-    p.ok(f"referrals/{first['id']}/cancel", {"reason": "Before service cutoff"}, "operator-p01")
+    p.ok(f"referrals/{first['id']}/cancel", {"reason": "Before service cutoff"}, "operator-p08")
     c = p.state()["facilities"][0]["capacities"][0]
     assert c["forfeited"] == 0 and c["available"] == 8
     second = confirmed()
     p.edit(lambda s: s["referrals"][second["id"]].update(date=(now().date() - timedelta(days=1)).isoformat()))
-    p.ok(f"referrals/{second['id']}/cancel", {"reason": "After service cutoff"}, "operator-p01")
+    p.ok(f"referrals/{second['id']}/cancel", {"reason": "After service cutoff"}, "operator-p08")
     c = p.state()["facilities"][0]["capacities"][0]
     assert c["forfeited"] == 1 and c["available"] == 7
     third = confirmed()
@@ -673,14 +673,14 @@ def test_included_funding_remains_available_after_release(pilot):
     p.ok(f"plans/{plan['id']}/approve", {})
     p.ok(f"plans/{plan['id']}/actions/QUOTA-7/activate", {}, "operator-p02")
     p.ok(f"plans/{plan['id']}/cancel", {"reason": "Release unassigned earmarks"})
-    choice = p.ok("requests/B-01/recommendations", user="operator-p01")["candidates"][0]
+    choice = p.ok("requests/B-01/recommendations", user="operator-p08")["candidates"][0]
     assert choice["subsidy"] == 0
     a = reserve(p, "B-01")
     assert a["subsidy"] == 0 and a["package_funded"]
     before = p.state()["budgets"][0]["remaining"]
-    p.ok(f"referrals/{a['id']}/cancel", {"reason": "Retry released included unit"}, "operator-p01")
+    p.ok(f"referrals/{a['id']}/cancel", {"reason": "Retry released included unit"}, "operator-p08")
     assert p.state()["budgets"][0]["remaining"] == before
-    assert p.ok("requests/B-01/recommendations", user="operator-p01")["candidates"][0]["subsidy"] == 0
+    assert p.ok("requests/B-01/recommendations", user="operator-p08")["candidates"][0]["subsidy"] == 0
 
 
 def test_patient_decline_excluded_until_reprocessed(pilot):
@@ -689,12 +689,12 @@ def test_patient_decline_excluded_until_reprocessed(pilot):
     p.ok(
         f"referrals/{a['id']}/patient-agreement",
         {"accepted": False, "reason": "Does not agree"},
-        "operator-p01",
+        "operator-p08",
     )
     snap = p.ok("intelligence/snapshots", {"month": p.state()["config"]["month"]})
     assert snap["excluded"]["PATIENT_DECLINED"] == 1
-    p.ok("requests/A-01/reprocess", {"reason": "Operator recorded updated preferences"}, "operator-p01")
-    assert p.ok("requests/A-01/recommendations", user="operator-p01")["candidates"]
+    p.ok("requests/A-01/reprocess", {"reason": "Operator recorded updated preferences"}, "operator-p08")
+    assert p.ok("requests/A-01/recommendations", user="operator-p08")["candidates"]
 
 
 def test_facility_identity_link_is_non_destructive(pilot):
@@ -763,7 +763,7 @@ def test_replan_does_not_double_count_projected_units(pilot):
     first = make_plan(p)
     p.ok(f"plans/{first['id']}/approve", {})
     a = reserve(p)
-    p.ok(f"referrals/{a['id']}/cancel", {"reason": "Retry funded request"}, "operator-p01")
+    p.ok(f"referrals/{a['id']}/cancel", {"reason": "Retry funded request"}, "operator-p08")
     assert p.state()["summary"]["projected_additional"] == 19
     second = make_plan(p)
     assert second["additional"] == 1

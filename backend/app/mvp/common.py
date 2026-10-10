@@ -106,7 +106,7 @@ def cap_view(s, c):
     known = fresh(c) and s["facilities"][c["facility_id"]]["participation"] == "ACTIVE"
     count = available(c) if c else None
     status = (
-        "UNKNOWN" if not known else "EXHAUSTED" if count == 0 else "LIMITED" if count <= 3 else "AVAILABLE"
+        "UNKNOWN" if not known else "EXHAUSTED" if count == 0 else "LIMITED" if count / max(1, c["quota"]) <= 0.2 else "AVAILABLE"
     )
     return {
         **c,

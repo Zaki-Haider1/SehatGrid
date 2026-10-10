@@ -37,8 +37,8 @@ function card(page: Page, title: string) {
 }
 async function login(page: Page, account: string) {
   await page.goto("/");
-  await page.getByLabel("Account", { exact: true }).selectOption(account);
-  await page.getByLabel("Demo password", { exact: true }).fill(password);
+  await page.getByLabel("Username", { exact: true }).fill(account);
+  await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Sign out", exact: true }),
@@ -94,10 +94,8 @@ async function reserve(
   await row
     .getByRole("button", { name: "Find providers", exact: true })
     .click();
-  const option = page
-    .locator(".recommendation")
-    .filter({ has: page.getByText(new RegExp(`Provider ${facility}$`)) });
-  await expect(option.getByText(/Ranking: referral-ranking-v/)).toBeVisible();
+  const option = page.locator(`.recommendation[data-facility="${facility}"]`);
+  await expect(option.getByText(/referral-ranking-v/)).toBeVisible();
   const before = await state(page);
   const proposal = await saved(
     page,
@@ -112,13 +110,16 @@ async function reserve(
   if (reload) {
     await page.reload();
     await page
-      .getByRole("button", { name: "Referral coordination", exact: true })
+      .getByRole("button", {
+        name: /^(Referral coordination|Receiving desk)$/,
+        exact: true,
+      })
       .click();
   }
   await expect(referral(page, proposal.id).locator(".badge")).toHaveText(
     "proposed",
   );
-  return saved(
+  const reserved = await saved(
     page,
     referral(page, proposal.id).getByRole("button", {
       name: "Approve & reserve proposal",
@@ -126,6 +127,11 @@ async function reserve(
     }),
     `referrals/${proposal.id}/reserve`,
   );
+  await switchRole(page, `operator-${facility.toLowerCase()}`);
+  await page
+    .getByRole("button", { name: /^(Referral coordination|Receiving desk)$/ })
+    .click();
+  return reserved;
 }
 function referral(page: Page, id: string) {
   return page
@@ -133,6 +139,14 @@ function referral(page: Page, id: string) {
     .filter({ has: page.getByText(new RegExp(`^${id} →`)) });
 }
 async function complete(page: Page, id: string) {
+  const current = await state(page);
+  const destination = current.referrals.find((a) => a.id === id)!.facility_id;
+  if (!current.user.facility_ids.includes(destination)) {
+    await switchRole(page, `operator-${destination.toLowerCase()}`);
+    await page
+      .getByRole("button", { name: /^(Referral coordination|Receiving desk)$/ })
+      .click();
+  }
   await saved(
     page,
     referral(page, id).getByRole("button", {
@@ -169,9 +183,7 @@ test("five-minute demo: reviewed referral, 8/7/5 plan, activation, funding and e
       : route.abort(),
   );
   await login(page, "planner");
-  await expect(
-    page.getByRole("button", { name: /^Select Demo .* Provider/ }),
-  ).toHaveCount(8);
+  await expect(page.locator(".city-pin")).toHaveCount(8);
   await expect(page.locator(".pilot-map")).toHaveAttribute(
     "data-engine",
     /^(webgl|software)-3d$/,
@@ -189,7 +201,10 @@ test("five-minute demo: reviewed referral, 8/7/5 plan, activation, funding and e
 
   await switchRole(page, "operator-p03");
   await page
-    .getByRole("button", { name: "Referral coordination", exact: true })
+    .getByRole("button", {
+      name: /^(Referral coordination|Receiving desk)$/,
+      exact: true,
+    })
     .click();
   await page
     .getByLabel("Service description", { exact: true })
@@ -210,7 +225,7 @@ test("five-minute demo: reviewed referral, 8/7/5 plan, activation, funding and e
     page.getByText("Human review recorded", { exact: true }),
   ).toBeVisible();
   await page
-    .getByLabel("Synthetic reference", { exact: true })
+    .getByLabel("Patient reference", { exact: true })
     .fill("BROWSER-EAST");
   await page.getByLabel("Pilot zone", { exact: true }).selectOption("East");
   await page
@@ -224,7 +239,7 @@ test("five-minute demo: reviewed referral, 8/7/5 plan, activation, funding and e
     page.getByRole("button", { name: "Register request", exact: true }),
     "requests",
   );
-  const east = await reserve(page, "BROWSER-EAST", "P03", true);
+  const east = await reserve(page, "BROWSER-EAST", "P04", true);
   await saved(
     page,
     referral(page, east.id).getByRole("button", {
@@ -322,9 +337,12 @@ test("five-minute demo: reviewed referral, 8/7/5 plan, activation, funding and e
   }
   await responsive(page);
 
-  await switchRole(page, "operator-p01");
+  await switchRole(page, "operator-p08");
   await page
-    .getByRole("button", { name: "Referral coordination", exact: true })
+    .getByRole("button", {
+      name: /^(Referral coordination|Receiving desk)$/,
+      exact: true,
+    })
     .click();
   const bRow = page
     .getByRole("row")
@@ -350,7 +368,10 @@ test("five-minute demo: reviewed referral, 8/7/5 plan, activation, funding and e
   );
   await switchRole(page, "operator-p02");
   await page
-    .getByRole("button", { name: "Referral coordination", exact: true })
+    .getByRole("button", {
+      name: /^(Referral coordination|Receiving desk)$/,
+      exact: true,
+    })
     .click();
   await saved(
     page,
@@ -363,9 +384,12 @@ test("five-minute demo: reviewed referral, 8/7/5 plan, activation, funding and e
   await complete(page, b.id);
 
   // Approved-plan subsidy already carries planner authorization.
-  await switchRole(page, "operator-p01");
+  await switchRole(page, "operator-p08");
   await page
-    .getByRole("button", { name: "Referral coordination", exact: true })
+    .getByRole("button", {
+      name: /^(Referral coordination|Receiving desk)$/,
+      exact: true,
+    })
     .click();
   const a = await reserve(page, "A-01", "P01");
   expect(a.subsidy).toBe(1000);
@@ -464,9 +488,12 @@ test("five-minute demo: reviewed referral, 8/7/5 plan, activation, funding and e
 test("independent subsidy requires planner funding authorization before completion", async ({
   page,
 }) => {
-  await login(page, "operator-p01");
+  await login(page, "operator-p08");
   await page
-    .getByRole("button", { name: "Referral coordination", exact: true })
+    .getByRole("button", {
+      name: /^(Referral coordination|Receiving desk)$/,
+      exact: true,
+    })
     .click();
   const a = await reserve(page, "A-01", "P01");
   await saved(
@@ -500,9 +527,12 @@ test("independent subsidy requires planner funding authorization before completi
     }),
     `referrals/${a.id}/funding-approval`,
   );
-  await switchRole(page, "operator-p01");
+  await switchRole(page, "operator-p08");
   await page
-    .getByRole("button", { name: "Referral coordination", exact: true })
+    .getByRole("button", {
+      name: /^(Referral coordination|Receiving desk)$/,
+      exact: true,
+    })
     .click();
   await complete(page, a.id);
   await responsive(page);
@@ -526,7 +556,10 @@ test("ranking integration, stale-version recovery and operator permission", asyn
   );
   await switchRole(page, "operator-p03");
   await page
-    .getByRole("button", { name: "Referral coordination", exact: true })
+    .getByRole("button", {
+      name: /^(Referral coordination|Receiving desk)$/,
+      exact: true,
+    })
     .click();
   await saved(
     page,
@@ -541,7 +574,7 @@ test("ranking integration, stale-version recovery and operator permission", asyn
     "matching/reviews",
   );
   await page
-    .getByLabel("Synthetic reference", { exact: true })
+    .getByLabel("Patient reference", { exact: true })
     .fill("RANKING-EAST");
   await page.getByLabel("Pilot zone", { exact: true }).selectOption("East");
   await page
@@ -563,7 +596,7 @@ test("ranking integration, stale-version recovery and operator permission", asyn
     .click();
   await expect(
     page.locator(".recommendation").first().locator("strong"),
-  ).toHaveText("Demo Public Provider P03");
+  ).toHaveText("Kulsum International Hospital");
   await switchRole(page, "planner");
   await page
     .getByRole("button", { name: "Funding approvals", exact: true })
@@ -625,19 +658,22 @@ test("ranking integration, stale-version recovery and operator permission", asyn
   );
   expect(status).toBe(403);
   await page
-    .getByRole("button", { name: "Referral coordination", exact: true })
+    .getByRole("button", {
+      name: /^(Referral coordination|Receiving desk)$/,
+      exact: true,
+    })
     .click();
   await row
     .getByRole("button", { name: "Find providers", exact: true })
     .click();
   await expect(
     page.locator(".recommendation").first().locator("strong"),
-  ).toHaveText("Demo Private Provider P04");
+  ).toHaveText("Kulsum International Hospital");
   await expect(
     page
       .locator(".recommendation")
       .first()
-      .getByText("Ranking: referral-ranking-v3", { exact: true }),
+      .getByText(/referral-ranking-v3/),
   ).toBeVisible();
   await expect(card(page, "Referral ranking policy")).toHaveCount(0);
   await responsive(page);
@@ -647,14 +683,13 @@ test("empty states, failed login, API outage recovery and expired session", asyn
   page,
 }) => {
   await page.goto("/");
-  await page
-    .getByLabel("Demo password", { exact: true })
-    .fill("incorrect-password");
+  await page.getByLabel("Username", { exact: true }).fill("planner");
+  await page.getByLabel("Password", { exact: true }).fill("incorrect-password");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.locator('.error[role="alert"]')).toHaveText(
     "Incorrect username or password",
   );
-  await login(page, "operator-p08");
+  await login(page, "operator-p02");
   await page
     .getByRole("button", { name: "Matching & review", exact: true })
     .click();
@@ -662,7 +697,10 @@ test("empty states, failed login, API outage recovery and expired session", asyn
     page.getByText("No human reviews recorded yet.", { exact: true }),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: "Referral coordination", exact: true })
+    .getByRole("button", {
+      name: /^(Referral coordination|Receiving desk)$/,
+      exact: true,
+    })
     .click();
   await expect(
     page.getByText("No referrals need action in this view.", { exact: true }),
@@ -809,10 +847,10 @@ test("software 3D map preserves colors, interaction and keyboard selection witho
   await expect(map).toBeVisible();
   await expect(map).toHaveAttribute("data-engine", "software-3d");
   const p02 = map.getByRole("button", {
-    name: "Select Demo Public Provider P02",
+    name: "Select Pakistan Institute of Medical Sciences (PIMS)",
     exact: true,
   });
-  await expect(p02).toHaveCSS("border-top-color", "rgb(230, 140, 146)");
+  await expect(p02).toHaveCSS("border-top-color", "rgb(223, 115, 123)");
   await p02.focus();
   await page.keyboard.press("Enter");
   await expect(
@@ -1022,10 +1060,13 @@ test("concurrent draft edits preserve choices and require explicit reload", asyn
 test("a proposed attempt can be cancelled without holding quota or budget", async ({
   page,
 }) => {
-  await login(page, "operator-p01");
+  await login(page, "operator-p08");
   const before = await state(page);
   await page
-    .getByRole("button", { name: "Referral coordination", exact: true })
+    .getByRole("button", {
+      name: /^(Referral coordination|Receiving desk)$/,
+      exact: true,
+    })
     .click();
   await page
     .getByRole("row")

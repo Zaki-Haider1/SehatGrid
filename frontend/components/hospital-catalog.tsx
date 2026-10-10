@@ -33,7 +33,10 @@ export function HospitalCatalog({
       </div>
       <p className="subtle">
         Set your hospital’s consultation, laboratory and imaging prices, and
-        daily service capacity.
+        daily service capacity. Use Other for facilities or equipment. Required
+        test names in referral intake must match this catalog. Daily capacity is
+        the reported total per service date; each reserved referral uses one
+        unit of every required item.
       </p>
       {open && (
         <form
@@ -198,9 +201,10 @@ export function HospitalCatalog({
         </div>
       )}
       <small className="catalog-note">
-        Catalog prices are hospital declarations. Referral matching currently
-        supports reviewed primary-care OPD; additional tests remain catalog
-        information.
+        Catalog prices are hospital declarations. Required tests and facilities
+        filter eligible destinations and reserve daily service capacity
+        alongside reviewed primary-care OPD. Prices shown here are not
+        automatically charged or reimbursed.
       </small>
     </section>
   );

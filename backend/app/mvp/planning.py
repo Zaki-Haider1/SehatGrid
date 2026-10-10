@@ -23,6 +23,7 @@ from .common import (
 )
 
 from .intelligence import fingerprint
+from .routing import catalog_available, test_groups
 
 from ..config import get_settings
 
@@ -105,16 +106,25 @@ def assignment_choices(snapshot, resources, baseline=False):
     for request in sorted(snapshot["requests"], key=lambda r: r["id"]):
         if (
             not request["suitable"]
+            or inputs["facilities"].get(request["source_facility_id"], {}).get("ownership") != "Public"
+            or inputs["facilities"].get(request["source_facility_id"], {}).get("participation") != "ACTIVE"
             or not request["service_reviewed"]
             or request["service_id"] != SERVICE
             or request.get("blocked_reasons")
             or request["status"] not in ["OPEN", "UNRESOLVED"]
-            or request["needs_funding"] and not request["funding_eligible"]
+            or request["needs_funding"]
+            and not request["funding_eligible"]
         ):
             continue
         for resource in resources:
+            destination = inputs["facilities"].get(resource["facility_id"])
+            if request.get("required_tests") and (
+                not destination or not catalog_available(inputs, request, destination, resource["date"])
+            ):
+                continue
             if (
-                request["zone"] not in resource["zones"]
+                resource["facility_id"] == request["source_facility_id"]
+                or request["zone"] not in resource["zones"]
                 or not request["date_from"] <= resource["date"] <= request["date_to"]
                 or resource["date"][:7] != snapshot["month"]
                 or resource["date"] < local_today()
@@ -166,6 +176,8 @@ def solve(snapshot, budget, baseline=False):
 
     for values in by_request.values():
         model.add(sum(values) <= 1)
+    for values, remaining in test_groups(snapshot, xs):
+        model.add(sum(values) <= remaining)
 
     for resource in resources:
         variables = by_resource[resource["id"]]
@@ -380,8 +392,7 @@ def approve(s, u, pid, version=None):
     require(p["status"] == "DRAFT", "INVALID_TRANSITION", "Only a draft may be approved")
 
     require(
-        (version is None and p.get("decision_source", "SOLVER") == "SOLVER")
-        or version == p["version"],
+        (version is None and p.get("decision_source", "SOLVER") == "SOLVER") or version == p["version"],
         "STALE_INPUT",
         "Refresh the draft and approve its current version",
     )

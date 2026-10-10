@@ -11,10 +11,12 @@ import {
 export function PlanRevision({
   plan,
   token,
+  facilityName,
   onSaved,
 }: {
   plan: Plan;
   token: string;
+  facilityName: (id: string) => string;
   onSaved: (plan: Plan) => Promise<void>;
 }) {
   const [options, setOptions] = useState<RevisionOptions | null>(null);
@@ -128,8 +130,8 @@ export function PlanRevision({
                           .filter((c) => c.request_id === id)
                           .map((c) => (
                             <option key={c.resource_id} value={c.resource_id}>
-                              {c.facility_id} · {c.date} · Subsidy PKR{" "}
-                              {money(c.subsidy)}
+                              {facilityName(c.facility_id)} · {c.date} · Subsidy
+                              PKR {money(c.subsidy)}
                               {c.funding_included ? " · funding included" : ""}
                             </option>
                           ))}

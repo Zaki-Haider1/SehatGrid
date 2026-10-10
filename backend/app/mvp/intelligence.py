@@ -127,6 +127,8 @@ def snapshot(s, u, month):
             excluded["ALREADY_ACCOMMODATED_OR_PLANNED"] += 1
         elif (
             not r["suitable"]
+            or s["facilities"].get(r["source_facility_id"], {}).get("ownership") != "Public"
+            or s["facilities"].get(r["source_facility_id"], {}).get("participation") != "ACTIVE"
             or not r["service_reviewed"]
             or r["service_id"] != SERVICE
             or r.get("blocked_reasons")
@@ -137,8 +139,13 @@ def snapshot(s, u, month):
         elif r["needs_funding"] and not r["funding_eligible"]:
             excluded["FUNDING_INELIGIBLE"] += 1
         else:
-            eligible.append(deepcopy(r))
-    inputs = {k: deepcopy(s[k]) for k in ["facilities", "capacities", "offers", "subsidy_rule"]}
+            eligible.append({k: deepcopy(v) for k, v in r.items() if k != "whatsapp_phone"})
+    inputs = {
+        k: deepcopy(s[k])
+        for k in ["facilities", "capacities", "offers", "subsidy_rule", "requests", "referrals", "plans"]
+    }
+    for request in inputs["requests"].values():
+        request.pop("whatsapp_phone", None)
     for c in inputs["capacities"].values():
         protected = sum(
             1

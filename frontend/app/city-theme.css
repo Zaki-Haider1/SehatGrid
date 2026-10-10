@@ -33,7 +33,7 @@ summary:focus-visible {
   background: #5c79d0;
 }
 .brand {
-  font-size: 14px;
+  font-size: 16px;
   letter-spacing: 0.6px;
 }
 .brand svg {
@@ -48,23 +48,23 @@ header {
 }
 .header-scope {
   color: #949aab;
-  font-size: 11px;
+  font-size: 13px;
 }
 .role-label {
-  font-size: 10px;
+  font-size: 12px;
   padding: 6px 10px;
   border-radius: 20px;
   background: #f0f3fb;
   color: #7b8ec4;
 }
 .account {
-  font-size: 11px;
+  font-size: 13px;
 }
 .demo-banner {
   background: #fafbfe;
   color: #929bad;
   padding: 5px 28px;
-  font-size: 9px;
+  font-size: 12px;
   border-bottom: 1px solid var(--line);
 }
 .demo-banner i {
@@ -94,7 +94,7 @@ header {
   white-space: nowrap;
   margin: 0;
   padding: 11px 15px;
-  font-size: 11px;
+  font-size: 13px;
   color: #969eaf;
   gap: 8px;
 }
@@ -117,14 +117,14 @@ header {
   font-weight: 600;
 }
 .eyebrow {
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 1.7px;
   color: #8e9ac0;
 }
 .page-heading p,
 .subtle {
   color: #9099ac;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.6;
 }
 .date-controls input {
@@ -153,7 +153,7 @@ header {
   padding: 24px;
 }
 .card-title h2 {
-  font-size: 16px;
+  font-size: 18px;
   letter-spacing: -0.3px;
 }
 .card p {
@@ -164,7 +164,7 @@ header {
   color: white;
 }
 .badge {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 500;
   background: #edf1f8;
   color: #8492b1;
@@ -258,7 +258,7 @@ th {
   background: transparent;
   padding: 0;
   color: #7b92d8;
-  font-size: 11px;
+  font-size: 13px;
   justify-content: space-between;
 }
 .live-dot {
@@ -295,7 +295,7 @@ th {
   border-bottom: 1px solid #e9edf4;
 }
 .planner-city .page-heading > div:first-child h1 {
-  font-size: 14px;
+  font-size: 16px;
   letter-spacing: -0.3px;
   margin: 0;
 }
@@ -310,13 +310,13 @@ th {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 9px;
+  font-size: 12px;
   white-space: nowrap;
 }
 .planner-city .date-controls input {
   margin: 0;
   padding: 6px;
-  font-size: 10px;
+  font-size: 12px;
   width: 123px;
 }
 .planner-city .error,
@@ -373,7 +373,7 @@ th {
   transform: translate(-50%, -100%);
   pointer-events: auto;
   z-index: 1;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 700;
 }
 .city-pin:hover,
@@ -417,7 +417,7 @@ th {
   bottom: 17px;
   left: 338px;
   color: #8e99ac;
-  font-size: 9px;
+  font-size: 12px;
   display: flex;
   gap: 7px;
   align-items: center;
@@ -451,21 +451,21 @@ th {
 .directory-heading h2 > span {
   margin-left: 7px;
   color: #9ea8c1;
-  font-size: 11px;
+  font-size: 13px;
 }
 .directory-heading .eyebrow {
   margin-bottom: 9px;
-  font-size: 8px;
+  font-size: 12px;
 }
 .city-area {
-  font-size: 8px;
+  font-size: 12px;
   background: #f2f5fb;
   padding: 7px;
   border-radius: 6px;
   color: #9ca7bd;
 }
 .city-directory > .subtle {
-  font-size: 10px;
+  font-size: 12px;
   margin: 10px 0 20px;
 }
 .city-search {
@@ -482,18 +482,18 @@ th {
   border: 0;
   padding: 11px 0;
   background: transparent;
-  font-size: 10px;
+  font-size: 12px;
 }
 .directory-filter {
   display: flex;
   align-items: center;
   gap: 5px;
   color: #a0a9bc;
-  font-size: 9px;
+  font-size: 12px;
   margin: 13px 0;
 }
 .directory-filter select {
-  font-size: 9px;
+  font-size: 12px;
   border: 0;
   padding: 2px;
   color: #7d8ba7;
@@ -503,7 +503,7 @@ th {
 .directory-filter > span {
   white-space: nowrap;
   margin-left: auto;
-  font-size: 8px;
+  font-size: 12px;
 }
 .city-hospital-list {
   overflow: auto;
@@ -531,19 +531,19 @@ th {
 }
 .city-hospital strong {
   display: block;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1.5;
 }
 .city-hospital span {
   display: block;
-  font-size: 9px;
+  font-size: 12px;
   color: #9da6b8;
   font-weight: 400;
   margin: 4px 0;
 }
 .city-hospital small {
-  font-size: 8px;
+  font-size: 12px;
   color: #8493b1;
   font-weight: 400;
 }
@@ -581,7 +581,7 @@ th {
 }
 .directory-footer {
   border-top: 1px solid #eef1f6;
-  font-size: 8px;
+  font-size: 12px;
   color: #98a3b8;
   padding: 17px 0;
   line-height: 1.7;
@@ -591,7 +591,7 @@ th {
 }
 .directory-footer small {
   display: block;
-  font-size: 7px;
+  font-size: 12px;
   color: #a8b1c2;
   margin-top: 4px;
 }
@@ -606,7 +606,7 @@ th {
   z-index: 5;
 }
 .city-layer > span {
-  font-size: 9px;
+  font-size: 12px;
   color: #9fa9bc;
   margin-left: 8px;
 }
@@ -614,7 +614,7 @@ th {
   display: flex;
 }
 .city-layer button {
-  font-size: 9px;
+  font-size: 12px;
   padding: 9px 11px;
   background: transparent;
   border: 0;
@@ -631,7 +631,7 @@ th {
   padding: 10px 13px;
   display: flex;
   gap: 14px;
-  font-size: 8px;
+  font-size: 12px;
   color: #9ba5b8;
   z-index: 5;
 }
@@ -660,7 +660,7 @@ th {
   margin: 12px 0;
 }
 .city-insight p {
-  font-size: 11px;
+  font-size: 13px;
   color: #98a3b7;
   line-height: 1.7;
 }
@@ -677,7 +677,7 @@ th {
   color: #6f84b4;
 }
 .pulse-numbers span {
-  font-size: 9px;
+  font-size: 12px;
   color: #9ba6bf;
 }
 .pulse-plan {
@@ -689,13 +689,13 @@ th {
 }
 .pulse-plan strong {
   display: block;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 500;
   color: #7e8da8;
 }
 .pulse-plan small {
   display: block;
-  font-size: 8px;
+  font-size: 12px;
   color: #aab4c6;
   line-height: 1.7;
   margin-top: 4px;
@@ -726,13 +726,13 @@ th {
 }
 .city-budget span {
   display: block;
-  font-size: 8px;
+  font-size: 12px;
   color: #9ea9c0;
   margin-bottom: 5px;
 }
 .city-budget strong {
   font-weight: 500;
-  font-size: 16px;
+  font-size: 18px;
   color: #6b7c9f;
 }
 .budget-remaining {
@@ -741,7 +741,7 @@ th {
 }
 .city-budget button {
   margin-left: 12px;
-  font-size: 9px;
+  font-size: 12px;
   border: 0;
   background: #edf2ff;
   color: #7b91cd;
@@ -767,7 +767,7 @@ th {
   position: absolute;
   bottom: 11px;
   right: 13px;
-  font-size: 8px;
+  font-size: 12px;
   color: #b0b9ce;
 }
 .detail-building {
@@ -793,7 +793,7 @@ th {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 9px;
+  font-size: 12px;
 }
 .detail-metrics {
   display: grid;
@@ -808,7 +808,7 @@ th {
   display: block;
 }
 .detail-metrics span {
-  font-size: 9px;
+  font-size: 12px;
   color: #9ba7be;
 }
 .capacity-track {
@@ -824,7 +824,7 @@ th {
 }
 .hospital-facts {
   margin: 17px 0;
-  font-size: 9px;
+  font-size: 12px;
 }
 .hospital-facts > div {
   display: flex;
@@ -842,17 +842,17 @@ th {
   text-align: right;
 }
 .detail-address {
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.7;
   color: #a2acc0;
   margin: 15px 0;
 }
 .city-detail .primary {
   width: 100%;
-  font-size: 9px;
+  font-size: 12px;
 }
 .city-detail details {
-  font-size: 9px;
+  font-size: 12px;
   margin: 12px 0;
 }
 .catalog-price {
@@ -860,10 +860,10 @@ th {
   justify-content: space-between;
   gap: 10px;
   color: #98a4ba;
-  font-size: 9px;
+  font-size: 12px;
 }
 .catalog-price strong {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 500;
   white-space: nowrap;
 }
@@ -890,7 +890,7 @@ th {
   letter-spacing: -0.8px;
 }
 .reception-welcome p {
-  font-size: 11px;
+  font-size: 13px;
   margin: 10px 0 22px;
 }
 .reception-referral {
@@ -904,11 +904,11 @@ th {
 }
 .reception-referral strong {
   display: block;
-  font-size: 12px;
+  font-size: 14px;
 }
 .reception-referral span:not(.badge) {
   display: block;
-  font-size: 10px;
+  font-size: 12px;
   color: #9aa7be;
   margin-top: 6px;
 }
@@ -920,7 +920,7 @@ th {
   background: #f8faff;
   border-radius: 6px;
   margin: 8px 20px;
-  font-size: 11px;
+  font-size: 13px;
 }
 .onboarding-checklist svg {
   color: #8fa5dc;
@@ -966,7 +966,7 @@ th {
 .catalog-note {
   display: block;
   color: #a7b0c3;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.8;
   margin-top: 20px;
 }
@@ -1004,7 +1004,7 @@ th {
 .login-intro > p {
   color: #98a3ba;
   max-width: 430px;
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.8;
   position: relative;
   z-index: 1;
@@ -1024,7 +1024,7 @@ th {
 }
 .login-intro > small {
   color: #a8b3c8;
-  font-size: 9px;
+  font-size: 12px;
 }
 .login-card {
   background: #ffffffed;
@@ -1047,7 +1047,7 @@ th {
   margin-top: 22px;
 }
 .login-card > p {
-  font-size: 11px;
+  font-size: 13px;
   color: #a2acc0;
 }
 .login-card > small {
@@ -1098,13 +1098,13 @@ th {
     width: 290px;
   }
   .city-hospital strong {
-    font-size: 12px;
+    font-size: 14px;
   }
   .city-hospital span {
-    font-size: 10px;
+    font-size: 12px;
   }
   .city-hospital small {
-    font-size: 9px;
+    font-size: 12px;
   }
 }
 @media (max-width: 1100px) {
@@ -1127,7 +1127,7 @@ th {
     padding: 14px;
   }
   .city-budget strong {
-    font-size: 13px;
+    font-size: 15px;
   }
   .city-budget button {
     margin: 0;
@@ -1144,7 +1144,7 @@ th {
   .city-pin {
     width: 28px;
     height: 28px;
-    font-size: 7px;
+    font-size: 12px;
   }
   .main {
     padding: 25px;
@@ -1173,13 +1173,13 @@ th {
     gap: 8px;
   }
   .brand {
-    font-size: 12px;
+    font-size: 14px;
   }
   .brand svg {
     width: 23px;
   }
   .role-label {
-    font-size: 8px;
+    font-size: 12px;
   }
   .demo-banner {
     padding: 5px 16px;
@@ -1193,7 +1193,7 @@ th {
   }
   .sidebar > button {
     padding: 10px 12px;
-    font-size: 10px;
+    font-size: 12px;
   }
   .sidebar > button svg {
     width: 14px;
@@ -1251,7 +1251,7 @@ th {
     line-height: 1.5;
   }
   .reception-welcome .primary {
-    font-size: 10px;
+    font-size: 12px;
     padding: 10px;
   }
   .catalog-card .card-title {
@@ -1271,7 +1271,7 @@ th {
   .onboarding-checklist p {
     margin: 8px 0;
     padding: 12px;
-    font-size: 10px;
+    font-size: 12px;
   }
   .login {
     display: flex;
@@ -1286,7 +1286,7 @@ th {
     font-size: 34px;
   }
   .login-intro > p {
-    font-size: 12px;
+    font-size: 14px;
     max-width: 340px;
   }
   .login-pills {
@@ -1295,7 +1295,7 @@ th {
     gap: 7px;
   }
   .login-pills span {
-    font-size: 8px;
+    font-size: 12px;
   }
   .login-card {
     min-width: 0;
@@ -1317,19 +1317,19 @@ th {
     align-items: start;
   }
   .planner-city .page-heading > div:first-child h1 {
-    font-size: 12px;
+    font-size: 14px;
   }
   .planner-city .date-controls {
     justify-content: space-between;
     gap: 5px;
   }
   .planner-city .date-controls label {
-    font-size: 8px;
+    font-size: 12px;
     gap: 5px;
   }
   .planner-city .date-controls input {
     width: 100px;
-    font-size: 9px;
+    font-size: 12px;
     padding: 4px;
   }
   .planner-city .date-controls .icon-button {
@@ -1350,13 +1350,13 @@ th {
     padding: 4px;
   }
   .city-layer button {
-    font-size: 9px;
+    font-size: 12px;
     padding: 8px 10px;
   }
   .city-legend {
     top: 65px;
     left: 16px;
-    font-size: 8px;
+    font-size: 12px;
     gap: 12px;
     padding: 9px;
   }
@@ -1404,11 +1404,11 @@ th {
     justify-content: space-between;
   }
   .city-budget button {
-    font-size: 8px;
+    font-size: 12px;
     padding: 9px;
   }
   .city-budget strong {
-    font-size: 12px;
+    font-size: 14px;
   }
   .budget-remaining {
     padding-left: 12px;
@@ -1423,12 +1423,12 @@ th {
   .city-caption {
     left: 16px;
     bottom: 17px;
-    font-size: 8px;
+    font-size: 12px;
   }
   .city-pin {
     width: 29px;
     height: 29px;
-    font-size: 7px;
+    font-size: 12px;
   }
   .city-detail .detail-illustration {
     height: 120px;
@@ -1437,13 +1437,13 @@ th {
     font-size: 28px;
   }
   .hospital-facts {
-    font-size: 11px;
+    font-size: 13px;
   }
   .detail-address {
-    font-size: 11px;
+    font-size: 13px;
   }
   .city-detail .primary {
-    font-size: 11px;
+    font-size: 13px;
   }
   .planner-city .error,
   .planner-city .notice {
@@ -1451,7 +1451,7 @@ th {
     right: 16px;
     top: 82px;
     max-width: none;
-    font-size: 10px;
+    font-size: 12px;
   }
   .floating-panel {
     box-shadow: 0 7px 25px #5365810a;

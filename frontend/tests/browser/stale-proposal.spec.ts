@@ -24,11 +24,9 @@ test("changed capacity expires a proposal and reception shows recovery instead o
     { cwd: repo, stdio: "pipe", timeout: 60000 },
   );
   await page.goto("/");
+  await page.getByLabel("Username", { exact: true }).fill("operator-p08");
   await page
-    .getByLabel("Account", { exact: true })
-    .selectOption("operator-p01");
-  await page
-    .getByLabel("Demo password", { exact: true })
+    .getByLabel("Password", { exact: true })
     .fill("isolated-browser-demo-password");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(
@@ -45,7 +43,7 @@ test("changed capacity expires a proposal and reception shows recovery instead o
     .click();
   const option = page
     .locator(".recommendation")
-    .filter({ hasText: "Provider P01" });
+    .filter({ hasText: "Shifa International Hospital" });
   const proposalResponse = page.waitForResponse(
     (r) =>
       r.url().includes("/api/v1/referrals/proposals") &&
@@ -55,11 +53,9 @@ test("changed capacity expires a proposal and reception shows recovery instead o
   const proposal = await (await proposalResponse).json();
   const other = await context.newPage();
   await other.goto("/");
+  await other.getByLabel("Username", { exact: true }).fill("onboarder-p01");
   await other
-    .getByLabel("Account", { exact: true })
-    .selectOption("onboarder-p01");
-  await other
-    .getByLabel("Demo password", { exact: true })
+    .getByLabel("Password", { exact: true })
     .fill("isolated-browser-demo-password");
   await other.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(
@@ -83,7 +79,7 @@ test("changed capacity expires a proposal and reception shows recovery instead o
   await expect(
     row.getByRole("button", { name: "Find providers", exact: true }),
   ).toBeVisible();
-  const state = await page.evaluate(async () => {
+  const state = await other.evaluate(async () => {
     const r = await fetch("/api/v1/state", {
       headers: {
         Authorization: `Bearer ${sessionStorage.getItem("sehat-token")}`,
