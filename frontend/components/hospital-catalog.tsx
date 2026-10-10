@@ -127,7 +127,11 @@ export function HospitalCatalog({
         </form>
       )}
       {facility.catalog?.length ? (
-        <div className="table-wrap">
+        <div
+          className="table-scroll"
+          tabIndex={0}
+          aria-label="Hospital services and prices"
+        >
           <table>
             <thead>
               <tr>

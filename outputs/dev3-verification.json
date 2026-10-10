@@ -1,0 +1,279 @@
+{
+  "date": "2026-10-10",
+  "branch": "codex/dev3-acceptance-delivery",
+  "integrated_main": "a957e00",
+  "status": "local_acceptance_verified_public_deployment_open",
+  "backend": {
+    "database": "isolated SQLite",
+    "tests_passed": 122,
+    "warnings": 8,
+    "duration_seconds": 662.03,
+    "ruff": "passed",
+    "sqlite_alembic_upgrade": "passed",
+    "sqlite_alembic_check": "no new operations",
+    "allocation_independent_cases": 42,
+    "matching_model": "pinned MiniLM",
+    "matching": {
+      "development": 6,
+      "held_out": 14,
+      "candidate_retrieval": 1,
+      "suggestion_precision": 1,
+      "false_match_rate": 0,
+      "abstention": 0.5,
+      "manual_review_required": 14
+    }
+  },
+  "frontend": {
+    "typecheck": "passed",
+    "format": "passed",
+    "production_build": "passed",
+    "production_start": "passed",
+    "browser": "Chromium 156.0.8078.4",
+    "viewports": [
+      {
+        "width": 1440,
+        "height": 1000
+      },
+      {
+        "width": 390,
+        "height": 844
+      }
+    ],
+    "unique_cases_passed": 24,
+    "retries": 0,
+    "cases": [
+      {
+        "viewport": "desktop",
+        "scenario": "five-minute demo: reviewed referral, 8/7/5 plan, activation, funding and exports",
+        "duration_ms": 66152
+      },
+      {
+        "viewport": "desktop",
+        "scenario": "independent subsidy requires planner funding authorization before completion",
+        "duration_ms": 24023
+      },
+      {
+        "viewport": "desktop",
+        "scenario": "ranking integration, stale-version recovery and operator permission",
+        "duration_ms": 32445
+      },
+      {
+        "viewport": "desktop",
+        "scenario": "empty states, failed login, API outage recovery and expired session",
+        "duration_ms": 16906
+      },
+      {
+        "viewport": "desktop",
+        "scenario": "resource rejection requires a reason and updates persisted totals",
+        "duration_ms": 42777
+      },
+      {
+        "viewport": "desktop",
+        "scenario": "software 3D map preserves colors, interaction and keyboard selection without WebGL",
+        "duration_ms": 18944
+      },
+      {
+        "viewport": "desktop",
+        "scenario": "manual draft revision validates reason, survives reload, approves and exports",
+        "duration_ms": 30396
+      },
+      {
+        "viewport": "desktop",
+        "scenario": "concurrent draft edits preserve choices and require explicit reload",
+        "duration_ms": 29171
+      },
+      {
+        "viewport": "desktop",
+        "scenario": "a proposed attempt can be cancelled without holding quota or budget",
+        "duration_ms": 19438
+      },
+      {
+        "viewport": "desktop",
+        "scenario": "3D government city supports search, layers, navigation and previous-month outcomes",
+        "duration_ms": 29724
+      },
+      {
+        "viewport": "desktop",
+        "scenario": "onboarder catalog saves prices and capacity, survives reload, edits and removes, and keeps roles separate",
+        "duration_ms": 22012
+      },
+      {
+        "viewport": "desktop",
+        "scenario": "changed capacity expires a proposal and reception shows recovery instead of a hold",
+        "duration_ms": 22162
+      },
+      {
+        "viewport": "phone",
+        "scenario": "five-minute demo: reviewed referral, 8/7/5 plan, activation, funding and exports",
+        "duration_ms": 62518
+      },
+      {
+        "viewport": "phone",
+        "scenario": "independent subsidy requires planner funding authorization before completion",
+        "duration_ms": 19755
+      },
+      {
+        "viewport": "phone",
+        "scenario": "ranking integration, stale-version recovery and operator permission",
+        "duration_ms": 34378
+      },
+      {
+        "viewport": "phone",
+        "scenario": "empty states, failed login, API outage recovery and expired session",
+        "duration_ms": 17417
+      },
+      {
+        "viewport": "phone",
+        "scenario": "resource rejection requires a reason and updates persisted totals",
+        "duration_ms": 32738
+      },
+      {
+        "viewport": "phone",
+        "scenario": "software 3D map preserves colors, interaction and keyboard selection without WebGL",
+        "duration_ms": 15539
+      },
+      {
+        "viewport": "phone",
+        "scenario": "manual draft revision validates reason, survives reload, approves and exports",
+        "duration_ms": 19714
+      },
+      {
+        "viewport": "phone",
+        "scenario": "concurrent draft edits preserve choices and require explicit reload",
+        "duration_ms": 24081
+      },
+      {
+        "viewport": "phone",
+        "scenario": "a proposed attempt can be cancelled without holding quota or budget",
+        "duration_ms": 19332
+      },
+      {
+        "viewport": "phone",
+        "scenario": "3D government city supports search, layers, navigation and previous-month outcomes",
+        "duration_ms": 15860
+      },
+      {
+        "viewport": "phone",
+        "scenario": "onboarder catalog saves prices and capacity, survives reload, edits and removes, and keeps roles separate",
+        "duration_ms": 22978
+      },
+      {
+        "viewport": "phone",
+        "scenario": "changed capacity expires a proposal and reception shows recovery instead of a hold",
+        "duration_ms": 17836
+      }
+    ],
+    "batches": [
+      {
+        "report": "work/browser-before-close-fix.json",
+        "startTime": "2026-10-10T16:03:41.086Z",
+        "duration": 351641.595,
+        "expected": 9,
+        "skipped": 14,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      {
+        "report": "work/browser-desktop-design-final.json",
+        "startTime": "2026-10-10T16:14:38.039Z",
+        "duration": 112039.329,
+        "expected": 3,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      {
+        "report": "work/browser-phone-before-control-fix.json",
+        "startTime": "2026-10-10T16:17:36.249Z",
+        "duration": 230070.58000000002,
+        "expected": 5,
+        "skipped": 6,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      {
+        "report": "work/browser-phone-after-controls.json",
+        "startTime": "2026-10-10T16:26:24.791Z",
+        "duration": 150264.067,
+        "expected": 5,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      {
+        "report": "work/browser-phone-catalog-final.json",
+        "startTime": "2026-10-10T16:30:59.709Z",
+        "duration": 55839.294,
+        "expected": 2,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      {
+        "report": "work/browser-desktop-catalog-final.json",
+        "startTime": "2026-10-10T16:32:26.527Z",
+        "duration": 29563.332000000002,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    ],
+    "note": "24 distinct cases passed across staged runs; this is not a claim of a single clean 24-case run. Raw reports/traces remain ignored local artifacts. A final desktop catalog repeat additionally passed after its scroll-container fix."
+  },
+  "demo": [
+    {
+      "browser": "156.0.8078.4",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "duration_ms": 57121,
+      "counts": {
+        "registered": 61,
+        "confirmed": 43,
+        "completed": 23,
+        "unresolved": 18,
+        "projected_additional": 20,
+        "post_activation_confirmed": 2,
+        "post_activation_completed": 2
+      }
+    },
+    {
+      "browser": "156.0.8078.4",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "duration_ms": 52375,
+      "counts": {
+        "registered": 61,
+        "confirmed": 43,
+        "completed": 23,
+        "unresolved": 18,
+        "projected_additional": 20,
+        "post_activation_confirmed": 2,
+        "post_activation_completed": 2
+      }
+    }
+  ],
+  "screenshots": "docs/screenshots/",
+  "corrections": [
+    "Map controls overlapped hospital details on desktop; repositioned controls.",
+    "Detail illustration intercepted close button; raised close button.",
+    "Phone details overlapped map controls; moved controls above details.",
+    "Phone catalog overflowed the page; constrained table to a focusable scroll region and added a populated-catalog width assertion.",
+    "Manual export assertion used Plan DTO coverage key; corrected to export DTO projected/additional.",
+    "Focused onboarding tests used an unsupported helper signature; corrected before full 122-test pass.",
+    "Initial backend run lacked repository fixture paths, then shared-container restart interrupted it; final full validation used a separate container with repository mounted.",
+    "A production build was locked by the preview server; stopped that server before rebuilding."
+  ],
+  "limits": [
+    "Phone checks use Chromium emulation, not physical-device Safari/WebKit.",
+    "New PostgreSQL-enabled suite and combined network-disabled image are assigned to final CI; prior merged CI is only a baseline.",
+    "Catalog tests are informational; automated routing remains reviewed primary-care OPD.",
+    "City roads, context buildings and heights are illustrative, not surveyed geometry.",
+    "No hosting project/account access or public HTTPS deployment/restart evidence has been supplied.",
+    "PR review, final CI and merge remain separate from local acceptance."
+  ]
+}

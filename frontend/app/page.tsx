@@ -26,6 +26,7 @@ import {
   User,
   Facility,
   CareRequest,
+  Referral,
   Recommendation,
   Match,
   Plan,
@@ -1586,8 +1587,9 @@ export default function Home() {
                             {a.status === "PROPOSED" && (
                               <small>
                                 Proposal only; no quota or funds held. If the
-                                resource changed, cancel this proposal and
-                                select a fresh destination.
+                                inputs change, the proposal expires and the
+                                request reopens so you can select a fresh
+                                destination.
                               </small>
                             )}
                           </div>
@@ -1598,10 +1600,18 @@ export default function Home() {
                                   className="primary"
                                   disabled={busy}
                                   onClick={() =>
-                                    run(
-                                      () => mutate(`referrals/${a.id}/reserve`),
-                                      "Temporary hold created. Partner acceptance and patient agreement are pending.",
-                                    )
+                                    run(async () => {
+                                      const result = (await mutate(
+                                        `referrals/${a.id}/reserve`,
+                                      )) as Referral;
+                                      if (result.status === "EXPIRED") {
+                                        setOptions([]);
+                                        await load();
+                                        throw new Error(
+                                          "This proposal expired because its inputs changed. The request is open again; find providers and choose a fresh destination.",
+                                        );
+                                      }
+                                    }, "Temporary hold created. Partner acceptance and patient agreement are pending.")
                                   }
                                 >
                                   Approve & reserve proposal

@@ -1,6 +1,6 @@
 # SEHAT GRID
 
-A synthetic, non-emergency primary-care coordination MVP for five Islamabad pilot catchments. The original specification is [docs/mvp-scope-v1.md](docs/mvp-scope-v1.md). The user�s October 10 frontend revision adds three interfaces and a required 3D government map; see [the frontend design and role contract](docs/frontend-redesign.md).
+A synthetic, non-emergency primary-care coordination MVP for five Islamabad pilot catchments. The original specification is [docs/mvp-scope-v1.md](docs/mvp-scope-v1.md). The user’s October 10 frontend revision adds three interfaces and a required 3D government map; see [the frontend design and role contract](docs/frontend-redesign.md).
 
 ## What runs
 
@@ -51,7 +51,7 @@ Reset seeds eight demo providers, five team-defined pilot catchments, 40 previou
 
 The selected month has PKR 25,000: 8 subsidies × 1,000, a 7-unit quota offer for 7,000, and a 5-unit mobile visit for 10,000. The actual solver returns 20 projected additional accommodations. Approval reserves funds and resources; operators P02 and P08 activate their offered resources; P01 can then refer B/C requests. A mobile activation creates a **separate synthetic site** and preserves the public hospital campus coordinate.
 
-Follow [docs/demo-script.md](docs/demo-script.md). Matching/model files and coordinate-map assets are loaded before presentation. The default map requires no tile network; optional OSM street context uses network access. Missing/corrupt embedding files produce a startup failure instead of fabricated ML results.
+Follow [docs/demo-script.md](docs/demo-script.md). Matching/model files and the bundled 3D city are loaded before presentation. The map requires no external tiles or map token. Missing/corrupt embedding files produce a startup failure instead of fabricated ML results.
 
 ## Verification
 
@@ -83,6 +83,6 @@ The deployer can run `docker compose up --build` after supplying `.env` values a
 - [API contracts and error behavior](docs/api-contracts.md)
 - [Operational policies and limitations](docs/assumptions.md)
 - [Five-minute demo](docs/demo-script.md)
-- [Two roles and their permissions](docs/role-portals.md)
+- [Three interfaces and their permissions](docs/role-portals.md)
 - [Verification and scope checklist](todo.md)
 - [Islamabad public coordinate sources](docs/islamabad-directory.md)

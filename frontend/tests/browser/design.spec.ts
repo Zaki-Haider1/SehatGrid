@@ -140,6 +140,11 @@ test("onboarder catalog saves prices and capacity, survives reload, edits and re
       .getByRole("row")
       .filter({ has: page.getByText("Complete blood count", { exact: true }) }),
   ).toContainText("PKR 900");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  ).toBeTruthy();
   await page.reload();
   await page
     .getByRole("button", { name: "Services & prices", exact: true })

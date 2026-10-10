@@ -1,11 +1,43 @@
 # AKON MVP work status and handoff
 
-**Date:** 10 October 2026  
-**Implementation checkpoint:** `0f3e91a` — Implement scope-v1 primary-care coordination MVP  
-**Repository:** https://github.com/Zaki-Haider1/akon  
-**Current scope:** [Original supplied MVP README](docs/mvp-scope-v1.md), with the user�s subsequent [three-interface / 3D frontend revision](docs/frontend-redesign.md).
+**Date:** 10 October 2026
+**Implementation checkpoint:** `0f3e91a` — Implement scope-v1 primary-care coordination MVP
+**Repository:** https://github.com/Zaki-Haider1/akon
+**Current scope:** [Original supplied MVP README](docs/mvp-scope-v1.md), with the user’s subsequent [three-interface / 3D frontend revision](docs/frontend-redesign.md).
 
-## Current integration verification — 10 October 2026
+## Dev 3 frontend and local acceptance — 10 October 2026
+
+Dev 3 is implemented on `codex/dev3-acceptance-delivery`, integrating `origin/main` at `a957e00`. The user's new visual direction is implemented as an interactive pale 3D government city with blue/coral hospital blocks, separate reception and onboarding interfaces, persisted service/test catalogs, and monthly plan-versus-delivery/budget outcomes. Ranking, proposal/reservation/cancellation, stale proposal recovery and manual draft revision use the merged API contracts. [Design and role details](docs/frontend-redesign.md), [browser setup](docs/browser-acceptance.md), [sanitized verification evidence](outputs/dev3-verification.json) and [final screenshots](docs/screenshots/) accompany the change.
+
+| Gate | Final local evidence |
+|---|---|
+| Backend, isolated SQLite | `python -m pytest -q`: **122 passed**, 8 existing warnings, 662.03s. All repository tests and the six onboarding/catalog cases ran with the actual pinned model. |
+| Backend lint / migrations | `ruff check .`, fresh `python -m alembic upgrade head`, and `python -m alembic check` passed; no new migration operations. |
+| Evaluations | `python scripts/evaluate_allocation.py`: **42 independent exhaustive cases passed**. Matching: 6 development / 14 held-out synthetic examples, retrieval/precision 1.00, false-match 0.00, abstention 0.50, all 14 require manual review. No clinical accuracy claim. Timing-only changes to tracked evaluation reports were discarded. |
+| Frontend | `npm run typecheck`, `npm run format:check`, `API_PROXY_TARGET=http://127.0.0.1:18000 npm run build`, and documented standalone `npm start` passed. |
+| Browser | **24 distinct cases passed across staged runs**, Chromium **156.0.8078.4**, desktop 1440×1000 and emulated phone 390×844, no automatic retries. Nine desktop operational cases passed in the first full run; the three desktop design/stale cases passed after a close-button fix. Five phone operational cases passed in the first phone run, five remaining cases passed after the controls fix, and the final catalog/stale cases passed after constraining catalog scrolling. The changed desktop catalog case additionally passed again. This is not a single clean 24-case run. |
+| Timed operational demo | Desktop **57.121s**, phone **52.375s**, each after isolated synthetic reset. Reviewed intake → proposal → reserve → agreement/acceptance → attendance/completion; actual 8/7/5 allocation, PKR 25,000; approval/activation/reprocessing and real JSON/CSV downloads. Final recorded counts: registered 61, confirmed 43, completed 23, unresolved 18; projected additional 20 versus 2 post-activation confirmed and 2 completed. |
+| Restart / offline limits | Browser case restarted the isolated API and verified persisted plan decisions; model assets stayed local (`HF_HUB_OFFLINE=1`). Main demo blocked all non-loopback browser traffic. Production standalone frontend served successfully. Full network-disabled combined-container startup and new PostgreSQL tests are final CI gates; prior merged CI is a baseline only. |
+| Visual checks | Iterative screenshots were inspected for government map/details, reception, onboarding/catalog and outcomes at both widths. Final production captures have no development overlays and no document-width overflow. |
+
+Exact staged browser commands, from `frontend/` after the documented isolated setup:
+
+```powershell
+node node_modules/@playwright/test/cli.js test --max-failures=1
+node node_modules/@playwright/test/cli.js test tests/browser/design.spec.ts tests/browser/stale-proposal.spec.ts --project=desktop --max-failures=1
+node node_modules/@playwright/test/cli.js test --project=phone --max-failures=1
+node node_modules/@playwright/test/cli.js test --project=phone --grep 'software 3D|manual draft|concurrent|cancel|3D government|onboarder catalog|unseen' --max-failures=1
+node node_modules/@playwright/test/cli.js test --project=phone --grep 'onboarder catalog|changed capacity' --max-failures=1
+node node_modules/@playwright/test/cli.js test tests/browser/design.spec.ts --project=desktop --grep 'onboarder catalog' --max-failures=1
+```
+
+The final full backend validation used a **separate** `sehat-grid-dev3-checks` container with the repository mounted at `/workspace`, working directory `/workspace/backend`, isolated temporary SQLite, and local model path `/app/models/all-MiniLM-L6-v2`. The validation chain was `python -m pytest -q && ruff check . && python -m alembic upgrade head && python -m alembic check && python scripts/evaluate_allocation.py && python scripts/evaluate_matching.py`, after installing the pinned pytest/Ruff/httpx development versions into the prepared acceptance image. The normal running demo and its database were not reset.
+
+Failed attempts were retained as evidence: desktop controls were covered by the detail panel; the detail illustration intercepted Close; phone details covered Rotate; and the catalog table scrolled the document. Each was fixed and its affected checks rerun. One export assertion incorrectly used the plan DTO's `coverage` field instead of the export DTO's `projected`/`additional`. Initial focused backend helper errors were corrected; an incomplete container fixture mount and an interrupted shared-container test run were superseded by the independent 122-test pass. A preview server locked the build directory; stopping that preview allowed the production rebuild. Raw reports/traces remain ignored because they can contain session credentials.
+
+Local V1 acceptance and V2 production-start/reset/demo handoff are verified. Public deployment remains **open**: no hosting project/account access or public URL was supplied. Final branch CI, PR review and merge must be assessed separately. Physical-device Safari acceptance is not claimed.
+
+## Earlier integration verification — 10 October 2026 (historical baseline)
 
 Dev 1's latest fix (`e43c7ee`) is integrated on `integrate/referral-reservation`, branched from `origin/main` at Dev 2's `b840941`, as `c1ab59c`. The original Dev 1 branch remains unchanged. The conflict in `todo.md` was reconciled so the referral and draft-plan revision features are both recorded. [PR #2](https://github.com/Zaki-Haider1/akon/pull/2) passed all six GitHub CI job instances at final PR head `e9259e3`; the push run is [38062705176](https://github.com/Zaki-Haider1/akon/actions/runs/38062705176), and the pull-request run is [38062708947](https://github.com/Zaki-Haider1/akon/actions/runs/38062708947). It was merged on 10 October 2026; merge commit `aa8793a` is on `origin/main`. Read-only code review found no blocking issues.
 
@@ -54,7 +86,7 @@ The original checkpoint had two interfaces. The current frontend revision has **
 - **Hospital receptionist:** reviewed intake, proposals/reservations, sending/receiving/rerouting, patient agreement, arrival/completion, offers and activation.
 - **Hospital onboarder:** profile/service eligibility, dated quota and persisted service/test catalog with prices, daily capacity and availability.
 
-A separate patient interface is **not part of the supplied MVP**. Operators record patient agreement and request progress. The user�s later three-interface request concerns a separate hospital onboarder, not a patient portal, and supersedes the original two-interface layout.
+A separate patient interface is **not part of the supplied MVP**. Operators record patient agreement and request progress. The user’s later three-interface request concerns a separate hospital onboarder, not a patient portal, and supersedes the original two-interface layout.
 
 ## Implemented features
 
@@ -192,12 +224,12 @@ These are implementation choices to review when continuing; they are not evidenc
 ## Remaining verification and deployment work
 
 - [x] Open integration PR #2, inspect its CI, merge, and confirm the merge commit on `origin/main`. Both push and pull-request runs passed the backend, frontend and combined-container jobs. The local Windows `format:check` discrepancy is due to CRLF worktree line endings; the Linux CI formatter step passed.
-- [ ] Complete a browser rehearsal of operator intake, matching review, recommendations/reservation, receiving acceptance, patient agreement, funding approval, arrival and completion.
-- [ ] Complete the browser planning loop: snapshot, compute, approve, resource activation/rejection, reprocess unresolved demand and inspect results/export.
-- [ ] Check all new screens at phone and desktop widths, including empty/error states and permission-denied cases.
-- [ ] Reconcile the local frontend startup command with Next.js standalone output. `next start` emitted a standalone warning; the combined container uses the standalone server.
+- [x] Complete a browser rehearsal of operator intake, matching review, proposals/reservation, receiving acceptance, patient agreement, funding approval, arrival and completion. Dev 3 evidence is above.
+- [x] Complete the browser planning loop: snapshot, compute, revise/approve, resource activation/rejection, reprocess unresolved demand and inspect results/export.
+- [x] Check all three interfaces at phone and desktop widths, including empty/error states and permission-denied cases.
+- [x] Reconcile local frontend startup with Next.js standalone output and verify the documented `npm start` script.
 - [x] Run the requested local backend suites, Ruff, SQLite/PostgreSQL Alembic upgrade/checks, matching/allocation evaluations, and frontend typecheck/build on the integration branch; results are recorded above. The local Windows formatter discrepancy is due to CRLF worktree line endings; Linux CI passed `format:check`.
-- [ ] Perform the final five-minute demonstration and record its results against the supplied README acceptance criteria.
+- [x] Perform the local five-minute operational demonstration and record results and limits above; the three-interface/catalog walkthrough is an additional case.
 - [ ] Provision the chosen hosting environment and PostgreSQL, configure secrets, run migrations and initialize synthetic data according to deployment instructions.
 - [ ] Verify the deployed application, authentication, API proxy, persistent data, model availability and restart behavior, then record the public URL.
 
@@ -219,4 +251,4 @@ A patient self-service portal, forecasting, emergency triage, clinical decision 
 - [Matching evaluation](outputs/matching-results.json)
 - [Allocation evaluation](outputs/allocation-results.json)
 
-PR #2 is merged on `origin/main` as `aa8793a`, after its final head passed all six CI job instances. Do not claim browser acceptance or Reserve UI support; Dev 3 still owns those items. Complete the open browser, demonstration, and deployment checks above before claiming the MVP fully accepted.
+PR #2 is merged on `origin/main` as `aa8793a`, after its final head passed all six CI job instances. Dev 3's browser acceptance, Reserve UI and three-interface redesign are locally verified on the delivery branch. Public deployment, final branch CI, review and merge remain open; do not claim full MVP acceptance until those gates are satisfied.

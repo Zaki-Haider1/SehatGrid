@@ -1,12 +1,15 @@
-# Two MVP interfaces
+# Three application interfaces
 
-The MVP has exactly two authenticated application roles in a shared Next.js application and FastAPI backend.
+The user's October 10 frontend revision adds three authenticated interfaces in the shared Next.js application and FastAPI backend. See [the design and role contract](frontend-redesign.md).
 
 | Role | Operational scope |
 |---|---|
-| Hospital operator | Assigned providers; profiles, reviewed primary-care service and zone declarations, dated quota, own outgoing requests, incoming partner responses, patient agreement, arrival/completion, dated offers and resource activation |
-| Network planner / government representative | Participation approval, aggregate network intelligence, monthly budgets/subsidy rules, draft computation, approval, subsidy authorization, plan export and network audit |
+| Hospital receptionist (`operator`) | Assigned hospital desk, reviewed intake, own outgoing requests, incoming partner responses, patient agreement, rerouting/reprocessing, arrival/completion, dated offers and resource activation |
+| Hospital onboarder (`onboarder`) | Assigned hospital profile, primary-care eligibility/zone declarations, dated quota, service/test catalog prices, daily capacity and availability; no patient requests, referrals, plans or network budget |
+| Government representative (`planner`) | Interactive 3D hospital city, participation approval, ranking policy, aggregate network intelligence, monthly budgets/subsidy rules, draft computation/revision/approval, subsidy authorization, monthly outcomes, plan export and network audit |
 
-No patient account or portal is part of scope v1. Operators record voluntary patient agreement independently from the receiving partner's decision. Software roles do not establish clinical qualifications. The earlier three-portal proposal has been removed.
+No patient account or portal is part of scope v1. Receptionists record voluntary patient agreement independently from the receiving partner's decision. Software roles do not establish clinical qualifications. Catalog tests remain informational; automated routing supports the reviewed primary-care OPD service.
 
-The seeded hospital accounts are `operator-p01` through `operator-p08`; `planner` is the planner account. Passwords come from `DEMO_PASSWORD` on initial seed/reset. UI navigation reflects the signed-in account; the backend independently verifies every permission. Mobile activation grants the responsible operator scope for the newly created synthetic mobile-site provider.
+The seeded reception accounts are `operator-p01` through `operator-p08`, setup accounts are `onboarder-p01` through `onboarder-p08`, and `planner` is the government account. Passwords come from `DEMO_PASSWORD` on initial seed/reset. Ordinary seeding adds missing setup accounts without resetting operational records or changing existing credentials. UI navigation reflects the signed-in account; the backend independently verifies every permission. Mobile activation grants the responsible operator scope for the newly created synthetic mobile-site provider.
+
+Profile/service/quota APIs retain legacy operator compatibility, while the reception interface hides setup controls. Catalog mutation requires the assigned onboarder. Real partner invitations and production credential provisioning remain outside this synthetic demonstration.

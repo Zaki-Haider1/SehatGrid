@@ -1,6 +1,6 @@
 # Deployment handoff — scope v1
 
-Public deployment remains with the deployment teammate. These instructions describe the prepared artifacts; a live deployment must not be claimed before it is exercised.
+Dev 3 owns the required public deployment; the hosting project/account and access still need to be supplied. These instructions describe the prepared artifacts; a live deployment must not be claimed before it is exercised.
 
 ## Combined application (recommended handoff)
 
@@ -25,7 +25,7 @@ For Vercel, use root `frontend`, Node 22+, `npm ci`, and `npm run build`. Set `N
 
 Copy `.env.example` to a local root `.env`, populate its three required values, then run `docker compose up --build`. PostgreSQL has a named volume; the app is exposed only on local port 3000. Do not commit `.env` or upload SQLite files.
 
-The CI cold-start test runs the combined container with `--network none`, then checks the UI and API over container loopback. This proves startup does not depend on external model downloads, data scraping or map tiles. The browser's default coordinate map also has no external map dependency.
+The CI cold-start test runs the combined container with `--network none`, then checks the UI and API over container loopback. This proves startup does not depend on external model downloads, data scraping or map tiles. The browser’s default 3D city also has no external map dependency.
 
 ## Local production frontend
 

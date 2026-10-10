@@ -929,7 +929,7 @@ test("manual draft revision validates reason, survives reload, approves and expo
         cost: 8000,
         additional: 8,
         decision_source: "HUMAN_REVISION",
-        original_solver_result: { coverage: 20, cost: 25000 },
+        original_solver_result: { projected: 20, additional: 20, cost: 25000 },
       });
     }
   }

@@ -27,6 +27,7 @@ Coverage at 1440×1000 and 390×844:
 - Exact 8-subsidy/7-quota/5-mobile allocation costing PKR 25,000, approval, separate operators activating quota/mobile, reprocessing B-01, completed quota and funded subsidy referrals.
 - Persisted projected/confirmed/completed counts, immutable hash and synthetic labels in real JSON/CSV downloads; no request IDs in aggregate exports.
 - Planner ranking updates with observable operator ordering/version changes, concurrent stale-version recovery and operator role denial; bad login, empty review/referral screens, injected temporary API failure and a genuinely invalid session token. A request retargeted to another facility produces a real 403 and a corrective UI message.
+- A concurrent onboarding quota change expires an unseen proposal; reservation returns the persisted expired attempt, and reception shows a recovery message with no false hold notice or quota consumption.
 - Mobile-resource rejection with a recorded reason and revised persisted cost/coverage.
 - Refresh persistence, page JavaScript errors, document width, screenshots and timed demo.
 - Three authenticated interfaces: government city search/layers/details and previous-month outcomes; receptionist desk; onboarder catalog create/edit/delete, price and capacity persistence, government catalog visibility, and denied reception/catalog access.
