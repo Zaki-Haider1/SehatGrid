@@ -2,7 +2,7 @@
 
 ## Purpose and boundaries
 
-Sehat Grid coordinates **synthetic service slots**, referrals, unmet demand, and incremental funding. It is a demonstration, not a clinical decision or patient-record system. Requests use generated references and contain no names, diagnoses, contact details, or real patient data. No authentication is included in this MVP. Operator and planner controls are view modes, not security permissions; anyone with API access can perform either workflow.
+Sehat Grid maps real Islamabad hospitals and coordinates **synthetic service slots**, referrals, unmet demand, and incremental funding. The hospital directory is sourced; capacities, requests, prices and budgets remain simulated. Requests use generated references and contain no names, diagnoses, contact details, or real patient data. No authentication is included in this MVP. Operator and planner controls are view modes, not security permissions; anyone with API access can perform either workflow.
 
 ## Technology choices
 
@@ -14,11 +14,11 @@ Sehat Grid coordinates **synthetic service slots**, referrals, unmet demand, and
 | Local demo | SQLite with foreign keys and WAL | Quick setup without running a database service; PostgreSQL remains the hosting target |
 | Service matching | RapidFuzz alias and name similarity | Fast, explainable suggestions with explicit human review |
 | Resource planning | Google OR-Tools CP-SAT | Real integer optimization with budget and demand constraints |
-| Map | Interactive SVG schematic using synthetic coordinates | Matches the lightweight reference without tile credentials or an external map dependency |
+| Map | MapLibre GL JS with raster street tiles and sourced coordinates | Geographic hospital positions, pan/zoom, public/private markers and selectable profiles |
 | Packaging | Backend Dockerfile, Compose, pinned dependencies, GitHub Actions | Reproducible setup and a concrete deployment handoff |
 | Hosting target | Vercel frontend, Railway API + PostgreSQL | Separately deployable frontend and persistent Python service |
 
-Sentence Transformers and MapLibre were considered in the supplied planning discussion. They are **not implemented in this milestone**: pretrained embeddings add download/hosting overhead before we have an evaluation dataset, while a full geographic map adds UI complexity. RapidFuzz is text similarity, not an ML model or confidence probability. The schematic has no distance, navigation, tiles, or map zoom. Replace these behind the existing API and component boundaries when needed.
+MapLibre is implemented for the Islamabad map. Sentence Transformers remains future work: pretrained embeddings add download/hosting overhead before we have an evaluation dataset. RapidFuzz is text similarity, not an ML model or confidence probability. Map coordinates do not change referral ranking; distance, travel time and clinical appropriateness are not calculated. See [directory research](docs/islamabad-directory.md) and [planned role portals](docs/role-portals.md).
 
 ## System flow
 
@@ -33,13 +33,13 @@ flowchart LR
   Approval --> Retry[Retry pending referrals]
 ```
 
-The browser uses `NEXT_PUBLIC_API_URL`, which must be configured before the frontend build. FastAPI allows only the configured `CORS_ORIGINS`. API startup seeds empty databases after migrations. `/health` checks database connectivity. Dates come from `APP_TIMEZONE` (default Asia/Karachi); timestamps are UTC. Currency is integer PKR, avoiding floating-point money calculations.
+The browser uses `NEXT_PUBLIC_API_URL`, which must be configured before the frontend build. FastAPI allows only the configured `CORS_ORIGINS`. API startup seeds empty demo databases and syncs directory facts after migrations. `/health` checks database connectivity. Dates come from `APP_TIMEZONE` (default Asia/Karachi); timestamps are UTC. Currency is integer PKR, avoiding floating-point money calculations.
 
 ## Data model
 
 | Table | Key fields and relationships |
 |---|---|
-| `facilities` | Name + zone unique, kind, latitude, longitude |
+| `facilities` | Name + zone unique, kind, latitude, longitude, unique source key, sourced profile JSON |
 | `services` | Canonical service name, aliases, synthetic marginal unit cost |
 | `capacities` | Unique facility + service + day; total, reserved, consumed |
 | `care_requests` | Generated reference, service, zone, date, priority, status, reason |

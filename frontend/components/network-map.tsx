@@ -1,4 +1,7 @@
 "use client";
+
+import { useEffect, useRef, useState } from "react";
+import type { Map as MapLibreMap, Marker } from "maplibre-gl";
 import { Facility } from "@/lib/api";
 
 export function NetworkMap({
@@ -10,138 +13,192 @@ export function NetworkMap({
   selected: number | null;
   onSelect: (id: number) => void;
 }) {
-  const position = (f: Facility) => ({
-    x: 65 + ((f.longitude - 66.99) / 0.12) * 650,
-    y: 390 - ((f.latitude - 24.84) / 0.13) * 330,
-  });
-  return (
-    <div className="map-canvas">
-      <svg
-        viewBox="0 0 800 460"
-        role="img"
-        aria-label="Schematic of demo facilities across Karachi zones"
-      >
-        <defs>
-          <pattern
-            id="grid"
-            width="44"
-            height="44"
-            patternUnits="userSpaceOnUse"
-            patternTransform="rotate(-25)"
-          >
-            <rect width="44" height="44" fill="#f0f2f5" />
-            <rect x="5" y="5" width="31" height="28" rx="3" fill="#e5e9ee" />
-            <path d="M0 0H44M0 0V44" stroke="white" strokeWidth="7" />
-          </pattern>
-        </defs>
-        <rect width="800" height="460" fill="url(#grid)" />
-        <path
-          d="M-30 310 Q210 235 400 270 T830 195"
-          stroke="#fff"
-          strokeWidth="30"
-          fill="none"
-        />
-        <path
-          d="M180 -30 Q245 200 535 490"
-          stroke="#fff"
-          strokeWidth="22"
-          fill="none"
-        />
-        <path
-          d="M-40 435 Q160 385 200 460"
-          stroke="#cbdde6"
-          strokeWidth="80"
-          fill="none"
-        />
-        <g
-          fill="#8c97a6"
-          fontSize="12"
-          fontFamily="sans-serif"
-          letterSpacing="3"
-        >
-          <text x="330" y="110">
-            NORTH
-          </text>
-          <text x="650" y="280">
-            EAST
-          </text>
-          <text x="50" y="170">
-            WEST
-          </text>
-          <text x="355" y="230">
-            CENTRAL
-          </text>
-          <text x="350" y="420">
-            SOUTH
-          </text>
-        </g>
-        {facilities.map((f) => {
-          const { x, y } = position(f);
-          const free = f.capacities.reduce((n, c) => n + c.available, 0);
-          const active = selected === f.id;
-          return (
-            <g key={f.id} transform={`translate(${x},${y})`}>
-              {active && <circle r="39" fill="#5264e3" opacity=".1" />}
-              <circle
-                r="28"
-                fill={free ? "#6475e9" : "#e68c8b"}
-                opacity=".13"
-              />
-              <path
-                d="M-20 2 L0 -9 L20 2 L0 14Z"
-                fill={free ? "#8996f0" : "#ecaaaa"}
-              />
-              <path
-                d="M-20 2 V15 L0 27 V14Z"
-                fill={free ? "#5264df" : "#d87475"}
-              />
-              <path
-                d="M0 14 L20 2 V15 L0 27Z"
-                fill={free ? "#6b7bea" : "#e88b89"}
-              />
-              <circle
-                cy="-14"
-                r="15"
-                fill={active ? "#202c55" : "#fff"}
-                stroke={active ? "#202c55" : "#d9dfea"}
-              />
-              <text
-                y="-10"
-                textAnchor="middle"
-                fontSize="11"
-                fill={active ? "white" : "#34415c"}
-                fontWeight="700"
-              >
-                {free}
-              </text>
-            </g>
+  const container = useRef<HTMLDivElement>(null);
+  const map = useRef<MapLibreMap | null>(null);
+  const markers = useRef<Map<number, Marker>>(new Map());
+  const select = useRef(onSelect);
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState("");
+  const fitted = useRef(false);
+  select.current = onSelect;
+
+  useEffect(() => {
+    let disposed = false;
+    let observer: ResizeObserver | undefined;
+    import("maplibre-gl")
+      .then((lib) => {
+        if (disposed || !container.current) return;
+        try {
+          // Explicit worker URL lets Next bundle the module and its shared imports.
+          lib.setWorkerUrl(
+            new URL(
+              "maplibre-gl/dist/maplibre-gl-worker.mjs",
+              import.meta.url,
+            ).toString(),
           );
-        })}
-      </svg>
-      {facilities.map((f) => {
-        const { x, y } = position(f);
-        return (
-          <button
-            key={f.id}
-            className="map-hit"
-            style={{ left: `${x / 8}%`, top: `${y / 4.6}%` }}
-            onClick={() => onSelect(f.id)}
-            aria-label={`Select ${f.name}`}
-            title={f.name}
-          />
-        );
-      })}
-      <div className="map-legend">
-        <span>
-          <i className="dot indigo" />
-          Capacity available
-        </span>
-        <span>
-          <i className="dot coral" />
-          At capacity
-        </span>
+          const instance = new lib.Map({
+            container: container.current,
+            center: [73.055, 33.695],
+            zoom: 12,
+            maxZoom: 19,
+            renderWorldCopies: false,
+            cooperativeGestures: true,
+            attributionControl: false,
+            style: {
+              version: 8,
+              sources: {
+                streets: {
+                  type: "raster",
+                  tiles: [
+                    process.env.NEXT_PUBLIC_MAP_TILE_URL ||
+                      "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                  ],
+                  tileSize: 256,
+                  maxzoom: 19,
+                  attribution:
+                    process.env.NEXT_PUBLIC_MAP_ATTRIBUTION ||
+                    '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a>',
+                },
+              },
+              layers: [{ id: "streets", type: "raster", source: "streets" }],
+            },
+          });
+          map.current = instance;
+          instance.addControl(
+            new lib.NavigationControl({ showCompass: false }),
+            "top-right",
+          );
+          instance.addControl(
+            new lib.AttributionControl({ compact: false }),
+            "bottom-right",
+          );
+          instance.on("load", () => {
+            if (!disposed) setReady(true);
+          });
+          instance.on("error", () => {
+            if (!disposed)
+              setError(
+                "Some map tiles could not load. Hospital details and coordinate links are still available.",
+              );
+          });
+          observer = new ResizeObserver(() => instance.resize());
+          observer.observe(container.current);
+        } catch {
+          setError(
+            "The map requires WebGL. Use the hospital directory and coordinate links on this device.",
+          );
+        }
+      })
+      .catch(() => {
+        if (!disposed)
+          setError(
+            "The map could not start. Use the hospital directory and coordinate links.",
+          );
+      });
+    return () => {
+      disposed = true;
+      observer?.disconnect();
+      markers.current.forEach((marker) => marker.remove());
+      markers.current.clear();
+      map.current?.remove();
+      map.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!ready || !map.current) return;
+    let disposed = false;
+    import("maplibre-gl").then((lib) => {
+      if (disposed || !map.current) return;
+      markers.current.forEach((marker) => marker.remove());
+      markers.current.clear();
+      const bounds = new lib.LngLatBounds();
+      for (const facility of facilities) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `hospital-pin ${facility.profile.ownership === "Public" ? "public" : facility.profile.ownership === "Private" ? "private" : "unverified"}`;
+        button.setAttribute("aria-label", `Select ${facility.name}`);
+        button.setAttribute("aria-pressed", String(facility.id === selected));
+        button.title = `${facility.name} · ${facility.profile.sector || facility.zone}`;
+        button.textContent = "+";
+        button.addEventListener("click", () => select.current(facility.id));
+        // MapLibre accepts longitude first. No schematic projection or guessed offsets.
+        const marker = new lib.Marker({ element: button, anchor: "center" })
+          .setLngLat([facility.longitude, facility.latitude])
+          .addTo(map.current);
+        markers.current.set(facility.id, marker);
+        bounds.extend([facility.longitude, facility.latitude]);
+      }
+      if (facilities.length && !fitted.current) {
+        map.current.fitBounds(bounds, {
+          padding: 55,
+          maxZoom: 13,
+          duration: 0,
+        });
+        fitted.current = true;
+      }
+    });
+    return () => {
+      disposed = true;
+    };
+  }, [facilities, ready, selected]);
+
+  function fitHospitals() {
+    if (!map.current || !facilities.length) return;
+    const longitudes = facilities.map((f) => f.longitude);
+    const latitudes = facilities.map((f) => f.latitude);
+    map.current.fitBounds(
+      [
+        [Math.min(...longitudes), Math.min(...latitudes)],
+        [Math.max(...longitudes), Math.max(...latitudes)],
+      ],
+      { padding: 55, maxZoom: 13, duration: 500 },
+    );
+  }
+
+  return (
+    <div className="geographic-map">
+      <div className="map-canvas">
+        <div
+          ref={container}
+          className="map-surface"
+          role="region"
+          aria-label="Geographic map of Islamabad hospitals"
+        />
+        {!ready && !error && (
+          <div className="map-status" role="status">
+            Loading Islamabad streets…
+          </div>
+        )}
+        {error && (
+          <div className="map-status map-error" role="status">
+            {error}
+          </div>
+        )}
+        <button className="map-fit" onClick={fitHospitals} disabled={!ready}>
+          Fit hospitals
+        </button>
+        <div className="map-legend">
+          <span>
+            <i className="dot indigo" />
+            Public
+          </span>
+          <span>
+            <i className="dot teal" />
+            Private
+          </span>
+        </div>
       </div>
-      <div className="map-note">Karachi · schematic view</div>
+      <p className="map-provenance">
+        Campus locations from sourced coordinates · select a pin for details.{" "}
+        <a
+          href="https://www.openstreetmap.org/fixthemap"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Report a map issue
+        </a>
+      </p>
     </div>
   );
 }

@@ -209,11 +209,11 @@ def test_service_suggestions_and_duplicate_review(client):
     result = api.post(
         "/api/facilities",
         json={
-            "name": "Central Care Hospital",
+            "name": "Pakistan Institute of Medical Sciences (PIMS)",
             "zone": "Central",
             "kind": "Hospital",
-            "latitude": 24.9,
-            "longitude": 67.0,
+            "latitude": 33.7022691,
+            "longitude": 73.0525291,
         },
     )
     assert result.status_code == 409
@@ -231,7 +231,7 @@ def test_no_provider_demand_not_fabricated_by_optimizer(client):
 def test_health_export_and_reset_disabled(client):
     api, _ = client
     assert api.get("/health").json()["status"] == "ok"
-    assert len(api.get("/api/export").json()["facilities"]) == 6
+    assert len(api.get("/api/export").json()["facilities"]) == 12
     assert api.post("/api/demo/reset?confirm=RESET_SYNTHETIC_DATA").status_code == 403
 
 
@@ -243,8 +243,8 @@ def test_new_provider_can_offer_capacity_and_receive_referrals(client):
             "name": "North Community Support",
             "zone": "North",
             "kind": "Community center",
-            "latitude": 24.96,
-            "longitude": 67.07,
+            "latitude": 33.73,
+            "longitude": 73.06,
         },
     )
     assert registered.status_code == 201

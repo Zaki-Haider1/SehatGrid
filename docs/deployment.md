@@ -28,5 +28,7 @@ Do not host the SQLite demo file on an ephemeral container filesystem. PostgreSQ
 - Refresh the page and restart the API service: data remains in PostgreSQL.
 - Check GitHub CI. The workflow runs migrations and backend tests against PostgreSQL and SQLite and builds the frontend.
 - Keep demo reset disabled unless hosting an explicitly disposable demo. There is no authentication in this MVP, so every visitor has operator/planner access. Keep only synthetic data.
+- Hospital directory information is public and sourced; all patient requests, capacity and budget values must remain simulated until onboarding and authorization are implemented.
+- The map defaults to OpenStreetMap standard raster tiles for low-traffic demos, with visible attribution. For production traffic configure `NEXT_PUBLIC_MAP_TILE_URL` and `NEXT_PUBLIC_MAP_ATTRIBUTION` before the frontend build using a suitable tile provider. Preserve its attribution, normal browser caching and Referer headers. See the [OSM tile policy](https://operations.osmfoundation.org/policies/tiles/).
 
 Hosting account access, project selection, and service/domain creation are external setup steps. No public deployment should be claimed until the URL and full workflow have actually been verified.

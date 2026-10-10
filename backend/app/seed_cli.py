@@ -5,4 +5,4 @@ from .seed import seed
 if __name__ == "__main__":
     with SessionLocal() as session:
         seed(session, today())
-    print("Synthetic seed checked; existing data preserved.")
+    print("Islamabad directory synced; demo workflows checked and existing workflow data preserved.")

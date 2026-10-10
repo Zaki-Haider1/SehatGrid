@@ -1,10 +1,14 @@
 from datetime import timedelta
 from sqlalchemy import select
 from .models import Facility, Service, Capacity, CareRequest, Budget
+from .directory import sync_directory
 
 
 def seed(session, day):
-    if session.scalar(select(Facility.id).limit(1)):
+    already_seeded = session.scalar(select(Facility.id).limit(1)) is not None
+    facilities = sync_directory(session)
+    if already_seeded:
+        session.commit()
         return
     services = [
         Service(
@@ -24,33 +28,7 @@ def seed(session, day):
             unit_cost=1500,
         ),
     ]
-    facilities = [
-        Facility(
-            name="Harbor General Hospital", zone="South", kind="Hospital", latitude=24.850, longitude=67.025
-        ),
-        Facility(
-            name="Central Care Hospital", zone="Central", kind="Hospital", latitude=24.916, longitude=67.052
-        ),
-        Facility(
-            name="Eastside Community Clinic", zone="East", kind="Clinic", latitude=24.889, longitude=67.102
-        ),
-        Facility(
-            name="North Diagnostic Center",
-            zone="North",
-            kind="Diagnostic center",
-            latitude=24.961,
-            longitude=67.071,
-        ),
-        Facility(name="West Wellness Clinic", zone="West", kind="Clinic", latitude=24.937, longitude=66.993),
-        Facility(
-            name="Hope Community Center",
-            zone="Central",
-            kind="Community center",
-            latitude=24.897,
-            longitude=67.031,
-        ),
-    ]
-    session.add_all(services + facilities)
+    session.add_all(services)
     session.flush()
     offers = [
         (0, 0, 8),

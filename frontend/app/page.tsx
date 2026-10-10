@@ -32,6 +32,7 @@ import {
 } from "@/lib/api";
 import { NetworkMap } from "@/components/network-map";
 import { Dialog } from "@/components/dialog";
+import { HospitalProfile } from "@/components/hospital-profile";
 
 const tabs = [
   { name: "Overview", icon: LayoutDashboard },
@@ -67,6 +68,8 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+  const [hospitalSearch, setHospitalSearch] = useState("");
+  const [ownership, setOwnership] = useState("all");
   const refreshVersion = useRef(0);
 
   const refresh = useCallback(async (targetDay: string) => {
@@ -194,6 +197,13 @@ export default function Home() {
   }
   const chosen = facilities.find((f) => f.id === selected);
   const queue = requests.filter((r) => filter === "all" || r.status === filter);
+  const directory = facilities.filter(
+    (f) =>
+      (ownership === "all" || f.profile.ownership === ownership) &&
+      `${f.name} ${f.profile.sector || ""} ${f.profile.address || ""}`
+        .toLowerCase()
+        .includes(hospitalSearch.trim().toLowerCase()),
+  );
   const zoneSelect = (
     <select name="zone" defaultValue="Central">
       {config?.zones.map((z) => (
@@ -358,7 +368,7 @@ export default function Home() {
           <div className="demo-card">
             <span className="dot indigo" />
             <strong>Demo workspace</strong>
-            <p>Synthetic data. Real workflows.</p>
+            <p>Islamabad hospitals. Demo workflows.</p>
           </div>
           <div className="profile">
             <span className="avatar">SG</span>
@@ -412,9 +422,9 @@ export default function Home() {
               </h1>
               <p>
                 {tab === "Overview"
-                  ? "Connect available care to the people who need it."
+                  ? "Explore Islamabad’s hospitals and coordinate demo care."
                   : tab === "Providers"
-                    ? "One shared directory. Up-to-date capacity."
+                    ? "Sourced hospital details and simulated capacity."
                     : tab === "Referrals"
                       ? "Coordinate care, from request to completion."
                       : tab === "Demand insights"
@@ -473,14 +483,14 @@ export default function Home() {
                     label: "Network providers",
                     value: dashboard.facilities,
                     icon: Building2,
-                    note: "Connected across 5 zones",
+                    note: "Islamabad hospital directory",
                     tone: "blue",
                   },
                   {
-                    label: "Available slots",
+                    label: "Demo slots available",
                     value: dashboard.available,
                     icon: HeartPulse,
-                    note: "Ready to receive referrals",
+                    note: "Simulated for workflow testing",
                     tone: "green",
                   },
                   {
@@ -520,11 +530,13 @@ export default function Home() {
                       <div className="panel-heading">
                         <div>
                           <h2>Your provider network</h2>
-                          <p>Available care, at a glance</p>
+                          <p>
+                            Real hospital locations · simulated care workflows
+                          </p>
                         </div>
                         <span className="tag">
                           <MapPin size={13} />
-                          Karachi
+                          Islamabad
                         </span>
                       </div>
                       <NetworkMap
@@ -558,10 +570,15 @@ export default function Home() {
                             <div>
                               <h3>{chosen.name}</h3>
                               <p>
-                                {chosen.kind} · {chosen.zone}
+                                {chosen.kind} ·{" "}
+                                {chosen.profile.sector || chosen.zone}
                               </p>
                             </div>
                           </div>
+                          <HospitalProfile facility={chosen} />
+                          <p className="capacity-caption">
+                            Demo capacity for {day}
+                          </p>
                           <div className="capacity-list">
                             {chosen.capacities.map((c) => (
                               <div key={c.service_id}>
@@ -578,13 +595,14 @@ export default function Home() {
                                   }
                                 >
                                   {c.available}
-                                  <small>available</small>
+                                  <small>demo slots</small>
                                 </strong>
                               </div>
                             ))}
                             {!chosen.capacities.length && (
                               <p className="muted">
-                                Add this provider’s first service capacity.
+                                No demo capacity reported. This does not mean
+                                the hospital is full or lacks services.
                               </p>
                             )}
                           </div>
@@ -596,7 +614,7 @@ export default function Home() {
                             }
                           >
                             <Plus size={16} />
-                            Update capacity
+                            Update demo capacity
                           </button>
                         </>
                       )}
@@ -628,7 +646,10 @@ export default function Home() {
                   <div className="panel-heading">
                     <div>
                       <h2>Provider directory</h2>
-                      <p>Capacity for {day}</p>
+                      <p>
+                        {directory.length} hospitals shown · demo capacity for{" "}
+                        {day}
+                      </p>
                     </div>
                     <button
                       className="secondary"
@@ -638,15 +659,45 @@ export default function Home() {
                       Register provider
                     </button>
                   </div>
+                  <div className="directory-controls">
+                    <input
+                      aria-label="Search hospitals"
+                      placeholder="Search hospital, sector or address"
+                      value={hospitalSearch}
+                      onChange={(e) => setHospitalSearch(e.target.value)}
+                    />
+                    <select
+                      aria-label="Hospital ownership"
+                      value={ownership}
+                      onChange={(e) => setOwnership(e.target.value)}
+                    >
+                      <option value="all">Public &amp; private</option>
+                      <option value="Public">Public hospitals</option>
+                      <option value="Private">Private hospitals</option>
+                    </select>
+                  </div>
                   <div className="provider-grid">
-                    {facilities.map((f) => (
+                    {directory.map((f) => (
                       <article className="provider-card" key={f.id}>
                         <span className="provider-icon">
                           <Building2 size={24} />
                         </span>
                         <h3>{f.name}</h3>
                         <p>
-                          {f.kind} · {f.zone}
+                          {f.kind} · {f.profile.sector || f.zone}
+                        </p>
+                        <HospitalProfile facility={f} />
+                        <button
+                          className="text-button locate-hospital"
+                          onClick={() => {
+                            setSelected(f.id);
+                            setTab("Overview");
+                          }}
+                        >
+                          Locate on map <MapPin size={13} />
+                        </button>
+                        <p className="capacity-caption">
+                          Demo capacity · {f.zone} planning catchment
                         </p>
                         <div className="provider-capacity">
                           {f.capacities.map((c) => (
@@ -659,7 +710,7 @@ export default function Home() {
                             </div>
                           ))}
                           {!f.capacities.length && (
-                            <p>No services registered for this date</p>
+                            <p>No demo capacity reported for this date</p>
                           )}
                         </div>
                         <button
@@ -668,10 +719,13 @@ export default function Home() {
                             setModal({ type: "capacity", id: f.id })
                           }
                         >
-                          Update capacity <ArrowRight size={15} />
+                          Update demo capacity <ArrowRight size={15} />
                         </button>
                       </article>
                     ))}
+                    {!directory.length && (
+                      <p className="empty">No hospitals match your search.</p>
+                    )}
                   </div>
                 </section>
               )}
@@ -908,7 +962,7 @@ export default function Home() {
               <footer>
                 <span>
                   <i className="dot green-dot" />
-                  Synthetic demo · {day}
+                  Real directory · simulated capacity · {day}
                 </span>
                 <div>
                   <button
@@ -1084,7 +1138,7 @@ export default function Home() {
                     step="any"
                     min="-90"
                     max="90"
-                    defaultValue="24.91"
+                    placeholder="e.g. 33.702269"
                     required
                   />
                 </label>
@@ -1096,7 +1150,7 @@ export default function Home() {
                     step="any"
                     min="-180"
                     max="180"
-                    defaultValue="67.05"
+                    placeholder="e.g. 73.052529"
                     required
                   />
                 </label>

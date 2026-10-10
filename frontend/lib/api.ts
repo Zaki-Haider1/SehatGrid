@@ -14,6 +14,25 @@ export type Facility = {
   zone: string;
   latitude: number;
   longitude: number;
+  profile: {
+    city?: string;
+    sector?: string;
+    ownership?: "Public" | "Private";
+    address?: string;
+    phone?: string;
+    email?: string | null;
+    website?: string | null;
+    departments?: string[];
+    hours?: string | null;
+    emergency?: string | null;
+    checked_on?: string;
+    coordinate_source?: string;
+    coordinate_method?: string;
+    coordinate_note?: string;
+    directory_sources?: { title: string; url: string }[];
+    notes?: string;
+  };
+  capacity_mode: "simulated";
   capacities: Capacity[];
 };
 export type CareRequest = {
@@ -68,6 +87,9 @@ export type Config = {
   today: string;
   zones: string[];
   demo_reset_enabled: boolean;
+  city: string;
+  capacity_mode: "simulated";
+  zone_note: string;
 };
 
 export const API = (

@@ -1,10 +1,12 @@
 # Sehat Grid
 
-A working synthetic healthcare coordination MVP: providers share dated capacity, operators refer care requests, and planners fund additional service slots. The dashboard is intentionally simple and inspired by the supplied reference.
+A healthcare coordination MVP for Islamabad: a sourced real hospital directory and geographic map, with simulated capacity, care requests and funding. Providers share dated demo capacity, operators refer care requests, and planners fund additional demo service slots.
 
 ## What works
 
-- Provider registration, duplicate-name review, service directory, daily capacity updates, and a selectable network schematic.
+- Interactive MapLibre street map with 12 researched Islamabad hospitals, geographic pins, zoom/pan and public/private markers.
+- Searchable hospital directory with addresses, sectors, business contacts, published services/hours where verified, coordinate evidence and per-hospital source links.
+- Provider registration, duplicate-name review, service directory and daily demo capacity updates.
 - Request intake → provider recommendations → atomic slot reservation → partner confirmation → completion. Cancellation releases a reservation and reopens the request.
 - Unresolved demand grouped by zone, service, and current capacity gap.
 - Actual OR-Tools integer optimization, budget-constrained plan review, atomic approval, capacity activation, and automatic retry of unresolved requests.
@@ -14,6 +16,8 @@ A working synthetic healthcare coordination MVP: providers share dated capacity,
 **Database choice for judges:** PostgreSQL transactions let us reserve capacity and commit funding atomically, preventing concurrent requests from overbooking or overspending. Check constraints and conditional updates enforce these invariants in the database.
 
 Read [overview.md](overview.md) for architecture, schema, API contracts, decisions, and limitations. Read [docs/deployment.md](docs/deployment.md) for the hosting handoff and [docs/demo.md](docs/demo.md) for the demo walkthrough.
+
+Read [docs/islamabad-directory.md](docs/islamabad-directory.md) for the research, coordinates and accuracy limits, and [docs/role-portals.md](docs/role-portals.md) for the planned government, hospital and patient interfaces. Directory facts do not establish affiliation, eligibility, prices or live capacity at these hospitals.
 
 ## Local development
 
@@ -39,7 +43,7 @@ npm ci
 npm run dev
 ```
 
-Open `http://localhost:3000`. Interactive API docs are at `http://localhost:8000/docs`. Startup seeds an empty database once; subsequent starts preserve changes. The initial dataset includes seven days of capacity and six unresolved requests dated on first startup. If the date changes, select the original demo date or reset a disposable demo database explicitly.
+Open `http://localhost:3000`. Interactive API docs are at `http://localhost:8000/docs`. Startup seeds demo workflows once and syncs the curated hospital directory on subsequent starts, preserving capacity, referrals and funding. The initial dataset includes seven days of simulated capacity and six unresolved demo requests dated on first startup. If the date changes, select the original demo date or reset a disposable demo database explicitly.
 
 On macOS/Linux, use `python3.12 -m venv .venv`, `.venv/bin/python`, and `cp` in place of the Windows commands.
 
@@ -56,7 +60,7 @@ Compose runs PostgreSQL and the API; the frontend runs separately. The database 
 
 ### Seed and reset
 
-`SEED_ON_START=true` seeds only an empty database. To explicitly seed an existing empty database after migrations:
+`SEED_ON_START=true` seeds demo workflows only in an empty database and syncs directory facts in existing databases. The six original synthetic hospitals are upgraded in place, preserving their IDs and demo history. To run the seed/directory sync explicitly after migrations:
 
 ```powershell
 cd backend

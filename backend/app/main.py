@@ -49,7 +49,7 @@ app = FastAPI(
     title="Sehat Grid",
     version="0.1.0",
     lifespan=lifespan,
-    description="Synthetic healthcare coordination MVP. No real patient data.",
+    description="Islamabad hospital directory with simulated healthcare coordination workflows. No real patient data.",
 )
 app.add_middleware(
     CORSMiddleware,
@@ -67,7 +67,14 @@ def health(db: Session = Depends(get_db)):
 
 @app.get("/api/config")
 def config():
-    return {"today": today(), "zones": ZONES, "demo_reset_enabled": settings.enable_demo_reset}
+    return {
+        "today": today(),
+        "zones": ZONES,
+        "demo_reset_enabled": settings.enable_demo_reset,
+        "city": "Islamabad",
+        "capacity_mode": "simulated",
+        "zone_note": "Five demonstration planning catchments, not official Islamabad administrative zones.",
+    }
 
 
 @app.get("/api/services")
@@ -106,6 +113,8 @@ def facilities(day: date | None = None, db: Session = Depends(get_db)):
                 "kind": facility.kind,
                 "latitude": facility.latitude,
                 "longitude": facility.longitude,
+                "profile": facility.profile,
+                "capacity_mode": "simulated",
                 "capacities": [
                     {
                         "service_id": s.id,
