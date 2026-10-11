@@ -1,5 +1,15 @@
 # SEHAT GRID
 
+## AICON’26 — second place 🏆
+
+**SEHAT GRID won second place (1st Runner Up) in the Build with AI competition at AICON’26, receiving a PKR 25,000 prize on October 11, 2026.** Our MVP demonstrated how public and private hospitals can coordinate non-emergency primary-care referrals using reviewed service matching, available capacity, and funding plans.
+
+[AICON’26](https://www.aicon26.pk/) took place on **October 9–11, 2026 at SEECS, NUST, Islamabad**, in collaboration with GDGoC, ACM, NUST Entrepreneurs Club (NEC), and NUST Hack Club (NHC). The event featured Pitchfest, Competitive Speed Programming, and Build with AI.
+
+<img src="docs/images/aicon-26-second-place.jpg" alt="SEHAT GRID team with the AICON’26 Build with AI first runner-up award, October 11, 2026" width="600" />
+
+*The SEHAT GRID team celebrating its Build with AI result at AICON’26.*
+
 SEHAT GRID coordinates non-emergency primary care across eight Islamabad hospitals and five pilot catchments. It combines hospital staff workflows, AI-assisted request guidance, and solver-checked funding and capacity plans. Hospital directory context is public; requests, partnerships, quotas, costs and care records are synthetic.
 
 ## Demo
